@@ -1,0 +1,5 @@
+*.tar.gz
+.ansible/
+.cache/
+.molecule/
+extensions/molecule/*/.molecule/

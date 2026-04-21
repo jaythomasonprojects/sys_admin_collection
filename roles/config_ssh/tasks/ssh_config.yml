@@ -1,0 +1,12 @@
+---
+- name: Ensure ssh_config.d directory exists (for SSH client config)
+  ansible.builtin.file:
+    path: /etc/ssh/ssh_config.d
+    state: directory
+    mode: '0755'
+
+- name: Deploy custom SSH client configuration
+  ansible.builtin.template:
+    src: ssh_custom.conf.j2
+    dest: /etc/ssh/ssh_config.d/99-custom.conf
+    mode: '0644'

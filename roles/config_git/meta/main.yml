@@ -1,0 +1,14 @@
+---
+galaxy_info:
+  author: 'Jay Thomason'
+  description: 'Configure global git identity settings on the target host'
+  license: 'MIT'
+  min_ansible_version: '2.18'
+  platforms:
+    - name: 'Debian'
+      versions:
+        - 'all'
+    - name: 'Ubuntu'
+      versions:
+        - 'all'
+dependencies: []

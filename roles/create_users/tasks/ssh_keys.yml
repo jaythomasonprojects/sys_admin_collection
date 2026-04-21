@@ -1,0 +1,10 @@
+---
+# ssh_authorized_keys needs to be iterable - always provide them as a list
+- name: Add SSH authorized keys for user {{ current_user.name }}
+  ansible.posix.authorized_key:
+    user: "{{ current_user.name }}"
+    key: "{{ ssh_key }}"
+    state: present
+  loop: "{{ current_user.ssh_authorized_keys }}"
+  loop_control:
+    loop_var: ssh_key

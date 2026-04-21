@@ -1,0 +1,13 @@
+---
+- name: Check if flatpak is available
+  ansible.builtin.command: which flatpak
+  register: update_apps_flatpak_check
+  failed_when: false
+  changed_when: false
+
+- name: Update flatpaks
+  community.general.flatpak:
+    name: "{{ item }}"
+    state: latest
+  loop: "{{ update_apps_flatpaks }}"
+  when: update_apps_flatpak_check.rc == 0

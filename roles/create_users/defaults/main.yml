@@ -1,0 +1,3 @@
+---
+# Temporary compatibility fallback for the pre-normalized role interface.
+create_users_users: "{{ users | default([]) }}"

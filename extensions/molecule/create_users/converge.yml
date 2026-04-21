@@ -1,0 +1,20 @@
+---
+- name: Converge create_users scenario
+  hosts: all
+  become: true
+  gather_facts: true
+  vars:
+    create_users_test_key: >-
+      ssh-ed25519
+      AAAAC3NzaC1lZDI1NTE5AAAAIKsIYhl725LLJoPLD114F8CbnMD4HzyBbs6k8ZZrVSu2
+      molecule@test
+    create_users_users:
+      - name: 'molecule'
+        comment: 'Molecule managed user'
+        create_home: true
+        password: '!'
+        shell: '/bin/bash'
+        ssh_authorized_keys:
+          - '{{ create_users_test_key }}'
+  roles:
+    - role: 'jaythomason.infra_management.create_users'

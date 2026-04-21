@@ -1,0 +1,72 @@
+---
+# SSHD Server Configuration
+# Network and Connection Settings
+config_ssh_sshd_port: 22  # Port to listen on
+# IP address to bind to (0.0.0.0 = all interfaces)
+config_ssh_sshd_listen_address: '0.0.0.0'
+
+# Authentication Settings
+config_ssh_sshd_login_grace_time: '1m'  # Time allowed for authentication
+# Allow root user to login (yes/no/prohibit-password)
+config_ssh_sshd_permit_root_login: >-
+  {{ sshd_permit_root_login | default('no') }}
+# Maximum authentication attempts per connection
+config_ssh_sshd_max_auth_tries: 3
+
+# Authentication Methods
+config_ssh_sshd_pubkey_authentication: 'yes'
+config_ssh_sshd_password_authentication: 'yes'
+config_ssh_sshd_permit_empty_passwords: 'no'
+
+# User and Group Access Control (use ~ null for optional variables)
+config_ssh_sshd_allow_users: ~
+config_ssh_sshd_allow_groups: ~
+config_ssh_sshd_deny_users: ~
+config_ssh_sshd_deny_groups: ~
+
+# Forwarding and Tunneling
+config_ssh_sshd_x11_forwarding: 'yes'
+config_ssh_sshd_allow_tcp_forwarding: 'yes'
+config_ssh_sshd_allow_agent_forwarding: 'yes'
+
+# Session Management
+# Send keepalive messages (0 = disabled)
+config_ssh_sshd_client_alive_interval: 0
+# Max keepalive messages without response
+config_ssh_sshd_client_alive_count_max: 3
+
+# Miscellaneous
+config_ssh_sshd_use_dns: 'no'  # Perform DNS lookups on client IPs
+
+# SSH Client Configuration
+# Connection Settings
+config_ssh_ssh_port: 22  # Default port for connections
+
+# Connection Keep Alive
+# Send keepalive messages (0 = disabled)
+config_ssh_ssh_server_alive_interval: 0
+# Max keepalive messages without response
+config_ssh_ssh_server_alive_count_max: 3
+
+# Authentication Settings
+# Try public key authentication
+config_ssh_ssh_pubkey_authentication: 'yes'
+# Try password authentication
+config_ssh_ssh_password_authentication: 'yes'
+
+# Host Key Verification
+# Host key verification (yes/no/ask)
+config_ssh_ssh_strict_host_key_checking: 'ask'
+
+# Forwarding Settings
+config_ssh_ssh_forward_agent: 'no'
+config_ssh_ssh_forward_x11: 'no'
+
+# Connection Timeout
+config_ssh_ssh_connect_timeout: 0  # Connection timeout (0 = system default)
+
+# Compression
+config_ssh_ssh_compression: 'no'  # Use compression
+
+# Host-specific overrides (list of dicts with 'host' and 'settings' keys)
+config_ssh_ssh_host_overrides: []

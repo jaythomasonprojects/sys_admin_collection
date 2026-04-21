@@ -1,0 +1,4 @@
+---
+# Temporary compatibility fallbacks for the pre-normalized role interface.
+install_apps_flatpaks: "{{ flatpaks | default([]) }}"
+install_apps_packages: "{{ packages | default([]) }}"

@@ -1,0 +1,8 @@
+---
+exclude_paths:
+  - '.ansible/'
+  - '.cache/'
+  - '.molecule/'
+skip_list:
+  - 'galaxy[no-changelog]'
+use_default_rules: true

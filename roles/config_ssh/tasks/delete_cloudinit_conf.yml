@@ -1,0 +1,24 @@
+---
+# cloud-init may create additional SSH config files during build
+# (for example Proxmox cloud-init or autoinstall.yaml)
+# Delete these files to prevent conflicts with other SSH config
+
+- name: Find cloud-init SSH config files
+  ansible.builtin.find:
+    paths: /etc/ssh/sshd_config.d
+    patterns: ['*cloud-init*', '*cloudimg*']
+  register: config_ssh_cloudinit_conf
+
+# - name: Display found SSH config files
+#   ansible.builtin.debug:
+#     msg: >-
+#       Found files:
+#       {{ config_ssh_cloudinit_conf.files | map(attribute='path') | list }}
+
+- name: Delete cloud-init SSH config files
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: absent
+  loop: "{{ config_ssh_cloudinit_conf.files }}"
+  when: config_ssh_cloudinit_conf.matched > 0
+  notify: Restart SSH service

@@ -1,0 +1,18 @@
+---
+- name: Check if flatpak is available
+  ansible.builtin.command: which flatpak
+  register: install_apps_flatpak_check
+  failed_when: false
+  changed_when: false
+
+- name: Install flatpaks
+  community.general.flatpak:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ install_apps_flatpaks }}"
+  when: install_apps_flatpak_check.rc == 0
+
+- name: Display flatpak unavailable message
+  ansible.builtin.debug:
+    msg: 'Flatpak is unavailable. Skipping flatpak installations.'
+  when: install_apps_flatpak_check.rc != 0

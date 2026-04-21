@@ -1,0 +1,25 @@
+---
+namespace: jaythomason
+name: infra_management
+version: '0.1.0'
+readme: README.md
+authors:
+  - Jay Thomason
+description: >-
+  Infrastructure management collection scaffold for future roles and plugins
+license:
+  - MIT
+tags:
+  - automation
+  - infrastructure
+  - linux
+repository: 'https://github.com/jaythomasonprojects/me-playbooks'
+documentation: 'https://github.com/jaythomasonprojects/me-playbooks'
+homepage: 'https://github.com/jaythomasonprojects/me-playbooks'
+issues: 'https://github.com/jaythomasonprojects/me-playbooks/issues'
+dependencies:
+  ansible.posix: '*'
+  community.general: '*'
+build_ignore:
+  - '.gitignore'
+  - '*.tar.gz'

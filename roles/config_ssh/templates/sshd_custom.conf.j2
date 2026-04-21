@@ -1,0 +1,42 @@
+# Custom SSHD configuration managed by Ansible
+# This file is placed in /etc/ssh/sshd_config.d/99-custom.conf
+
+# Network and Connection Settings
+Port {{ config_ssh_sshd_port }}
+ListenAddress {{ config_ssh_sshd_listen_address }}
+
+# Authentication Settings
+LoginGraceTime {{ config_ssh_sshd_login_grace_time }}
+PermitRootLogin {{ config_ssh_sshd_permit_root_login }}
+MaxAuthTries {{ config_ssh_sshd_max_auth_tries }}
+
+# Authentication Methods
+PubkeyAuthentication {{ config_ssh_sshd_pubkey_authentication }}
+PasswordAuthentication {{ config_ssh_sshd_password_authentication }}
+PermitEmptyPasswords {{ config_ssh_sshd_permit_empty_passwords }}
+
+# User and Group Access Control
+{% if config_ssh_sshd_allow_users is not none and config_ssh_sshd_allow_users | length > 0 %}
+AllowUsers {{ config_ssh_sshd_allow_users }}
+{% endif %}
+{% if config_ssh_sshd_allow_groups is not none and config_ssh_sshd_allow_groups | length > 0 %}
+AllowGroups {{ config_ssh_sshd_allow_groups }}
+{% endif %}
+{% if config_ssh_sshd_deny_users is not none and config_ssh_sshd_deny_users | length > 0 %}
+DenyUsers {{ config_ssh_sshd_deny_users }}
+{% endif %}
+{% if config_ssh_sshd_deny_groups is not none and config_ssh_sshd_deny_groups | length > 0 %}
+DenyGroups {{ config_ssh_sshd_deny_groups }}
+{% endif %}
+
+# Forwarding and Tunneling
+X11Forwarding {{ config_ssh_sshd_x11_forwarding }}
+AllowTcpForwarding {{ config_ssh_sshd_allow_tcp_forwarding }}
+AllowAgentForwarding {{ config_ssh_sshd_allow_agent_forwarding }}
+
+# Session Management
+ClientAliveInterval {{ config_ssh_sshd_client_alive_interval }}
+ClientAliveCountMax {{ config_ssh_sshd_client_alive_count_max }}
+
+# Miscellaneous
+UseDNS {{ config_ssh_sshd_use_dns }}

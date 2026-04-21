@@ -1,0 +1,33 @@
+---
+- name: Ensure sshd_config.d directory exists
+  ansible.builtin.file:
+    path: /etc/ssh/sshd_config.d
+    state: directory
+    mode: '0755'
+
+- name: Deploy custom SSHD configuration
+  ansible.builtin.template:
+    src: sshd_custom.conf.j2
+    dest: /etc/ssh/sshd_config.d/99-custom.conf
+    mode: '0640'
+  notify: Restart SSH service
+
+- name: Validate SSH configuration
+  ansible.builtin.command: sshd -t
+  register: config_ssh_sshd_test
+  ignore_errors: true
+  changed_when: false
+
+- name: Remove custom SSHD config if invalid
+  ansible.builtin.file:
+    path: /etc/ssh/sshd_config.d/99-custom.conf
+    state: absent
+  when: config_ssh_sshd_test.rc != 0
+  notify: Restart SSH service
+
+- name: Notify about sshd_config validation failure
+  ansible.builtin.debug:
+    msg: >-
+      Custom SSHD configuration is invalid and has been removed.
+      Error: {{ config_ssh_sshd_test.stderr }}
+  when: config_ssh_sshd_test.rc != 0

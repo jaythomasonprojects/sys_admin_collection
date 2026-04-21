@@ -1,0 +1,21 @@
+---
+galaxy_info:
+  author: 'Jay Thomason'
+  description: 'Update OS packages and Flatpak applications'
+  license: 'MIT'
+  min_ansible_version: '2.18'
+  platforms:
+    - name: 'Debian'
+      versions:
+        - 'all'
+    - name: 'EL'
+      versions:
+        - 'all'
+    - name: 'Fedora'
+      versions:
+        - 'all'
+
+collections:
+  - 'community.general'
+
+dependencies: []

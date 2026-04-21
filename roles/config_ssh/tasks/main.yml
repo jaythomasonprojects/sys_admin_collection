@@ -1,0 +1,9 @@
+---
+- name: Delete cloud-init SSH configuration files
+  ansible.builtin.include_tasks: delete_cloudinit_conf.yml
+
+- name: Apply SSH configuration
+  ansible.builtin.include_tasks: ssh_config.yml
+
+- name: Apply SSHD configuration
+  ansible.builtin.include_tasks: sshd_config.yml

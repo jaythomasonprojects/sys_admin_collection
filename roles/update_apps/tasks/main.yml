@@ -1,0 +1,7 @@
+---
+- name: Update packages
+  ansible.builtin.include_tasks: 'packages.yml'
+
+- name: Update flatpaks
+  ansible.builtin.include_tasks: 'flatpaks.yml'
+  when: update_apps_flatpaks | length > 0
