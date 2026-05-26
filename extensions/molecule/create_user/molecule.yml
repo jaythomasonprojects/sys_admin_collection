@@ -1,0 +1,15 @@
+---
+driver:
+  name: 'docker'
+
+platforms:
+  - name: 'ubuntu'
+    command: 'sleep infinity'
+    image: 'docker.io/geerlingguy/docker-ubuntu2204-ansible:latest'
+    pre_build_image: true
+
+provisioner:
+  name: 'ansible'
+
+scenario:
+  name: 'create_user'

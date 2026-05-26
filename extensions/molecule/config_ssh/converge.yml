@@ -1,0 +1,16 @@
+---
+- name: Converge config_ssh scenario
+  hosts: all
+  become: true
+  gather_facts: true
+  vars:
+    config_ssh_sshd_permit_root_login: "prohibit-password"
+    config_ssh_sshd_allow_users: "molecule"
+    config_ssh_ssh_strict_host_key_checking: "no"
+    config_ssh_ssh_forward_agent: "yes"
+    config_ssh_ssh_host_overrides:
+      - host: "github.com"
+        settings:
+          User: "git"
+  roles:
+    - role: "jaythomasonprojects.sys_admin.config_ssh"

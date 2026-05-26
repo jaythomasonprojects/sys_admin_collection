@@ -1,0 +1,28 @@
+---
+- name: Gather package facts for Flatpak availability
+  ansible.builtin.package_facts:
+    manager: auto
+
+- name: Ensure Flathub is configured
+  community.general.flatpak_remote:
+    name: 'flathub'
+    state: present
+    flatpakrepo_url: 'https://dl.flathub.org/repo/flathub.flatpakrepo'
+  when:
+    - install_app_manage_flatpak_remote
+    - "'flatpak' in ansible_facts.packages"
+
+- name: Install flatpaks
+  community.general.flatpak:
+    name: "{{ item }}"
+    state: present
+    remote: 'flathub'
+  loop: "{{ install_app_flatpaks }}"
+  when: "'flatpak' in ansible_facts.packages"
+
+- name: Display flatpak unavailable message
+  ansible.builtin.debug:
+    msg: >-
+      Flatpak is unavailable. Add the native flatpak package before requesting
+      Flatpak installs.
+  when: "'flatpak' not in ansible_facts.packages"

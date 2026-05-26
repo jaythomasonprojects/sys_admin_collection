@@ -1,0 +1,18 @@
+---
+- name: Verify install_app results
+  hosts: all
+  become: true
+  gather_facts: true
+  vars:
+    expected_package_name: "jq"
+  tasks:
+    - name: Gather package facts
+      ansible.builtin.package_facts:
+
+    - name: Verify APT package installation
+      ansible.builtin.include_tasks: "verify_apt.yml"
+      when: ansible_facts["pkg_mgr"] == "apt"
+
+    - name: Verify DNF package installation
+      ansible.builtin.include_tasks: "verify_dnf.yml"
+      when: ansible_facts["pkg_mgr"] in ["dnf", "dnf5"]

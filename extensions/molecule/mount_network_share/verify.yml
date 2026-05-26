@@ -1,0 +1,106 @@
+---
+- name: Verify mount_network_share results
+  hosts: all
+  become: true
+  gather_facts: false
+  vars:
+    expected_workstation_mount: '/mnt/workstation-data'
+    expected_shared_mount: '/srv/shared-docs'
+    expected_absent_mount: '/mnt/old-share'
+    expected_workstation_credentials: '/home/molecule/.smbcredentials'
+    expected_shared_credentials: '/etc/samba/credentials/shared_docs'
+    expected_absent_credentials: '/home/molecule/.smbcredentials-old-share'
+    expected_workstation_share: '//files.example.invalid/Data'
+    expected_shared_share: '//nas.example.invalid/Docs'
+    expected_absent_share: '//legacy.example.invalid/OldShare'
+    expected_workstation_credentials_option: >-
+      credentials=/home/molecule/.smbcredentials
+    expected_shared_credentials_option: >-
+      credentials=/etc/samba/credentials/shared_docs
+  tasks:
+    - name: Gather mount point state
+      ansible.builtin.stat:
+        path: "{{ item }}"
+      loop:
+        - "{{ expected_workstation_mount }}"
+        - "{{ expected_shared_mount }}"
+        - "{{ expected_absent_mount }}"
+      register: mount_network_share_mount_points
+
+    - name: Gather credential file state
+      ansible.builtin.stat:
+        path: "{{ item }}"
+      loop:
+        - "{{ expected_workstation_credentials }}"
+        - "{{ expected_shared_credentials }}"
+        - "{{ expected_absent_credentials }}"
+      register: mount_network_share_credentials
+      no_log: true
+
+    - name: Gather molecule home directory state
+      ansible.builtin.stat:
+        path: '/home/molecule'
+      register: mount_network_share_molecule_home
+
+    - name: Read fstab
+      ansible.builtin.slurp:
+        src: '/etc/fstab'
+      register: mount_network_share_fstab
+
+    - name: Read workstation credentials
+      ansible.builtin.slurp:
+        src: "{{ expected_workstation_credentials }}"
+      register: mount_network_share_workstation_credentials
+      no_log: true
+
+    - name: Read shared credentials
+      ansible.builtin.slurp:
+        src: "{{ expected_shared_credentials }}"
+      register: mount_network_share_shared_credentials
+      no_log: true
+
+    - name: Decode fstab and credentials
+      ansible.builtin.set_fact:
+        mns_mounts: "{{ mount_network_share_mount_points.results }}"
+        mns_creds: "{{ mount_network_share_credentials.results }}"
+        mns_fstab: >-
+          {{ mount_network_share_fstab.content | b64decode }}
+        mns_workstation_creds: >-
+          {{ mount_network_share_workstation_credentials.content | b64decode }}
+        mns_shared_creds: >-
+          {{ mount_network_share_shared_credentials.content | b64decode }}
+      no_log: true
+
+    - name: Assert mount_network_share state
+      ansible.builtin.assert:
+        that:
+          - "mns_mounts[0].stat.isdir"
+          - "mns_mounts[0].stat.pw_name == 'molecule'"
+          - "mns_mounts[0].stat.gr_name == 'molecule'"
+          - "mns_mounts[0].stat.mode == '0750'"
+          - "mns_mounts[1].stat.isdir"
+          - "mns_mounts[1].stat.pw_name == 'root'"
+          - "mns_mounts[1].stat.gr_name == 'root'"
+          - "mns_mounts[1].stat.mode == '0755'"
+          - "not mns_mounts[2].stat.exists"
+          - "mns_creds[0].stat.mode == '0600'"
+          - "mns_creds[0].stat.pw_name == 'molecule'"
+          - "mns_creds[1].stat.mode == '0600'"
+          - "mns_creds[1].stat.pw_name == 'root'"
+          - "not mns_creds[2].stat.exists"
+          - "mount_network_share_molecule_home.stat.mode != '0700'"
+          - "'username=molecule' in mns_workstation_creds"
+          - "'password=molecule-password' in mns_workstation_creds"
+          - "'username=svc_docs' in mns_shared_creds"
+          - "'password=svc-docs-password' in mns_shared_creds"
+          - "expected_workstation_share in mns_fstab"
+          - "expected_workstation_mount in mns_fstab"
+          - "expected_workstation_credentials_option in mns_fstab"
+          - "expected_shared_share in mns_fstab"
+          - "expected_shared_mount in mns_fstab"
+          - "expected_shared_credentials_option in mns_fstab"
+          - "expected_absent_share not in mns_fstab"
+          - "expected_absent_mount not in mns_fstab"
+        fail_msg: >-
+          mount_network_share did not create the expected fstab state.
+      no_log: true

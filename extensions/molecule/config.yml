@@ -1,4 +1,17 @@
 ---
+# Shared Molecule defaults for this collection.
+#
+# Scenario directories under extensions/molecule/<scenario>/ inherit this file
+# automatically. Keep per-scenario molecule.yml files focused on the container
+# runtime they need, and centralise the common execution flow here.
+dependency:
+  name: "galaxy"
+  options:
+    requirements-file: "../../../requirements.yml"
+
+provisioner:
+  name: "ansible"
+
 scenario:
   test_sequence:
     - dependency
@@ -11,3 +24,6 @@ scenario:
     - destroy
 
 shared_state: false
+
+verifier:
+  name: "ansible"

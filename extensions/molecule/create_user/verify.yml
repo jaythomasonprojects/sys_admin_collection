@@ -1,0 +1,35 @@
+---
+- name: Verify create_user results
+  hosts: all
+  become: true
+  gather_facts: false
+  vars:
+    create_user_test_key: >-
+      ssh-ed25519
+      AAAAC3NzaC1lZDI1NTE5AAAAIKsIYhl725LLJoPLD114F8CbnMD4HzyBbs6k8ZZrVSu2
+      molecule@test
+  tasks:
+    - name: Gather passwd entry for molecule user
+      ansible.builtin.getent:
+        database: 'passwd'
+        key: 'molecule'
+
+    - name: Stat authorized_keys file
+      ansible.builtin.stat:
+        path: '/home/molecule/.ssh/authorized_keys'
+      register: create_user_authorized_keys_stat
+
+    - name: Read authorized_keys file
+      ansible.builtin.slurp:
+        src: '/home/molecule/.ssh/authorized_keys'
+      register: create_user_authorized_keys
+      when: create_user_authorized_keys_stat.stat.exists
+
+    - name: Assert managed user configuration
+      ansible.builtin.assert:
+        that:
+          - "ansible_facts.getent_passwd['molecule'] is defined"
+          - 'create_user_authorized_keys_stat.stat.exists'
+          - >-
+            create_user_test_key in
+            (create_user_authorized_keys.content | b64decode)

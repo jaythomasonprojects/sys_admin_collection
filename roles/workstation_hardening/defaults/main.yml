@@ -1,0 +1,4 @@
+---
+workstation_hardening_blacklisted_modules: []
+workstation_hardening_services: []
+workstation_hardening_apply_runtime_changes: true

@@ -1,21 +1,28 @@
 # Roles
 
-Extracted collection roles for `jaythomason.infra_management` now live in this directory.
+Extracted collection roles for `jaythomasonprojects.sys_admin` now live in this directory.
 
 ## Available roles
 
-- `create_users`
+- `create_user`
 - `config_git`
 - `config_ssh`
-- `install_apps`
-- `update_apps`
+- `config_desktop`
+- `install_app`
+- `mount_network_share`
+- `workstation_hardening`
+- `time_sync`
+- `auto_updates`
 
-These roles were extracted from the playbook-local roles and are now consumed from the installed collection via FQCNs.
+These roles were extracted from the playbook-local roles and are now consumed
+from the installed collection via FQCNs such as `jaythomasonprojects.sys_admin.create_user`.
 
 ## Validation coverage
 
-- `extensions/molecule/create_users`
-- `extensions/molecule/config_git/README.md` placeholder for future git coverage
-- `extensions/molecule/install_apps/README.md` placeholder for future package coverage
-- `extensions/molecule/update_apps/README.md` placeholder for future package coverage
-- `extensions/molecule/config_ssh/README.md` placeholder for future SSH coverage
+- Supported scenarios: `extensions/molecule/create_user`,
+  `extensions/molecule/config_git`, `extensions/molecule/config_ssh`,
+  `extensions/molecule/config_desktop`, `extensions/molecule/install_app`,
+  `extensions/molecule/auto_updates`,
+  `extensions/molecule/mount_network_share`,
+  `extensions/molecule/workstation_hardening`,
+  `extensions/molecule/time_sync`

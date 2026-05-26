@@ -1,0 +1,8 @@
+---
+- name: Ensure QT_QPA_PLATFORMTHEME is set to qt5ct
+  ansible.builtin.lineinfile:
+    path: '/etc/environment'
+    line: 'QT_QPA_PLATFORMTHEME=qt5ct'
+    state: present
+    create: true
+    mode: '0644'

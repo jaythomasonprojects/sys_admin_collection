@@ -1,8 +1,0 @@
----
-- name: Install packages
-  ansible.builtin.include_tasks: 'packages.yml'
-  when: install_apps_packages | length > 0
-
-- name: Install flatpaks
-  ansible.builtin.include_tasks: 'flatpaks.yml'
-  when: install_apps_flatpaks | length > 0

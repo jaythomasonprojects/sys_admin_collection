@@ -1,0 +1,35 @@
+---
+- name: Verify config_git results
+  hosts: all
+  become: true
+  gather_facts: false
+  environment:
+    HOME: '/root'
+  tasks:
+    - name: Read configured git user name
+      ansible.builtin.command:
+        argv:
+          - 'git'
+          - 'config'
+          - '--global'
+          - '--get'
+          - 'user.name'
+      register: config_git_user_name_result
+      changed_when: false
+
+    - name: Read configured git user email
+      ansible.builtin.command:
+        argv:
+          - 'git'
+          - 'config'
+          - '--global'
+          - '--get'
+          - 'user.email'
+      register: config_git_user_email_result
+      changed_when: false
+
+    - name: Assert managed git identity
+      ansible.builtin.assert:
+        that:
+          - "config_git_user_name_result.stdout == 'Molecule User'"
+          - "config_git_user_email_result.stdout == 'molecule@example.invalid'"

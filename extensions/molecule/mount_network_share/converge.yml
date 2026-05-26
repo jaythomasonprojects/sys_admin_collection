@@ -1,0 +1,59 @@
+---
+- name: Converge mount_network_share scenario
+  hosts: all
+  become: true
+  gather_facts: true
+  vars:
+    mount_network_share_manage_packages: false
+    mount_network_share_reload_remote_fs: false
+    mount_network_share_shares:
+      - name: "workstation_data"
+        server: "files.example.invalid"
+        share: "Data"
+        mount_point: "/mnt/workstation-data"
+        owner: "molecule"
+        group: "molecule"
+        mode: "0750"
+        fstab_options:
+          - "_netdev"
+          - "nofail"
+          - "ro"
+          - "uid=1000"
+          - "gid=1000"
+        credentials_path: "/home/molecule/.smbcredentials"
+        credentials_owner: "molecule"
+        credentials_group: "molecule"
+        username: "molecule"
+        password: "molecule-password"
+      - name: "shared_docs"
+        server: "nas.example.invalid"
+        share: "Docs"
+        mount_point: "/srv/shared-docs"
+        fstab_options: "_netdev,nofail,vers=3.0"
+        credentials_path: "/etc/samba/credentials/shared_docs"
+        username: "svc_docs"
+        password: "svc-docs-password"
+      - name: "old_share"
+        server: "legacy.example.invalid"
+        share: "OldShare"
+        mount_point: "/mnt/old-share"
+        state: "absent"
+        credentials_path: "/home/molecule/.smbcredentials-old-share"
+        username: "legacy_user"
+        password: "legacy-password"
+  pre_tasks:
+    - name: Ensure molecule group exists
+      ansible.builtin.group:
+        name: "molecule"
+        gid: 1000
+        state: present
+
+    - name: Ensure molecule user exists
+      ansible.builtin.user:
+        name: "molecule"
+        uid: 1000
+        group: "molecule"
+        create_home: true
+        state: present
+  roles:
+    - role: "jaythomasonprojects.sys_admin.mount_network_share"

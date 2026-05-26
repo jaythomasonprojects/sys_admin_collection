@@ -1,0 +1,21 @@
+---
+- name: Converge auto_updates scenario
+  hosts: all
+  become: true
+  gather_facts: true
+  vars:
+    auto_updates_enabled: true
+    auto_updates_apt_origins:
+      - "origin=Ubuntu,codename=jammy,label=Ubuntu"
+    auto_updates_apt_package_blacklist:
+      - "curl"
+    auto_updates_apt_auto_reboot: true
+    auto_updates_apt_auto_reboot_time: "03:00"
+    auto_updates_dnf_download_updates: true
+    auto_updates_dnf_apply_updates: true
+    auto_updates_dnf_random_sleep: 0
+    auto_updates_dnf_upgrade_type: "default"
+    auto_updates_dnf_reboot: "never"
+    auto_updates_dnf_emit_via: "stdio"
+  roles:
+    - role: "jaythomasonprojects.sys_admin.auto_updates"

@@ -1,0 +1,39 @@
+---
+- name: Enable GDM automatic login
+  ansible.builtin.lineinfile:
+    path: '/etc/gdm3/custom.conf'
+    regexp: '^#?\s*AutomaticLoginEnable\s*='
+    line: 'AutomaticLoginEnable = true'
+    state: present
+  when: config_desktop_gdm_user | length > 0
+
+- name: Set GDM automatic login user
+  ansible.builtin.lineinfile:
+    path: '/etc/gdm3/custom.conf'
+    regexp: '^#?\s*AutomaticLogin\s*='
+    line: 'AutomaticLogin = {{ config_desktop_gdm_user }}'
+    state: present
+  when: config_desktop_gdm_user | length > 0
+
+- name: Disable GDM automatic login
+  ansible.builtin.lineinfile:
+    path: '/etc/gdm3/custom.conf'
+    regexp: '^#?\s*AutomaticLoginEnable\s*='
+    line: 'AutomaticLoginEnable = false'
+    state: present
+  when: config_desktop_gdm_user | length == 0
+
+- name: Remove GDM automatic login user
+  ansible.builtin.lineinfile:
+    path: '/etc/gdm3/custom.conf'
+    regexp: '^#?\s*AutomaticLogin\s*='
+    state: absent
+  when: config_desktop_gdm_user | length == 0
+
+- name: Disable Wayland for GDM
+  ansible.builtin.lineinfile:
+    path: '/etc/gdm3/custom.conf'
+    regexp: '^#?\s*WaylandEnable\s*='
+    line: 'WaylandEnable = false'
+    state: present
+  when: config_desktop_gdm_user | length > 0

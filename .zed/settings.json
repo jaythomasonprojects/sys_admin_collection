@@ -1,0 +1,46 @@
+{
+    "lsp": {
+        "ansible": {
+            "settings": {
+                "python": {
+                    "interpreterPath": ".venv/bin/python"
+                },
+                "validation": {
+                    "lint": {
+                        "path": ".venv/bin/ansible-lint"
+                    }
+                }
+            }
+        },
+        "yaml-language-server": {
+            "settings": {
+                "yaml": {
+                    "schemas": {
+                        "https://raw.githubusercontent.com/ansible/ansible-lint/main/src/ansiblelint/schemas/inventory.json": [
+                            "./inventory/*.yaml",
+                            "./hosts.yml"
+                        ]
+                    }
+                }
+            }
+        }
+    },
+    "languages": {
+        "Ansible": {
+            "semantic_tokens": "combined",
+            "formatter": {
+                "external": {
+                    "command": ".venv/bin/ansible-lint",
+                    "arguments": ["--fix", "{buffer_path}"]
+                }
+            },
+            "tab_size": 2,
+            "preferred_line_length": 120
+        },
+        "Jinja2": {
+            "formatter": "language_server",
+            "tab_size": 2,
+            "preferred_line_length": 120
+        }
+    }
+}

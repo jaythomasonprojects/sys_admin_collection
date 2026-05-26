@@ -1,0 +1,46 @@
+---
+- name: Verify auto_updates results
+  hosts: all
+  become: true
+  gather_facts: true
+  vars:
+    expected_periodic: |
+      APT::Periodic::Update-Package-Lists "1";
+      APT::Periodic::Download-Upgradeable-Packages "1";
+      APT::Periodic::Unattended-Upgrade "1";
+      APT::Periodic::AutocleanInterval "7";
+
+    expected_policy: |
+      Unattended-Upgrade::Origins-Pattern {
+          "origin=Ubuntu,codename=jammy,label=Ubuntu";
+      };
+
+      Unattended-Upgrade::Package-Blacklist {
+          "curl";
+      };
+
+      Unattended-Upgrade::Automatic-Reboot "true";
+      Unattended-Upgrade::Automatic-Reboot-Time "03:00";
+    expected_dnf_automatic: |
+      [commands]
+      upgrade_type = default
+      download_updates = yes
+      apply_updates = yes
+      reboot = never
+
+      [emitters]
+      emit_via = stdio
+
+      [base]
+      random_sleep = 0
+  tasks:
+    - name: Gather package facts
+      ansible.builtin.package_facts:
+
+    - name: Verify APT auto-update configuration
+      ansible.builtin.include_tasks: "verify_apt.yml"
+      when: ansible_facts["pkg_mgr"] == "apt"
+
+    - name: Verify DNF auto-update configuration
+      ansible.builtin.include_tasks: "verify_dnf.yml"
+      when: ansible_facts["pkg_mgr"] in ["dnf", "dnf5"]

@@ -1,0 +1,8 @@
+---
+- name: Configure unattended-upgrades for APT systems
+  ansible.builtin.include_tasks: apt.yml
+  when: ansible_pkg_mgr == 'apt'
+
+- name: Configure dnf-automatic for DNF systems
+  ansible.builtin.include_tasks: dnf.yml
+  when: ansible_pkg_mgr in ['dnf', 'dnf5']
