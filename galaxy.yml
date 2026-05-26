@@ -1,25 +1,34 @@
 ---
-namespace: jaythomason
-name: infra_management
-version: '0.1.0'
+# The checkout directory still uses jtprojects.infra for now, but the
+# Galaxy-facing collection identity has cut over to jaythomasonprojects.sys_admin.
+namespace: jaythomasonprojects
+name: sys_admin
+version: "0.1.0"
 readme: README.md
 authors:
   - Jay Thomason
 description: >-
-  Infrastructure management collection scaffold for future roles and plugins
+  System administration roles for local user bootstrap and git
+  configuration, with additional extracted roles staged for future validation
 license:
   - MIT
 tags:
   - automation
-  - infrastructure
+  - sysadmin
   - linux
-repository: 'https://github.com/jaythomasonprojects/me-playbooks'
-documentation: 'https://github.com/jaythomasonprojects/me-playbooks'
-homepage: 'https://github.com/jaythomasonprojects/me-playbooks'
-issues: 'https://github.com/jaythomasonprojects/me-playbooks/issues'
+# Keep metadata URLs on the current source repo until the dedicated
+# ansible-collection-sys_admin repository/folder rename is completed.
+repository: "https://github.com/jaythomasonprojects/me-playbooks"
+documentation: "https://github.com/jaythomasonprojects/me-playbooks"
+homepage: "https://github.com/jaythomasonprojects/me-playbooks"
+issues: "https://github.com/jaythomasonprojects/me-playbooks/issues"
 dependencies:
-  ansible.posix: '*'
-  community.general: '*'
+  ansible.posix: "*"
+  community.general: "*"
 build_ignore:
-  - '.gitignore'
-  - '*.tar.gz'
+  - ".ansible"
+  - ".cache"
+  - ".gitignore"
+  - ".molecule"
+  - ".venv"
+  - "*.tar.gz"

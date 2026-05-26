@@ -1,0 +1,12 @@
+---
+- name: Converge workstation_hardening scenario
+  hosts: all
+  become: true
+  gather_facts: true
+  vars:
+    workstation_hardening_blacklisted_modules:
+      - "uas"
+      - "usb-storage"
+    workstation_hardening_apply_runtime_changes: false
+  roles:
+    - role: "jaythomasonprojects.sys_admin.workstation_hardening"

@@ -1,0 +1,35 @@
+---
+- name: Read rendered APT config files
+  ansible.builtin.slurp:
+    src: "{{ item }}"
+  loop:
+    - "/etc/apt/apt.conf.d/20auto-upgrades"
+    - "/etc/apt/apt.conf.d/52jtprojects-unattended-upgrades"
+  register: auto_updates_configs
+
+- name: Assert unattended-upgrades is installed
+  ansible.builtin.assert:
+    that:
+      - "'unattended-upgrades' in ansible_facts.packages"
+    fail_msg: "unattended-upgrades package is not installed."
+
+- name: Decode rendered APT configs
+  ansible.builtin.set_fact:
+    actual_periodic: "{{ auto_updates_configs.results[0].content | b64decode }}"
+    actual_policy: "{{ auto_updates_configs.results[1].content | b64decode }}"
+
+- name: Assert periodic config matches expected content
+  ansible.builtin.assert:
+    that:
+      - "actual_periodic.strip() == expected_periodic.strip()"
+    fail_msg: >-
+      20auto-upgrades does not match expected content.
+      Expected:\n{{ expected_periodic }}\nActual:\n{{ actual_periodic }}
+
+- name: Assert policy config matches expected content
+  ansible.builtin.assert:
+    that:
+      - "actual_policy.strip() == expected_policy.strip()"
+    fail_msg: >-
+      52jtprojects-unattended-upgrades does not match expected content.
+      Expected:\n{{ expected_policy }}\nActual:\n{{ actual_policy }}

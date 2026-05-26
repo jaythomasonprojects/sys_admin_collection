@@ -1,0 +1,22 @@
+---
+galaxy_info:
+  author: 'Jay Thomason'
+  description: 'Manage variable-driven SMB/CIFS network share mounts'
+  license: 'MIT'
+  min_ansible_version: '2.18'
+  platforms:
+    - name: 'Debian'
+      versions:
+        - 'all'
+    - name: 'Ubuntu'
+      versions:
+        - 'all'
+    - name: 'EL'
+      versions:
+        - 'all'
+    - name: 'Fedora'
+      versions:
+        - 'all'
+collections:
+  - 'ansible.posix'
+dependencies: []

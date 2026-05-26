@@ -1,0 +1,47 @@
+[
+  {
+    "label": "Molecule: List Scenarios",
+    "command": "molecule list",
+    "use_new_terminal": true,
+    "allow_concurrent_runs": false,
+  },
+  {
+    "label": "Molecule: Test Current Scenario",
+    "command": "set -l scenario (basename \"$ZED_RELATIVE_DIR\"); and molecule test -s \"$scenario\"",
+    "use_new_terminal": true,
+    "allow_concurrent_runs": false,
+  },
+  {
+    "label": "Molecule: Converge Current Scenario",
+    "command": "set -l scenario (basename \"$ZED_RELATIVE_DIR\"); and molecule converge -s \"$scenario\"",
+    "use_new_terminal": true,
+    "allow_concurrent_runs": false,
+  },
+  {
+    "label": "Molecule: Verify Current Scenario",
+    "command": "set -l scenario (basename \"$ZED_RELATIVE_DIR\"); and molecule verify -s \"$scenario\"",
+    "use_new_terminal": true,
+    "allow_concurrent_runs": false,
+  },
+  {
+    "label": "Molecule: Test All Scenarios",
+    "command": "molecule test --all",
+    "use_new_terminal": true,
+    "allow_concurrent_runs": false,
+  },
+  {
+    "label": "Galaxy: Install Dependencies",
+    "command": "ansible-galaxy collection install -r requirements.yml; and ansible-galaxy role install -r requirements.yml",
+    "use_new_terminal": false,
+  },
+  {
+    "label": "Galaxy: Publish Collection",
+    "command": "ansible-galaxy collection publish dist/jaythomasonprojects-sys_admin-*.tar.gz --token (string trim < .ansible/galaxy_token)",
+    "use_new_terminal": true,
+  },
+  {
+    "label": "Galaxy: Build Collection",
+    "command": "ansible-galaxy collection build --force --output-path dist",
+    "use_new_terminal": true,
+  },
+]

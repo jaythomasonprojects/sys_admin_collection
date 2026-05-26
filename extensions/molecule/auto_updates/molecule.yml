@@ -1,0 +1,26 @@
+---
+driver:
+  name: "docker"
+
+platforms:
+  - name: "ubuntu"
+    command: "sleep infinity"
+    image: "docker.io/geerlingguy/docker-ubuntu2204-ansible:latest"
+    pre_build_image: true
+  - name: "fedora"
+    image: "docker.io/geerlingguy/docker-fedora40-ansible:latest"
+    pre_build_image: true
+    privileged: true
+    command: "/usr/sbin/init"
+    tty: true
+    env:
+      container: "docker"
+    cgroupns_mode: "host"
+    volumes:
+      - "/sys/fs/cgroup:/sys/fs/cgroup:rw"
+
+provisioner:
+  name: "ansible"
+
+scenario:
+  name: "auto_updates"

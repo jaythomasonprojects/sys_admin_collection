@@ -1,0 +1,6 @@
+---
+- name: Restart NTP service
+  ansible.builtin.service:
+    name: 'ntp'
+    state: restarted
+  when: time_sync_manage_service | bool

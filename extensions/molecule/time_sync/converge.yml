@@ -1,0 +1,11 @@
+---
+- name: Converge time_sync scenario
+  hosts: all
+  become: true
+  gather_facts: true
+  vars:
+    time_sync_manage_package: false
+    time_sync_manage_service: false
+    time_sync_server: "ntp1.example.invalid"
+  roles:
+    - role: "jaythomasonprojects.sys_admin.time_sync"

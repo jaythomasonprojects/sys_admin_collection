@@ -1,0 +1,54 @@
+---
+- name: Ensure modprobe config directory exists
+  ansible.builtin.file:
+    path: '/etc/modprobe.d'
+    state: directory
+    owner: 'root'
+    group: 'root'
+    mode: '0755'
+  when: workstation_hardening_blacklisted_modules | length > 0
+
+- name: Render blacklisted module policy
+  ansible.builtin.template:
+    src: 'blacklist.conf.j2'
+    dest: '/etc/modprobe.d/workstation-hardening.conf'
+    owner: 'root'
+    group: 'root'
+    mode: '0644'
+  when: workstation_hardening_blacklisted_modules | length > 0
+
+- name: Remove managed blacklist file when no modules are configured
+  ansible.builtin.file:
+    path: '/etc/modprobe.d/workstation-hardening.conf'
+    state: absent
+  when: workstation_hardening_blacklisted_modules | length == 0
+
+- name: Unload blacklisted kernel modules
+  community.general.modprobe:
+    name: "{{ item }}"
+    state: absent
+  loop: "{{ workstation_hardening_blacklisted_modules }}"
+  when:
+    - workstation_hardening_apply_runtime_changes | bool
+    - workstation_hardening_blacklisted_modules | length > 0
+
+- name: Stop configured services
+  ansible.builtin.service:
+    name: "{{ item.name | default(item) }}"
+    state: >-
+      {{ item.state | default('stopped') if item is mapping else 'stopped' }}
+  loop: "{{ workstation_hardening_services }}"
+  when:
+    - workstation_hardening_apply_runtime_changes | bool
+    - workstation_hardening_services | length > 0
+
+- name: Disable configured services on systemd hosts
+  ansible.builtin.systemd:
+    name: "{{ item.name }}"
+    enabled: "{{ item.enabled }}"
+  loop: "{{ workstation_hardening_services }}"
+  when:
+    - workstation_hardening_apply_runtime_changes | bool
+    - ansible_facts.service_mgr | default('') == 'systemd'
+    - item is mapping
+    - item.enabled is defined

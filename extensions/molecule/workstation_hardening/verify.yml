@@ -1,0 +1,25 @@
+---
+- name: Verify workstation_hardening results
+  hosts: all
+  become: true
+  gather_facts: false
+  vars:
+    expected_modprobe_config: '/etc/modprobe.d/workstation-hardening.conf'
+  tasks:
+    - name: Read module blacklist configuration
+      ansible.builtin.slurp:
+        src: "{{ expected_modprobe_config }}"
+      register: workstation_hardening_blacklist
+
+    - name: Decode module blacklist configuration
+      ansible.builtin.set_fact:
+        workstation_hardening_blacklist_text: >-
+          {{ workstation_hardening_blacklist.content | b64decode }}
+
+    - name: Assert module blacklist configuration
+      ansible.builtin.assert:
+        that:
+          - "'blacklist uas' in workstation_hardening_blacklist_text"
+          - "'blacklist usb-storage' in workstation_hardening_blacklist_text"
+        fail_msg: >-
+          workstation_hardening did not render the expected module blacklist.

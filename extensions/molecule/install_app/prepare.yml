@@ -1,0 +1,56 @@
+---
+- name: Prepare install_app scenario
+  hosts: all
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Gather minimal facts
+      ansible.builtin.setup:
+        gather_subset:
+          - "!all"
+          - "min"
+
+    - name: Create Debian package fixture directories
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        state: directory
+        mode: "{{ item.mode }}"
+      loop:
+        - path: "/opt/install-app-fixture/build/DEBIAN"
+          mode: "0755"
+        - path: "/opt/install-app-fixture/build/usr/local/bin"
+          mode: "0755"
+      when: ansible_facts["pkg_mgr"] == "apt"
+
+    - name: Create Debian package fixture control file
+      ansible.builtin.copy:
+        dest: "/opt/install-app-fixture/build/DEBIAN/control"
+        mode: "0644"
+        content: |
+          Package: install-app-fixture
+          Version: 1.0.0
+          Section: utils
+          Priority: optional
+          Architecture: all
+          Maintainer: Molecule <molecule@example.invalid>
+          Description: Local fixture package for install_app Molecule tests
+      when: ansible_facts["pkg_mgr"] == "apt"
+
+    - name: Create Debian package fixture executable
+      ansible.builtin.copy:
+        dest: "/opt/install-app-fixture/build/usr/local/bin/install-app-fixture"
+        mode: "0755"
+        content: |
+          #!/bin/sh
+          echo install-app-fixture
+      when: ansible_facts["pkg_mgr"] == "apt"
+
+    - name: Build local Debian package fixture
+      ansible.builtin.command:
+        argv:
+          - "dpkg-deb"
+          - "--build"
+          - "/opt/install-app-fixture/build"
+          - "/usr/local/src/install-app-fixture.deb"
+        creates: "/usr/local/src/install-app-fixture.deb"
+      when: ansible_facts["pkg_mgr"] == "apt"

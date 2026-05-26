@@ -1,0 +1,25 @@
+---
+- name: Converge install_app scenario
+  hosts: all
+  become: true
+  gather_facts: true
+  vars:
+    install_app_packages:
+      - "jq"
+    install_app_flatpaks: []
+    install_app_manage_flatpak_remote: false
+  pre_tasks:
+    - name: Set Debian fixture list for APT hosts
+      ansible.builtin.set_fact:
+        install_app_debs:
+          - name: "install-app-fixture"
+            deb: "/usr/local/src/install-app-fixture.deb"
+            creates: "/usr/local/bin/install-app-fixture"
+      when: ansible_facts.pkg_mgr == 'apt'
+
+    - name: Set empty Debian fixture list for non-APT hosts
+      ansible.builtin.set_fact:
+        install_app_debs: []
+      when: ansible_facts.pkg_mgr != 'apt'
+  roles:
+    - role: "jaythomasonprojects.sys_admin.install_app"

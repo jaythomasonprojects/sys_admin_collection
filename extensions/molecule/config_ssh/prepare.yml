@@ -1,0 +1,25 @@
+---
+- name: Prepare config_ssh scenario
+  hosts: all
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Gather minimal facts
+      ansible.builtin.setup:
+        gather_subset:
+          - "!all"
+          - "min"
+
+    - name: Ensure sshd runtime directory exists
+      ansible.builtin.file:
+        path: "/run/sshd"
+        state: directory
+        mode: "0755"
+
+    - name: Seed cloud-init SSHD drop-in
+      ansible.builtin.copy:
+        dest: "/etc/ssh/sshd_config.d/50-cloud-init.conf"
+        content: |
+          PasswordAuthentication yes
+          PermitRootLogin yes
+        mode: "0644"

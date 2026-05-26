@@ -1,0 +1,13 @@
+---
+driver:
+  name: "docker"
+
+platforms:
+  - name: "ubuntu"
+    command: "sleep infinity"
+    image: "infra-management-config-ssh:latest"
+    dockerfile: "Dockerfile"
+    pre_build_image: false
+
+scenario:
+  name: "config_ssh"

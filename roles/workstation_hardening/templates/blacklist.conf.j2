@@ -1,0 +1,4 @@
+# Ansible managed: workstation_hardening kernel module policy.
+{% for module in workstation_hardening_blacklisted_modules %}
+blacklist {{ module }}
+{% endfor %}

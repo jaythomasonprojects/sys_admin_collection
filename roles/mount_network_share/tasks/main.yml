@@ -1,0 +1,42 @@
+---
+- name: Validate mount_network_share entries
+  ansible.builtin.assert:
+    that:
+      - mount_network_share_item.name is defined
+      - mount_network_share_item.server is defined
+      - mount_network_share_item.share is defined
+      - mount_network_share_item.mount_point is defined
+      - >-
+        (
+          mount_network_share_item.username is not defined
+          and mount_network_share_item.password is not defined
+        )
+        or
+        (
+          mount_network_share_item.username is string
+          and mount_network_share_item.username | length > 0
+          and mount_network_share_item.password is string
+          and mount_network_share_item.password | length > 0
+        )
+    fail_msg: >-
+      Each mount_network_share_shares entry must define name, server, share,
+      and mount_point. Define username and password together as non-empty
+      strings, or omit both.
+  loop: "{{ mount_network_share_shares }}"
+  loop_control:
+    loop_var: mount_network_share_item
+    label: "{{ mount_network_share_item.name | default('unnamed') }}"
+  no_log: true
+
+- name: Install SMB/CIFS mount packages
+  ansible.builtin.package:
+    name: 'cifs-utils'
+    state: present
+  when: mount_network_share_manage_packages | bool
+
+- name: Manage SMB/CIFS shares
+  ansible.builtin.include_tasks: share.yml
+  loop: "{{ mount_network_share_shares }}"
+  loop_control:
+    loop_var: mount_network_share_item
+    label: "{{ mount_network_share_item.name }}"

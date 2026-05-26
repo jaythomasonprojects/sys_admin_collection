@@ -1,0 +1,11 @@
+[commands]
+upgrade_type = {{ auto_updates_dnf_upgrade_type }}
+download_updates = {{ 'yes' if auto_updates_dnf_download_updates else 'no' }}
+apply_updates = {{ 'yes' if auto_updates_dnf_apply_updates else 'no' }}
+reboot = {{ auto_updates_dnf_reboot }}
+
+[emitters]
+emit_via = {{ auto_updates_dnf_emit_via }}
+
+[base]
+random_sleep = {{ auto_updates_dnf_random_sleep }}

@@ -37,6 +37,7 @@ config_ssh_sshd_client_alive_count_max: 3
 
 # Miscellaneous
 config_ssh_sshd_use_dns: 'no'  # Perform DNS lookups on client IPs
+config_ssh_service_name: ~
 
 # SSH Client Configuration
 # Connection Settings

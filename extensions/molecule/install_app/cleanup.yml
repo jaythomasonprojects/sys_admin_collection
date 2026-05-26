@@ -1,0 +1,9 @@
+---
+- name: Cleanup install_app scenario
+  hosts: all
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Report cleanup status
+      ansible.builtin.debug:
+        msg: "No additional cleanup is required before destroy."

@@ -4,4 +4,5 @@ extends: default
 ignore: |
   .ansible/
   .cache/
+  .venv/
   .molecule/

@@ -1,0 +1,41 @@
+---
+- name: Verify config_desktop results
+  hosts: all
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Read GDM configuration
+      ansible.builtin.slurp:
+        src: '/etc/gdm3/custom.conf'
+      register: config_desktop_gdm_config
+
+    - name: Read LightDM configuration
+      ansible.builtin.slurp:
+        src: '/etc/lightdm/lightdm.conf.d/autologin.conf'
+      register: config_desktop_lightdm_config
+
+    - name: Read environment configuration
+      ansible.builtin.slurp:
+        src: '/etc/environment'
+      register: config_desktop_environment_config
+
+    - name: Decode desktop configs
+      ansible.builtin.set_fact:
+        config_desktop_gdm_content: >-
+          {{ config_desktop_gdm_config.content | b64decode }}
+        config_desktop_lightdm_content: >-
+          {{ config_desktop_lightdm_config.content | b64decode }}
+        config_desktop_environment_content: >-
+          {{ config_desktop_environment_config.content | b64decode }}
+
+    - name: Assert desktop configuration results
+      ansible.builtin.assert:
+        that:
+          - "'AutomaticLoginEnable = true' in config_desktop_gdm_content"
+          - "'AutomaticLogin = molecule' in config_desktop_gdm_content"
+          - "'WaylandEnable = false' in config_desktop_gdm_content"
+          - "'[SeatDefaults]' in config_desktop_lightdm_content"
+          - "'autologin-user=molecule' in config_desktop_lightdm_content"
+          - "'autologin-user-timeout=5' in config_desktop_lightdm_content"
+          - "'QT_QPA_PLATFORMTHEME=qt5ct' in config_desktop_environment_content"
+        fail_msg: 'config_desktop did not render the expected desktop state.'

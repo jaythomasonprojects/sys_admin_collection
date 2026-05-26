@@ -1,0 +1,39 @@
+---
+- name: Verify time_sync results
+  hosts: all
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Gather rendered ntp config state
+      ansible.builtin.stat:
+        path: '/etc/ntpsec/ntp.conf'
+      register: time_sync_config_state
+
+    - name: Read rendered ntp config
+      ansible.builtin.slurp:
+        src: '/etc/ntpsec/ntp.conf'
+      register: time_sync_config
+
+    - name: Decode rendered ntp config
+      ansible.builtin.set_fact:
+        time_sync_config_content: '{{ time_sync_config.content | b64decode }}'
+
+    - name: Assert ntp configuration content
+      ansible.builtin.assert:
+        that:
+          - time_sync_config_state.stat.exists
+          - time_sync_config_state.stat.pw_name == 'root'
+          - time_sync_config_state.stat.gr_name == 'root'
+          - time_sync_config_state.stat.mode == '0644'
+          - "'pool ntp1.example.invalid' in time_sync_config_content"
+          - >-
+            (
+              time_sync_config_content
+              | regex_search(
+                  '^pool\\s+.*ubuntu\\.pool\\.ntp\\.org',
+                  multiline=True
+                )
+            ) == none
+          - "'192.168.' not in time_sync_config_content"
+        fail_msg: >-
+          time_sync did not render the expected ntp configuration.

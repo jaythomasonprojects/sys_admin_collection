@@ -1,66 +1,127 @@
-# jaythomason.infra_management
+# jaythomasonprojects.sys_admin
 
-This directory is the standalone `jaythomason.infra_management` Ansible collection scaffold.
+Reusable Ansible Galaxy collection. Environment-agnostic roles for system setup and configuration.
 
-## Current scope
+## Setup
 
-- Collection metadata for `ansible-galaxy collection build`
-- Runtime compatibility metadata
-- Extracted `create_users`, `config_git`, `config_ssh`, `install_apps`, and `update_apps` roles under `roles/`
-- Dependency metadata for installed-collection consumption
-- Collection-local lint and Molecule scaffolding under `extensions/molecule/`
-
-Consumer playbooks in this repository now reference these extracted roles by FQCN.
-During the transition to a standalone published collection, use
-`./scripts/bootstrap_ansible_content.sh` from the repository root to build and
-install the collection into the repo-scoped Ansible paths.
-
-## Build
+Local Molecule runs use the Docker driver, so make sure Docker is installed and
+running before you start. The Fedora `auto_updates` scenario also relies on a
+privileged systemd container, so local Docker needs to allow privileged
+containers and the `/sys/fs/cgroup` mount used by Molecule.
 
 ```bash
-./scripts/bootstrap_ansible_content.sh
+python3 -m venv .venv
+. .venv/bin/activate
+pip install -r requirements-test.txt
+ansible-galaxy collection install -r requirements.yml -p ./.ansible/collections --force
 ```
 
-## Validate
+This installs the Python tooling used for local validation, including Ansible, Molecule, the Docker driver, and the linters used by this repository.
 
-These commands assume the repository virtualenv is active so `ansible-lint`,
-`molecule`, and the Ansible CLI tools resolve from `.venv/bin`.
+## Molecule workflow
+
+Run Molecule commands from the repository root with the virtual environment activated:
 
 ```bash
-source ../.venv/bin/activate
-cd infra_management
-pip install -r requirements-test.txt
-ansible-galaxy collection install -r requirements.yml -p ./.ansible/collections
+. .venv/bin/activate
+```
+
+A full scenario run uses:
+
+```bash
+molecule test -s create_user
+molecule test -s config_git
+molecule test -s config_ssh
+molecule test -s config_desktop
+molecule test -s install_app
+molecule test -s auto_updates
+molecule test -s mount_network_share
+molecule test -s workstation_hardening
+molecule test -s time_sync
+```
+
+`molecule test` runs the complete scenario lifecycle:
+
+1. install dependencies
+2. create the test instance
+3. run `prepare`
+4. run `converge`
+5. check idempotence
+6. run `verify`
+7. run `cleanup`
+8. destroy the instance
+
+Useful commands while developing a scenario:
+
+```bash
+molecule converge -s create_user
+molecule converge -s config_git
+molecule converge -s config_ssh
+molecule converge -s config_desktop
+molecule converge -s install_app
+molecule converge -s auto_updates
+molecule converge -s mount_network_share
+molecule converge -s workstation_hardening
+molecule converge -s time_sync
+molecule verify -s create_user
+molecule verify -s config_git
+molecule verify -s config_ssh
+molecule verify -s config_desktop
+molecule verify -s install_app
+molecule verify -s auto_updates
+molecule verify -s mount_network_share
+molecule verify -s workstation_hardening
+molecule verify -s time_sync
+molecule destroy -s create_user
+molecule destroy -s config_git
+molecule destroy -s config_ssh
+molecule destroy -s config_desktop
+molecule destroy -s install_app
+molecule destroy -s auto_updates
+molecule destroy -s mount_network_share
+molecule destroy -s workstation_hardening
+molecule destroy -s time_sync
+```
+
+Use these to iterate more quickly when you do not need the full `test` sequence every time.
+
+## Build and validate
+
+For day-to-day development, validate directly from the checked-out source:
+
+```bash
+. .venv/bin/activate
 ansible-lint .
 yamllint .
-molecule test -s create_users
+molecule test -s create_user
+molecule test -s config_git
+molecule test -s config_ssh
+molecule test -s config_desktop
+molecule test -s install_app
+molecule test -s auto_updates
+molecule test -s mount_network_share
+molecule test -s workstation_hardening
+molecule test -s time_sync
 ```
 
-`config_git` is extracted and linted, but its Molecule scenario is currently
-deferred under `extensions/molecule/config_git/README.md` until the collection
-has a more reliable package-manager test image.
+If you also want to smoke-test the packaged collection artifact, build into `dist/` and install from there:
 
-`config_ssh` keeps an explicit placeholder only under
-`extensions/molecule/config_ssh/`. Its handler and `sshd -t` validation need a
-container image with a reliable `sshd` and service baseline before a scenario
-can be enabled without flakiness.
+```bash
+. .venv/bin/activate
+mkdir -p dist
+rm -f dist/*.tar.gz
+ansible-galaxy collection build --force --output-path dist
+ansible-galaxy collection install dist/jaythomasonprojects-sys_admin-*.tar.gz \
+  -p ./.ansible/collections --force
+```
 
-`install_apps` and `update_apps` are extracted and linted, but their Molecule
-scenarios are intentionally deferred until they have a stable package-manager
-test baseline. Do not expect `molecule test -s install_apps` or
-`molecule test -s update_apps` to work yet.
+## Publish
 
-## Publish path
-
-The current transition flow is:
-
-1. develop roles in `infra_management/`
-2. build and install the collection locally with `./scripts/bootstrap_ansible_content.sh`
-3. consume the installed collection from this repo via FQCNs
-
-When the collection is ready to split out:
-
-1. move `infra_management/` into its own repository
-2. keep the same `jaythomason.infra_management` collection identity
-3. tag releases there
-4. replace the local bootstrap/install flow with Ansible Galaxy consumption
+```bash
+. .venv/bin/activate
+mkdir -p dist
+rm -f dist/*.tar.gz
+ansible-galaxy collection build --force --output-path dist
+ansible-galaxy collection publish dist/jaythomasonprojects-sys_admin-*.tar.gz \
+  --token "$(tr -d '\n' < ~/.ansible/galaxy_token)"
+```

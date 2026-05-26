@@ -1,0 +1,42 @@
+---
+- name: Validate Debian package installer definition
+  ansible.builtin.assert:
+    that:
+      - >-
+        install_app_deb.src is defined
+        or install_app_deb.url is defined
+        or install_app_deb.deb is defined
+      - install_app_deb.dest is defined or install_app_deb.deb is defined
+      - not (install_app_deb.src is defined and install_app_deb.url is defined)
+    fail_msg: >-
+      Each install_app_debs item must define either src, url, or deb. Items that
+      define src or url must also define dest. Do not define both src and url.
+
+- name: Check Debian package skip path
+  ansible.builtin.stat:
+    path: "{{ install_app_deb.creates }}"
+  register: install_app_deb_creates
+  when: install_app_deb.creates is defined
+
+- name: Prepare and install Debian package
+  when: not (install_app_deb_creates.stat.exists | default(false))
+  block:
+    - name: Copy Debian package from controller
+      ansible.builtin.copy:
+        src: "{{ install_app_deb.src }}"
+        dest: "{{ install_app_deb.dest }}"
+        mode: "{{ install_app_deb.mode | default('0644') }}"
+      when: install_app_deb.src is defined
+
+    - name: Download Debian package
+      ansible.builtin.get_url:
+        url: "{{ install_app_deb.url }}"
+        dest: "{{ install_app_deb.dest }}"
+        mode: "{{ install_app_deb.mode | default('0644') }}"
+        checksum: "{{ install_app_deb.checksum | default(omit) }}"
+      when: install_app_deb.url is defined
+
+    - name: Install Debian package
+      ansible.builtin.apt:
+        deb: "{{ install_app_deb.deb | default(install_app_deb.dest) }}"
+        state: "{{ install_app_deb.state | default('present') }}"

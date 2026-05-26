@@ -1,0 +1,47 @@
+---
+- name: Validate time_sync_server
+  ansible.builtin.assert:
+    that:
+      - time_sync_server is string
+      - time_sync_server | length > 0
+    fail_msg: 'time_sync_server must be a non-empty string.'
+
+- name: Install ntpsec
+  ansible.builtin.package:
+    name: 'ntpsec'
+    state: present
+  when: time_sync_manage_package | bool
+
+- name: Ensure ntpsec configuration directory exists
+  ansible.builtin.file:
+    path: '/etc/ntpsec'
+    state: directory
+    owner: 'root'
+    group: 'root'
+    mode: '0755'
+
+- name: Ensure ntpsec configuration file exists
+  ansible.builtin.file:
+    path: '/etc/ntpsec/ntp.conf'
+    state: touch
+    owner: 'root'
+    group: 'root'
+    mode: '0644'
+    modification_time: preserve
+    access_time: preserve
+
+- name: Comment out unmanaged pool entries
+  ansible.builtin.replace:
+    path: '/etc/ntpsec/ntp.conf'
+    regexp: >-
+      ^pool\s+(?!{{ time_sync_server | regex_escape }}(?:\s|$)).*$
+    replace: '# \g<0>'
+  notify: Restart NTP service
+
+- name: Configure upstream NTP server
+  ansible.builtin.lineinfile:
+    path: '/etc/ntpsec/ntp.conf'
+    regexp: '^pool\s+{{ time_sync_server | regex_escape }}(?:\s+.*)?$'
+    line: 'pool {{ time_sync_server }}'
+    state: present
+  notify: Restart NTP service

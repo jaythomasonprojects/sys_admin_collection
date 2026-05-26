@@ -1,0 +1,24 @@
+---
+- name: Prepare config_desktop scenario
+  hosts: all
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Ensure GDM configuration directory exists
+      ansible.builtin.file:
+        path: '/etc/gdm3'
+        state: directory
+        mode: '0755'
+
+    - name: Ensure GDM configuration file exists
+      ansible.builtin.copy:
+        dest: '/etc/gdm3/custom.conf'
+        mode: '0644'
+        content: |
+          [daemon]
+
+    - name: Ensure LightDM configuration directory exists
+      ansible.builtin.file:
+        path: '/etc/lightdm/lightdm.conf.d'
+        state: directory
+        mode: '0755'

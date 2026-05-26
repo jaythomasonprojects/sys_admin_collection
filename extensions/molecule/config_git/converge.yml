@@ -1,0 +1,12 @@
+---
+- name: Converge config_git scenario
+  hosts: all
+  become: true
+  gather_facts: false
+  environment:
+    HOME: "/root"
+  vars:
+    config_git_user_name: "Molecule User"
+    config_git_user_email: "molecule@example.invalid"
+  roles:
+    - role: "jaythomasonprojects.sys_admin.config_git"

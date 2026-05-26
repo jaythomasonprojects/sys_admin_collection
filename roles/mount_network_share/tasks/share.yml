@@ -1,0 +1,122 @@
+---
+- name: Calculate share settings
+  ansible.builtin.set_fact:
+    mount_network_share_state: >-
+      {{ mount_network_share_item.state | default('present') }}
+    mount_network_share_present: >-
+      {{ mount_network_share_item.state | default('present')
+         not in ['absent', 'absent_from_fstab'] }}
+    mount_network_share_has_credentials: >-
+      {{ mount_network_share_item.username is defined
+         and mount_network_share_item.password is defined }}
+    mount_network_share_credentials_path: >-
+      {{ mount_network_share_item.credentials_path | default(
+           '/etc/samba/credentials/' ~ mount_network_share_item.name
+         ) }}
+    mount_network_share_options: >-
+      {{ mount_network_share_item.fstab_options | default(
+           ['_netdev', 'nofail', 'iocharset=utf8']
+         ) }}
+    mount_network_share_source: >-
+      {{ '//'
+         ~ mount_network_share_item.server
+         ~ '/'
+         ~ mount_network_share_item.share }}
+  no_log: true
+
+- name: Normalize mount option list
+  ansible.builtin.set_fact:
+    mount_network_share_option_list: >-
+      {{
+        mount_network_share_options
+        if mount_network_share_options is sequence
+        and mount_network_share_options is not string
+        else mount_network_share_options.split(',')
+      }}
+
+- name: Check credential directory state
+  ansible.builtin.stat:
+    path: "{{ mount_network_share_credentials_path | dirname }}"
+  register: mount_network_share_credentials_dir
+  when:
+    - mount_network_share_present | bool
+    - mount_network_share_has_credentials | bool
+  no_log: true
+
+- name: Ensure mount point exists
+  ansible.builtin.file:
+    path: "{{ mount_network_share_item.mount_point }}"
+    state: directory
+    owner: >-
+      {{ mount_network_share_item.owner | default('root') }}
+    group: >-
+      {{ mount_network_share_item.group | default('root') }}
+    mode: >-
+      {{ mount_network_share_item.mode | default('0755') }}
+  when: mount_network_share_present | bool
+
+- name: Ensure credential directory exists
+  ansible.builtin.file:
+    path: "{{ mount_network_share_credentials_path | dirname }}"
+    state: directory
+    owner: >-
+      {{ omit
+         if mount_network_share_credentials_dir.stat.exists | default(false)
+         else mount_network_share_item.credentials_owner | default('root') }}
+    group: >-
+      {{ omit
+         if mount_network_share_credentials_dir.stat.exists | default(false)
+         else mount_network_share_item.credentials_group | default('root') }}
+    mode: >-
+      {{ omit
+         if mount_network_share_credentials_dir.stat.exists | default(false)
+         else '0700' }}
+  when:
+    - mount_network_share_present | bool
+    - mount_network_share_has_credentials | bool
+  no_log: true
+
+- name: Remove managed SMB credential file
+  ansible.builtin.file:
+    path: "{{ mount_network_share_credentials_path }}"
+    state: absent
+  when:
+    - not mount_network_share_present | bool
+    - mount_network_share_has_credentials | bool
+  no_log: true
+
+- name: Write SMB credential file
+  ansible.builtin.copy:
+    dest: "{{ mount_network_share_credentials_path }}"
+    owner: >-
+      {{ mount_network_share_item.credentials_owner | default('root') }}
+    group: >-
+      {{ mount_network_share_item.credentials_group | default('root') }}
+    mode: >-
+      {{ mount_network_share_item.credentials_mode | default('0600') }}
+    content: |
+      username={{ mount_network_share_item.username }}
+      password={{ mount_network_share_item.password }}
+  when:
+    - mount_network_share_present | bool
+    - mount_network_share_has_credentials | bool
+  notify: Restart remote-fs.target
+  no_log: true
+
+- name: Manage SMB/CIFS fstab entry
+  ansible.posix.mount:
+    path: "{{ mount_network_share_item.mount_point }}"
+    src: "{{ mount_network_share_source }}"
+    fstype: 'cifs'
+    opts: >-
+      {{
+        (
+          mount_network_share_option_list
+          + (
+            ['credentials=' ~ mount_network_share_credentials_path]
+            if mount_network_share_has_credentials else []
+          )
+        ) | join(',')
+      }}
+    state: "{{ mount_network_share_state }}"
+  notify: Restart remote-fs.target

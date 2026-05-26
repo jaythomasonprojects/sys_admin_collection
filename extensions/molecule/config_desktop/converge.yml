@@ -1,0 +1,11 @@
+---
+- name: Converge config_desktop scenario
+  hosts: all
+  become: true
+  gather_facts: true
+  vars:
+    config_desktop_gdm_user: "molecule"
+    config_desktop_lightdm_user: "molecule"
+    config_desktop_qt5ct: true
+  roles:
+    - role: "jaythomasonprojects.sys_admin.config_desktop"

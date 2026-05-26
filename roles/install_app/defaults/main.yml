@@ -1,0 +1,5 @@
+---
+install_app_packages: []
+install_app_debs: []
+install_app_flatpaks: []
+install_app_manage_flatpak_remote: true

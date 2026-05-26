@@ -1,0 +1,63 @@
+---
+- name: Verify config_ssh results
+  hosts: all
+  become: true
+  gather_facts: false
+  vars:
+    expected_cloudinit_path: "/etc/ssh/sshd_config.d/50-cloud-init.conf"
+    expected_client_config_path: "/etc/ssh/ssh_config.d/99-custom.conf"
+    expected_server_config_path: "/etc/ssh/sshd_config.d/99-custom.conf"
+    expected_client_strict_host_key_checking: "StrictHostKeyChecking no"
+    expected_client_forward_agent: "ForwardAgent yes"
+    expected_client_host_override: "Host github.com"
+    expected_client_override_user: "User git"
+    expected_server_permit_root_login: "PermitRootLogin prohibit-password"
+    expected_server_allow_users: "AllowUsers molecule"
+  tasks:
+    - name: Check seeded cloud-init SSHD drop-in
+      ansible.builtin.stat:
+        path: "{{ expected_cloudinit_path }}"
+      register: config_ssh_cloudinit_stat
+
+    - name: Read rendered SSH client drop-in
+      ansible.builtin.slurp:
+        src: "{{ expected_client_config_path }}"
+      register: config_ssh_client_config
+
+    - name: Read rendered SSHD drop-in
+      ansible.builtin.slurp:
+        src: "{{ expected_server_config_path }}"
+      register: config_ssh_server_config
+
+    - name: Decode rendered SSH configs
+      ansible.builtin.set_fact:
+        config_ssh_client_content: >-
+          {{ config_ssh_client_config.content | b64decode }}
+        config_ssh_server_content: >-
+          {{ config_ssh_server_config.content | b64decode }}
+
+    - name: Validate final sshd configuration
+      ansible.builtin.command:
+        argv:
+          - "sshd"
+          - "-t"
+      register: config_ssh_sshd_validation
+      changed_when: false
+
+    - name: Assert SSH configuration results
+      ansible.builtin.assert:
+        that:
+          - "not config_ssh_cloudinit_stat.stat.exists"
+          - "config_ssh_sshd_validation.rc == 0"
+          - >-
+            expected_client_strict_host_key_checking in
+            config_ssh_client_content
+          - "expected_client_forward_agent in config_ssh_client_content"
+          - "expected_client_host_override in config_ssh_client_content"
+          - "expected_client_override_user in config_ssh_client_content"
+          - "expected_server_permit_root_login in config_ssh_server_content"
+          - "expected_server_allow_users in config_ssh_server_content"
+        fail_msg: >-
+          config_ssh did not render the expected SSH state.
+          cloudinit_exists={{ config_ssh_cloudinit_stat.stat.exists }}
+          sshd_rc={{ config_ssh_sshd_validation.rc }}

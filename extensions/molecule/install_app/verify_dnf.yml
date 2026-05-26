@@ -1,0 +1,29 @@
+---
+- name: Query jq package status with rpm
+  ansible.builtin.command:
+    argv:
+      - "rpm"
+      - "-q"
+      - "{{ expected_package_name }}"
+  register: install_app_package_status
+  changed_when: false
+
+- name: Run jq to prove the binary is available
+  ansible.builtin.command:
+    argv:
+      - "jq"
+      - "--version"
+  register: install_app_jq_version
+  changed_when: false
+
+- name: Assert jq package installation on DNF hosts
+  ansible.builtin.assert:
+    that:
+      - "expected_package_name in ansible_facts.packages"
+      - "install_app_package_status.rc == 0"
+      - "install_app_jq_version.rc == 0"
+    fail_msg: >-
+      install_app did not install jq as expected on the DNF host.
+      package_facts={{ ansible_facts.packages.get(expected_package_name, []) }}
+      rpm_query={{ install_app_package_status.stdout | default('missing') }}
+      jq_version={{ install_app_jq_version.stdout | default('missing') }}
