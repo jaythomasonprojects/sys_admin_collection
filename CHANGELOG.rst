@@ -1,5 +1,12 @@
 jaythomasonprojects.sys_admin changelog
-==========================
+=======================================
+
+0.3.0
+-----
+
+- Added ``config_print_services`` role to manage printer discovery
+  services (e.g. cups-browsed, avahi-daemon) on systemd hosts, with
+  Molecule coverage for Fedora using dummy service fixtures.
 
 0.2.0
 -----

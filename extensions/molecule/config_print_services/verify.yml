@@ -1,0 +1,44 @@
+---
+- name: Verify config_print_services results
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Gather systemd active state  # noqa: command-instead-of-module
+      ansible.builtin.command:
+        cmd: 'systemctl is-active {{ item }}'
+      loop:
+        - 'cups-browsed.service'
+        - 'avahi-daemon.service'
+        - 'avahi-daemon.socket'
+      register: config_print_services_active_state
+      changed_when: false
+      failed_when: false
+
+    - name: Assert printer discovery services are inactive
+      ansible.builtin.assert:
+        that:
+          - config_print_services_active_state.results[0].stdout == 'inactive'
+          - config_print_services_active_state.results[1].stdout == 'inactive'
+          - config_print_services_active_state.results[2].stdout == 'inactive'
+        fail_msg: >-
+          config_print_services did not make discovery services inactive.
+
+    - name: Gather systemd enablement state  # noqa: command-instead-of-module
+      ansible.builtin.command:
+        cmd: 'systemctl is-enabled {{ item }}'
+      loop:
+        - 'cups-browsed.service'
+        - 'avahi-daemon.service'
+        - 'avahi-daemon.socket'
+      register: config_print_services_enablement
+      changed_when: false
+      failed_when: false
+
+    - name: Assert configured enablement policy
+      ansible.builtin.assert:
+        that:
+          - config_print_services_enablement.results[0].stdout == 'disabled'
+          - config_print_services_enablement.results[1].stdout == 'disabled'
+          - config_print_services_enablement.results[2].stdout == 'enabled'
+        fail_msg: >-
+          config_print_services did not apply the expected enablement policy.

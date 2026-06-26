@@ -1,0 +1,72 @@
+---
+- name: Prepare config_print_services scenario
+  hosts: all
+  gather_facts: false
+  vars:
+    config_print_services_unit_dir: '/etc/systemd/system'
+  tasks:
+    - name: Seed cups-browsed service
+      ansible.builtin.copy:
+        dest: '{{ config_print_services_unit_dir }}/cups-browsed.service'
+        owner: 'root'
+        group: 'root'
+        mode: '0644'
+        content: |
+          [Unit]
+          Description=Molecule cups-browsed fixture
+
+          [Service]
+          ExecStart=/usr/bin/sleep infinity
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Seed avahi-daemon service
+      ansible.builtin.copy:
+        dest: '{{ config_print_services_unit_dir }}/avahi-daemon.service'
+        owner: 'root'
+        group: 'root'
+        mode: '0644'
+        content: |
+          [Unit]
+          Description=Molecule avahi-daemon fixture
+
+          [Service]
+          ExecStart=/usr/bin/sleep infinity
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Seed avahi-daemon socket
+      ansible.builtin.copy:
+        dest: '{{ config_print_services_unit_dir }}/avahi-daemon.socket'
+        owner: 'root'
+        group: 'root'
+        mode: '0644'
+        content: |
+          [Unit]
+          Description=Molecule avahi-daemon socket fixture
+
+          [Socket]
+          ListenStream=/run/molecule-avahi-daemon.sock
+
+          [Install]
+          WantedBy=sockets.target
+
+    - name: Reload systemd unit files
+      ansible.builtin.systemd:
+        daemon_reload: true
+
+    - name: Enable and start fixture services
+      ansible.builtin.systemd:
+        name: '{{ item }}'
+        enabled: true
+        state: 'started'
+      loop:
+        - 'cups-browsed.service'
+        - 'avahi-daemon.service'
+
+    - name: Enable fixture socket
+      ansible.builtin.systemd:
+        name: 'avahi-daemon.socket'
+        enabled: true

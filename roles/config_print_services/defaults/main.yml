@@ -1,0 +1,11 @@
+---
+config_print_services_disable_discovery_services: false
+config_print_services_discovery_services:
+  - name: 'cups-browsed'
+    state: 'stopped'
+    enabled: false
+  - name: 'avahi-daemon.socket'
+    state: 'stopped'
+  - name: 'avahi-daemon.service'
+    state: 'stopped'
+    enabled: false

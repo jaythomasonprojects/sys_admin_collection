@@ -1,9 +1,10 @@
 ---
 # The checkout directory still uses jtprojects.infra for now, but the
-# Galaxy-facing collection identity has cut over to jaythomasonprojects.sys_admin.
+# Galaxy-facing collection identity has cut over to
+# jaythomasonprojects.sys_admin.
 namespace: jaythomasonprojects
 name: sys_admin
-version: "0.2.0"
+version: "0.3.0"
 readme: README.md
 authors:
   - Jay Thomason
