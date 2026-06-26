@@ -1,0 +1,42 @@
+---
+- name: Check config_print_services default no-op behaviour
+  hosts: all
+  gather_facts: true
+  tags:
+    - 'molecule-idempotence-notest'
+  tasks:
+    - name: Apply role with default variables
+      ansible.builtin.import_role:
+        name: 'jaythomasonprojects.sys_admin.config_print_services'
+
+    - name: Gather service facts after default role run
+      ansible.builtin.service_facts:
+
+    - name: Assert defaults leave printer discovery services running
+      ansible.builtin.assert:
+        that:
+          - ansible_facts.services['cups-browsed.service'].state == 'running'
+          - ansible_facts.services['avahi-daemon.service'].state == 'running'
+        fail_msg: 'config_print_services default variables must be a no-op.'
+
+    - name: Check default socket enablement  # noqa: command-instead-of-module
+      ansible.builtin.command:
+        cmd: 'systemctl is-enabled avahi-daemon.socket'
+      register: config_print_services_default_socket
+      changed_when: false
+
+    - name: Assert defaults leave printer discovery socket enabled
+      ansible.builtin.assert:
+        that:
+          - config_print_services_default_socket.stdout == 'enabled'
+        fail_msg: >-
+          config_print_services default variables must not disable the discovery
+          socket.
+
+- name: Converge config_print_services scenario
+  hosts: all
+  gather_facts: true
+  vars:
+    config_print_services_disable_discovery_services: true
+  roles:
+    - role: 'jaythomasonprojects.sys_admin.config_print_services'

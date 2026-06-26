@@ -37,6 +37,9 @@ collection.
 - `config_ssh` extends the base image with OpenSSH server support so Molecule
   can verify drop-in rendering, cloud-init cleanup, `sshd -t`, and
   distro-appropriate SSH service restarts.
+- `config_print_services` uses a systemd-capable Fedora container with dummy
+  printer discovery units to verify no-op defaults and opt-in stop or disable
+  behaviour without requiring real CUPS or Avahi packages.
 
 ## What the reference harness proves
 
@@ -84,8 +87,8 @@ the following:
 
 ## Release gate
 
-A published `jaythomasonprojects.sys_admin` tag should only claim the supported scenarios
-listed in this document.
+A published `jaythomasonprojects.sys_admin` tag should only claim the supported
+scenarios listed in this document.
 
 Before publishing:
 
@@ -101,3 +104,4 @@ Before publishing:
 10. run `ANSIBLE_CONFIG=ansible.cfg molecule test -s mount_network_share`
 11. run `ANSIBLE_CONFIG=ansible.cfg molecule test -s workstation_hardening`
 12. run `ANSIBLE_CONFIG=ansible.cfg molecule test -s time_sync`
+13. run `ANSIBLE_CONFIG=ansible.cfg molecule test -s config_print_services`

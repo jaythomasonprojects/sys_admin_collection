@@ -1,0 +1,14 @@
+---
+galaxy_info:
+  author: 'Jay Thomason'
+  description: 'Disable automatic printer discovery services'
+  license: 'MIT'
+  min_ansible_version: '2.18'
+  platforms:
+    - name: 'Debian'
+      versions:
+        - 'all'
+    - name: 'Ubuntu'
+      versions:
+        - 'all'
+dependencies: []
