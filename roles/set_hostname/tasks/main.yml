@@ -1,0 +1,5 @@
+---
+- name: Set Windows hostname
+  ansible.windows.win_hostname:
+    name: '{{ set_hostname_name }}'
+  when: ansible_facts.os_family == 'Windows'
