@@ -1,4 +1,9 @@
 ---
+collections:
+  - 'ansible.posix'
+  - 'ansible.windows'
+  - 'community.windows'
+
 galaxy_info:
   author: 'Jay Thomason'
   description: 'Manage SSH client and SSHD drop-in configuration files'
@@ -9,6 +14,9 @@ galaxy_info:
       versions:
         - 'all'
     - name: 'Ubuntu'
+      versions:
+        - 'all'
+    - name: 'Windows'
       versions:
         - 'all'
 dependencies: []

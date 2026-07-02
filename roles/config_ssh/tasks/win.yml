@@ -1,0 +1,63 @@
+---
+- name: Install OpenSSH Server capability
+  ansible.windows.win_optional_feature:
+    include_parent: true
+    name: 'OpenSSH.Server'
+    state: present
+
+- name: Ensure sshd_config directory exists
+  ansible.windows.win_file:
+    path: 'C:\ProgramData\ssh'
+    state: directory
+
+- name: Deploy Windows sshd_config
+  ansible.windows.win_template:
+    dest: 'C:\ProgramData\ssh\sshd_config'
+    src: 'sshd_config_win.j2'
+  notify: Restart Windows SSH service
+
+- name: Ensure administrators_authorized_keys exists
+  ansible.windows.win_copy:
+    content: ''
+    dest: 'C:\ProgramData\ssh\administrators_authorized_keys'
+    force: false
+
+- name: Lock administrators_authorized_keys ACL
+  ansible.windows.win_powershell:
+    script: |
+      $path = 'C:\ProgramData\ssh\administrators_authorized_keys'
+      $acl = Get-Acl $path
+      $acl.SetAccessRuleProtection($true, $false)
+      $adminRule = New-Object `
+        System.Security.AccessControl.FileSystemAccessRule(
+          'Administrators', 'FullControl', 'Allow')
+      $systemRule = New-Object `
+        System.Security.AccessControl.FileSystemAccessRule(
+          'SYSTEM', 'FullControl', 'Allow')
+      $acl.AddAccessRule($adminRule)
+      $acl.AddAccessRule($systemRule)
+      Set-Acl $path $acl
+
+- name: Create firewall rule for SSH port
+  community.windows.win_firewall_rule:
+    action: allow
+    direction: in
+    enabled: true
+    localport: '{{ config_ssh_sshd_port }}'
+    name: 'OpenSSH Server (sshd)'
+    protocol: 'TCP'
+    state: present
+
+- name: Start and enable sshd service
+  ansible.windows.win_service:
+    name: 'sshd'
+    start_mode: auto
+    state: started
+
+- name: Set PowerShell as default SSH shell
+  ansible.windows.win_regedit:
+    data: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+    name: 'DefaultShell'
+    path: 'HKLM:\SOFTWARE\OpenSSH'
+    state: present
+    type: string
