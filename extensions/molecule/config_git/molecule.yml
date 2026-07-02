@@ -5,9 +5,14 @@ driver:
 platforms:
   - name: 'ubuntu'
     command: 'sleep infinity'
-    image: 'infra-management-config-git:latest'
-    dockerfile: 'Dockerfile'
-    pre_build_image: false
+    image: 'docker.io/geerlingguy/docker-ubuntu2204-ansible:latest'
+    pre_build_image: true
+    user: 'root'
+
+provisioner:
+  name: 'ansible'
+  env:
+    ANSIBLE_REMOTE_USER: 'root'
 
 scenario:
   name: 'config_git'

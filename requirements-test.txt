@@ -1,4 +1,7 @@
-ansible>=11.9.0
+# ansible >=14 pulls ansible-core 2.21, which drops `invocation` from registered
+# results by default and breaks molecule-plugins[docker]'s create playbook
+# (`item.invocation.module_args.dest`). Cap below 14 to stay on core 2.20.x.
+ansible>=11.9.0,<14
 ansible-lint>=25.8.1
 molecule>=25.4.0
 molecule-plugins[docker]

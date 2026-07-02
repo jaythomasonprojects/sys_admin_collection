@@ -7,9 +7,11 @@ platforms:
     command: "sleep infinity"
     image: "docker.io/geerlingguy/docker-ubuntu2204-ansible:latest"
     pre_build_image: true
+    user: "root"
   - name: "fedora"
     image: "docker.io/geerlingguy/docker-fedora40-ansible:latest"
     pre_build_image: true
+    user: "root"
     privileged: true
     command: "/usr/sbin/init"
     tty: true
@@ -21,6 +23,8 @@ platforms:
 
 provisioner:
   name: "ansible"
+  env:
+    ANSIBLE_REMOTE_USER: "root"
 
 scenario:
   name: "auto_updates"
