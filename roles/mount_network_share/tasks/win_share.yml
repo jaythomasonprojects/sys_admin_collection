@@ -1,0 +1,19 @@
+---
+- name: Map Windows network drive
+  ansible.windows.win_mapped_drive:
+    letter: '{{ mount_network_share_item.mount_point }}'
+    path: >-
+      {{ '\\\\'
+         ~ mount_network_share_item.server
+         ~ '\\'
+         ~ mount_network_share_item.share }}
+    username: >-
+      {{ mount_network_share_item.username
+         if mount_network_share_item.username is defined
+         else omit }}
+    password: >-
+      {{ mount_network_share_item.password
+         if mount_network_share_item.password is defined
+         else omit }}
+    state: '{{ mount_network_share_item.state | default("present") }}'
+  no_log: true

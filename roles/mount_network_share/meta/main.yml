@@ -17,6 +17,10 @@ galaxy_info:
     - name: 'Fedora'
       versions:
         - 'all'
+    - name: 'Windows'
+      versions:
+        - 'all'
 collections:
   - 'ansible.posix'
+  - 'ansible.windows'
 dependencies: []

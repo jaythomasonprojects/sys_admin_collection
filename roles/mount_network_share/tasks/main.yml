@@ -19,24 +19,35 @@
           and mount_network_share_item.password | length > 0
         )
     fail_msg: >-
-      Each mount_network_share_shares entry must define name, server, share,
-      and mount_point. Define username and password together as non-empty
-      strings, or omit both.
-  loop: "{{ mount_network_share_shares }}"
+      Each mount_network_share_shares entry must define name, server,
+      share, and mount_point. Define username and password together
+      as non-empty strings, or omit both.
+  loop: '{{ mount_network_share_shares }}'
   loop_control:
     loop_var: mount_network_share_item
-    label: "{{ mount_network_share_item.name | default('unnamed') }}"
+    label: '{{ mount_network_share_item.name | default("unnamed") }}'
   no_log: true
 
-- name: Install SMB/CIFS mount packages
+- name: Install SMB/CIFS mount packages on Linux
   ansible.builtin.package:
     name: 'cifs-utils'
     state: present
-  when: mount_network_share_manage_packages | bool
+  when:
+    - mount_network_share_manage_packages | bool
+    - ansible_facts.os_family != 'Windows'
 
-- name: Manage SMB/CIFS shares
-  ansible.builtin.include_tasks: share.yml
-  loop: "{{ mount_network_share_shares }}"
+- name: Map Windows network drives
+  ansible.builtin.include_tasks: win_share.yml
+  loop: '{{ mount_network_share_shares }}'
   loop_control:
     loop_var: mount_network_share_item
-    label: "{{ mount_network_share_item.name }}"
+    label: '{{ mount_network_share_item.name }}'
+  when: ansible_facts.os_family == 'Windows'
+
+- name: Manage SMB/CIFS shares on Linux
+  ansible.builtin.include_tasks: share.yml
+  loop: '{{ mount_network_share_shares }}'
+  loop_control:
+    loop_var: mount_network_share_item
+    label: '{{ mount_network_share_item.name }}'
+  when: ansible_facts.os_family != 'Windows'
