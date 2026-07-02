@@ -1,4 +1,8 @@
 ---
+- name: Install Windows updates
+  ansible.builtin.include_tasks: win.yml
+  when: ansible_facts.os_family == 'Windows'
+
 - name: Configure unattended-upgrades for APT systems
   ansible.builtin.include_tasks: apt.yml
   when: ansible_pkg_mgr == 'apt'

@@ -1,0 +1,5 @@
+---
+- name: Install Windows updates
+  ansible.windows.win_updates:
+    state: installed
+    reboot: '{{ auto_updates_win_reboot }}'
