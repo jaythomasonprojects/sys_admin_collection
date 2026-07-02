@@ -1,0 +1,56 @@
+---
+- name: Create Windows users
+  ansible.windows.win_user:
+    name: '{{ item.name }}'
+    password: '{{ item.password }}'
+    state: present
+    description: '{{ item.comment | default(omit) }}'
+    groups: '{{ item.groups | default(omit) }}'
+    groups_action: >-
+      {{ 'add' if item.append | default(false) else 'replace' }}
+    update_password: '{{ item.update_password | default("always") }}'
+  loop: '{{ create_user_accounts }}'
+  when: create_user_accounts | length > 0
+  no_log: true
+
+# Windows OpenSSH reads administrator keys from a central file
+# (configured by the config_ssh role's Match Group administrators
+# block). Collect all admin users' keys and write them in one task.
+# Non-admin keys go to the user's profile.
+- name: Collect admin SSH keys
+  ansible.builtin.set_fact:
+    create_user_win_ssh_admin_keys: >-
+      {{
+        create_user_accounts
+        | selectattr('ssh_authorized_keys', 'defined')
+        | selectattr('groups', 'defined')
+        | map(attribute='ssh_authorized_keys')
+        | flatten
+        | list
+      }}
+
+- name: Write administrators_authorized_keys
+  ansible.windows.win_copy:
+    dest: 'C:\ProgramData\ssh\administrators_authorized_keys'
+    content: '{{ create_user_win_ssh_admin_keys | join("\n") }}'
+  when: create_user_win_ssh_admin_keys | length > 0
+
+- name: Ensure .ssh directories exist for non-admin users
+  ansible.windows.win_file:
+    path: 'C:\Users\{{ item.name }}\.ssh'
+    state: directory
+  loop: '{{ create_user_accounts }}'
+  when:
+    - item.ssh_authorized_keys is defined
+    - item.groups is not defined
+      or 'Administrators' not in item.groups
+
+- name: Write SSH keys for non-admin users
+  ansible.windows.win_copy:
+    dest: 'C:\Users\{{ item.name }}\.ssh\authorized_keys'
+    content: '{{ item.ssh_authorized_keys | join("\n") }}'
+  loop: '{{ create_user_accounts }}'
+  when:
+    - item.ssh_authorized_keys is defined
+    - item.groups is not defined
+      or 'Administrators' not in item.groups
