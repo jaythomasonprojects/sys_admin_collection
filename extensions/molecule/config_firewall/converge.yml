@@ -1,0 +1,9 @@
+---
+- name: Converge config_firewall scenario
+  hosts: all
+  gather_facts: true
+  vars:
+    config_firewall_enable_icmp_v4: true
+    config_firewall_enable_icmp_v6: true
+  roles:
+    - role: 'jaythomasonprojects.sys_admin.config_firewall'

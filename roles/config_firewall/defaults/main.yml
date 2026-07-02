@@ -1,0 +1,3 @@
+---
+config_firewall_enable_icmp_v4: true
+config_firewall_enable_icmp_v6: true

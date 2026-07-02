@@ -1,0 +1,28 @@
+---
+# ICMP type 8 = Echo Request (ping) for IPv4.
+# ICMP type 128 = Echo Request for IPv6.
+- name: Allow ICMPv4 ping
+  community.windows.win_firewall_rule:
+    name: 'Allow ICMPv4 ping'
+    action: allow
+    direction: in
+    enabled: true
+    protocol: 'icmpv4'
+    icmp_type_code: '8:*'
+    state: present
+  when:
+    - ansible_facts.os_family == 'Windows'
+    - config_firewall_enable_icmp_v4 | bool
+
+- name: Allow ICMPv6 ping
+  community.windows.win_firewall_rule:
+    name: 'Allow ICMPv6 ping'
+    action: allow
+    direction: in
+    enabled: true
+    protocol: 'icmpv6'
+    icmp_type_code: '128:*'
+    state: present
+  when:
+    - ansible_facts.os_family == 'Windows'
+    - config_firewall_enable_icmp_v6 | bool
