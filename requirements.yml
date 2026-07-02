@@ -1,5 +1,8 @@
 ---
 collections:
   - name: 'ansible.posix'
+  - name: 'ansible.windows'
+  - name: 'chocolatey.chocolatey'
   - name: 'community.docker'
   - name: 'community.general'
+  - name: 'community.windows'

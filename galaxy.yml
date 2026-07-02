@@ -25,7 +25,10 @@ homepage: "https://github.com/jaythomasonprojects/me-playbooks"
 issues: "https://github.com/jaythomasonprojects/me-playbooks/issues"
 dependencies:
   ansible.posix: "*"
+  ansible.windows: "*"
+  chocolatey.chocolatey: "*"
   community.general: "*"
+  community.windows: "*"
 build_ignore:
   - ".ansible"
   - ".cache"
