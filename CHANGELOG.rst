@@ -1,6 +1,22 @@
 jaythomasonprojects.sys_admin changelog
 =======================================
 
+0.4.0
+-----
+
+- Added Windows host support to ``install_app`` (Chocolatey),
+  ``create_user`` (``win_user`` + SSH key management),
+  ``mount_network_share`` (``win_mapped_drive``),
+  ``auto_updates`` (``win_updates``), and ``config_ssh``
+  (OpenSSH Server, firewall rule, ``sshd_config``).
+- Added ``set_hostname``, ``config_timezone``, ``config_power``,
+  and ``config_firewall`` roles for Windows-only checklist items.
+- Added OS-family guards to ``config_desktop``,
+  ``workstation_hardening``, ``time_sync``, and
+  ``config_print_services`` so they skip cleanly on Windows hosts.
+- Added ``ansible.windows``, ``chocolatey.chocolatey``, and
+  ``community.windows`` collection dependencies.
+
 0.3.0
 -----
 
