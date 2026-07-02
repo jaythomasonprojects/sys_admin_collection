@@ -9,12 +9,14 @@
   ansible.builtin.include_tasks: 'dnf.yml'
   when:
     - install_app_packages | length > 0
+    - ansible_facts.pkg_mgr is defined
     - ansible_facts.pkg_mgr in ['dnf', 'dnf5']
 
 - name: Install apt packages
   ansible.builtin.include_tasks: 'apt.yml'
   when:
     - install_app_packages | length > 0
+    - ansible_facts.pkg_mgr is defined
     - ansible_facts.pkg_mgr == 'apt'
 
 - name: Skip Debian package installers on non-APT hosts
@@ -24,6 +26,7 @@
       {{ ansible_facts.pkg_mgr }} rather than APT.
   when:
     - install_app_debs | length > 0
+    - ansible_facts.pkg_mgr is defined
     - ansible_facts.pkg_mgr != 'apt'
 
 - name: Install Debian package items
@@ -38,6 +41,7 @@
       | default('unnamed deb'))) }}
   when:
     - install_app_debs | length > 0
+    - ansible_facts.pkg_mgr is defined
     - ansible_facts.pkg_mgr == 'apt'
     - install_app_deb.enabled | default(true)
 
