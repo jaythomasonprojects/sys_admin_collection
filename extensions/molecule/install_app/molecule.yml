@@ -9,7 +9,7 @@ platforms:
     pre_build_image: true
   - name: "fedora"
     command: "sleep infinity"
-    image: "docker.io/geerlingguy/docker-fedora40-ansible:latest"
+    image: "docker.io/geerlingguy/docker-fedora41-ansible:latest"
     pre_build_image: true
 
 scenario:

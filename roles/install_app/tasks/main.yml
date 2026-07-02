@@ -1,4 +1,10 @@
 ---
+- name: Install Chocolatey packages on Windows
+  ansible.builtin.include_tasks: 'win.yml'
+  when:
+    - install_app_packages | length > 0
+    - ansible_facts.os_family == 'Windows'
+
 - name: Install dnf packages
   ansible.builtin.include_tasks: 'dnf.yml'
   when:

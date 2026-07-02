@@ -10,6 +10,12 @@
           - "!all"
           - "min"
 
+    - name: Install python3-rpm for package_facts on DNF hosts
+      ansible.builtin.dnf:
+        name: 'python3-rpm'
+        state: present
+      when: ansible_facts['pkg_mgr'] in ['dnf', 'dnf5']
+
     - name: Create Debian package fixture directories
       ansible.builtin.file:
         path: "{{ item.path }}"
