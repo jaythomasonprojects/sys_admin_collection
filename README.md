@@ -35,12 +35,10 @@ molecule test -s config_git
 molecule test -s config_power
 molecule test -s config_print_services
 molecule test -s config_ssh
-molecule test -s config_timezone
 molecule test -s create_user
 molecule test -s install_app
 molecule test -s auto_updates
 molecule test -s mount_network_share
-molecule test -s set_hostname
 molecule test -s time_sync
 molecule test -s workstation_hardening
 ```
@@ -65,12 +63,10 @@ molecule converge -s config_git
 molecule converge -s config_power
 molecule converge -s config_print_services
 molecule converge -s config_ssh
-molecule converge -s config_timezone
 molecule converge -s create_user
 molecule converge -s install_app
 molecule converge -s auto_updates
 molecule converge -s mount_network_share
-molecule converge -s set_hostname
 molecule converge -s time_sync
 molecule converge -s workstation_hardening
 molecule verify -s config_desktop
@@ -79,12 +75,10 @@ molecule verify -s config_git
 molecule verify -s config_power
 molecule verify -s config_print_services
 molecule verify -s config_ssh
-molecule verify -s config_timezone
 molecule verify -s create_user
 molecule verify -s install_app
 molecule verify -s auto_updates
 molecule verify -s mount_network_share
-molecule verify -s set_hostname
 molecule verify -s time_sync
 molecule verify -s workstation_hardening
 molecule destroy -s config_desktop
@@ -93,12 +87,10 @@ molecule destroy -s config_git
 molecule destroy -s config_power
 molecule destroy -s config_print_services
 molecule destroy -s config_ssh
-molecule destroy -s config_timezone
 molecule destroy -s create_user
 molecule destroy -s install_app
 molecule destroy -s auto_updates
 molecule destroy -s mount_network_share
-molecule destroy -s set_hostname
 molecule destroy -s time_sync
 molecule destroy -s workstation_hardening
 ```
@@ -119,12 +111,10 @@ molecule test -s config_git
 molecule test -s config_power
 molecule test -s config_print_services
 molecule test -s config_ssh
-molecule test -s config_timezone
 molecule test -s create_user
 molecule test -s install_app
 molecule test -s auto_updates
 molecule test -s mount_network_share
-molecule test -s set_hostname
 molecule test -s time_sync
 molecule test -s workstation_hardening
 ```

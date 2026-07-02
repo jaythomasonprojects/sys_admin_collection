@@ -23,8 +23,8 @@ jaythomasonprojects.sys_admin changelog
   ``mount_network_share`` (``win_mapped_drive``),
   ``auto_updates`` (``win_updates``), and ``config_ssh``
   (OpenSSH Server, firewall rule, ``sshd_config``).
-- Added ``set_hostname``, ``config_timezone``, ``config_power``,
-  and ``config_firewall`` roles for Windows-only checklist items.
+- Added ``config_power`` and ``config_firewall`` roles for
+  Windows-only checklist items.
 - Added OS-family guards to ``config_desktop``,
   ``workstation_hardening``, ``time_sync``, and
   ``config_print_services`` so they skip cleanly on Windows hosts.

@@ -1,8 +1,0 @@
----
-- name: Converge config_timezone scenario
-  hosts: all
-  gather_facts: true
-  vars:
-    config_timezone_timezone: 'UTC'
-  roles:
-    - role: 'jaythomasonprojects.sys_admin.config_timezone'

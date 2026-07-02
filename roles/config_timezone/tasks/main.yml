@@ -1,5 +1,0 @@
----
-- name: Set Windows timezone
-  ansible.windows.win_timezone:
-    timezone: '{{ config_timezone_timezone }}'
-  when: ansible_facts.os_family == 'Windows'

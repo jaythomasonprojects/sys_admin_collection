@@ -1,8 +1,0 @@
----
-- name: Converge set_hostname scenario
-  hosts: all
-  gather_facts: true
-  vars:
-    set_hostname_name: 'molecule-test-host'
-  roles:
-    - role: 'jaythomasonprojects.sys_admin.set_hostname'
