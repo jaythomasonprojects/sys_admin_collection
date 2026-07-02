@@ -1,37 +1,22 @@
 ---
 - name: Install OpenSSH Server capability
   ansible.windows.win_shell: |
-    $sshCap = (Get-WindowsCapability -Online | Where-Object { $_.Name -like '*OpenSSH.Server*' })
+    $p = 'OpenSSH.Server'
+    $sshCap = (Get-WindowsCapability -Online |
+        Where-Object { $_.Name -like "*$p*" })
     if ($sshCap -and $sshCap.State -ne 'Installed') {
       Add-WindowsCapability -Online -Name $sshCap.Name
       Write-Output 'CAPABILITY_INSTALLED'
     }
   become: true
-  changed_when: "'CAPABILITY_INSTALLED' in ssh_install.stdout"
-  register: ssh_install
+  changed_when: >-
+    config_ssh_install.stdout is search('CAPABILITY_INSTALLED')
+  register: config_ssh_install
 
 - name: Ensure sshd_config directory exists
   ansible.windows.win_file:
     path: 'C:\ProgramData\ssh'
     state: directory
-
-- name: Generate SSH host keys
-  ansible.windows.win_shell: |
-    $hostKeys = @(
-      'C:\ProgramData\ssh\ssh_host_rsa_key',
-      'C:\ProgramData\ssh\ssh_host_ecdsa_key',
-      'C:\ProgramData\ssh\ssh_host_ed25519_key'
-    )
-    if (-not ($hostKeys | Where-Object { -not (Test-Path $_) })) {
-      Write-Output 'KEYS_PRESENT'
-    } else {
-      Push-Location 'C:\ProgramData\ssh'
-      & 'C:\Windows\System32\OpenSSH\ssh-keygen.exe' -A 2>&1 | Out-Null
-      Pop-Location
-      Write-Output 'KEYS_GENERATED'
-    }
-  changed_when: "'KEYS_GENERATED' in ssh_hostkeys.stdout"
-  register: ssh_hostkeys
 
 - name: Deploy Windows sshd_config
   ansible.windows.win_template:

@@ -1,6 +1,20 @@
 jaythomasonprojects.sys_admin changelog
 =======================================
 
+0.4.1
+-----
+
+- Removed unnecessary ``ssh-keygen -A`` host key generation task from
+  ``config_ssh`` on Windows; ``sshd`` auto-generates host keys on first
+  start (confirmed against Microsoft Learn documentation and verified
+  on a clean Windows 10 VM).
+- Fixed ``config_ssh`` OpenSSH capability install task to use a Jinja2
+  test (``is search``) for ``changed_when`` instead of a string
+  comparison, which ansible-core 2.18+ rejects as non-boolean.
+- Standardised ``auto_updates`` to use ``ansible_facts.pkg_mgr is
+  defined`` guards (matching ``install_app``) so Linux tasks skip
+  cleanly on Windows hosts where ``pkg_mgr`` is undefined.
+
 0.4.0
 -----
 
