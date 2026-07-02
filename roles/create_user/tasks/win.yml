@@ -24,6 +24,7 @@
         create_user_accounts
         | selectattr('ssh_authorized_keys', 'defined')
         | selectattr('groups', 'defined')
+        | selectattr('groups', 'contains', 'Administrators')
         | map(attribute='ssh_authorized_keys')
         | flatten
         | list
