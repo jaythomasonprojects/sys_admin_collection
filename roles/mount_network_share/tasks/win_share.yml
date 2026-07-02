@@ -1,7 +1,9 @@
 ---
 - name: Map Windows network drive
   ansible.windows.win_mapped_drive:
-    letter: '{{ mount_network_share_item.mount_point }}'
+    letter: >-
+      {{ mount_network_share_item.mount_point
+         | regex_replace(':$', '') }}
     path: >-
       {{ '\\\\'
          ~ mount_network_share_item.server
