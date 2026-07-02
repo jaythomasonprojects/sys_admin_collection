@@ -1,0 +1,4 @@
+---
+config_power_disable_hibernate: true
+config_power_disable_sleep: true
+config_power_power_plan: 'high performance'

@@ -1,0 +1,10 @@
+---
+- name: Converge config_power scenario
+  hosts: all
+  gather_facts: true
+  vars:
+    config_power_disable_hibernate: true
+    config_power_disable_sleep: true
+    config_power_power_plan: 'high performance'
+  roles:
+    - role: 'jaythomasonprojects.sys_admin.config_power'
