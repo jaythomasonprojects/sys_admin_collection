@@ -1,6 +1,20 @@
 # AGENTS.md
 
-Reusable Ansible Galaxy collection (`jaythomasonprojects.sys_admin`) of system-administration roles. See `README.md` for setup, Molecule, lint, build, and publish commands, and `.github/instructions/ansible.instructions.md` for Ansible coding conventions.
+Reusable Ansible Galaxy collection (`jaythomasonprojects.sys_admin`) of system-administration roles. For Ansible guidance use the `ansible-expert` skill.
+
+## Project conventions
+
+- FQCN always: `ansible.builtin.apt`, not `apt`
+- Single quotes; double only when nested in single quotes or escaping characters
+- Explicit `state: present` / `state: absent` on every module where it is optional
+- Multi-line map syntax always, even single-pair maps; sort variables alphabetically
+- `become: true` at task level unless every task in the play requires it
+- Task names: action verb, capitalised, no trailing period, no role prefix
+- Secrets: `group_vars/<group>/vars` (all vars; sensitive ones reference `vault_` equivalents via Jinja2) + `group_vars/<group>/vault` (vault-prefixed vars, encrypted)
+
+Play key order: `hosts` → host options (alphabetical) → `pre_tasks` → `roles` → `tasks`
+
+Task key order: `name` → module → parameters → `loop` → task options (alphabetical) → `tags`
 
 ## Release and versioning
 
@@ -16,4 +30,4 @@ Do not push a version bump separately from its change. Before publishing, run th
 
 ## Tooling
 
-Install with `pip install -r requirements-test.txt`, which pins the supported Ansible, Molecule, and linter versions. Note the `ansible <14` constraint documented inline in that file: ansible-core 2.21 drops `invocation` from registered results, which breaks the molecule-plugins docker create playbook.
+`requirements-test.txt` pins `ansible <14`: ansible-core 2.21 drops `invocation` from registered results, which breaks the molecule-plugins docker create playbook.
