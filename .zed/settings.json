@@ -3,22 +3,22 @@
     "detect_venv": {
       "on": {
         "directories": [".venv"],
-        "activate_script": "fish",
-      },
-    },
+        "activate_script": "fish"
+      }
+    }
   },
   "lsp": {
     "ansible": {
       "settings": {
         "python": {
-          "interpreterPath": ".venv/bin/python",
+          "interpreterPath": ".venv/bin/python"
         },
         "validation": {
           "lint": {
-            "path": ".venv/bin/ansible-lint",
-          },
-        },
-      },
+            "path": ".venv/bin/ansible-lint"
+          }
+        }
+      }
     },
     "yaml-language-server": {
       "settings": {
@@ -26,12 +26,12 @@
           "schemas": {
             "https://raw.githubusercontent.com/ansible/ansible-lint/main/src/ansiblelint/schemas/inventory.json": [
               "./inventory/*.yaml",
-              "./hosts.yml",
-            ],
-          },
-        },
-      },
-    },
+              "./hosts.yml"
+            ]
+          }
+        }
+      }
+    }
   },
   "languages": {
     "Ansible": {
@@ -39,16 +39,16 @@
       "formatter": {
         "external": {
           "command": ".venv/bin/ansible-lint",
-          "arguments": ["--fix", "{buffer_path}"],
-        },
+          "arguments": ["--fix", "{buffer_path}"]
+        }
       },
       "tab_size": 2,
-      "preferred_line_length": 100,
+      "preferred_line_length": 100
     },
     "Jinja2": {
       "formatter": "language_server",
       "tab_size": 2,
-      "preferred_line_length": 100,
-    },
-  },
+      "preferred_line_length": 100
+    }
+  }
 }

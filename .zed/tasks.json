@@ -1,58 +1,58 @@
 [
   {
     "label": "Lint: check",
-    "command": "ansible-lint ."
+    "command": "ansible-lint .",
   },
   {
     "label": "Lint: format",
-    "command": "yamllint ."
+    "command": "yamllint .",
   },
   {
     "label": "Lint: fix",
-    "command": "ansible-lint . --fix"
+    "command": "ansible-lint . --fix",
   },
   {
     "label": "Test: all",
-    "command": "molecule test --all"
+    "command": "molecule test --all",
   },
   {
     "label": "Test: current scenario",
-    "command": "molecule test -s \"$(basename \"$ZED_RELATIVE_DIR\")\""
+    "command": "molecule test -s \"$(basename \"$ZED_RELATIVE_DIR\")\"",
   },
   {
     "label": "Molecule: converge current",
-    "command": "molecule converge -s \"$(basename \"$ZED_RELATIVE_DIR\")\""
+    "command": "molecule converge -s \"$(basename \"$ZED_RELATIVE_DIR\")\"",
   },
   {
     "label": "Molecule: verify current",
-    "command": "molecule verify -s \"$(basename \"$ZED_RELATIVE_DIR\")\""
+    "command": "molecule verify -s \"$(basename \"$ZED_RELATIVE_DIR\")\"",
   },
   {
     "label": "Molecule: list scenarios",
-    "command": "molecule list"
+    "command": "molecule list",
   },
   {
     "label": "Galaxy: install deps",
-    "command": "ansible-galaxy collection install -r requirements.yml -p ./.ansible/collections --force"
+    "command": "ansible-galaxy collection install -r requirements.yml -p ./.ansible/collections --force",
   },
   {
     "label": "Galaxy: build",
-    "command": "ansible-galaxy collection build --force --output-path dist"
+    "command": "ansible-galaxy collection build --force --output-path dist",
   },
   {
     "label": "Galaxy: publish",
-    "command": "ansible-galaxy collection publish dist/jaythomasonprojects-sys_admin-*.tar.gz --token \"$(tr -d '\\n' < ~/.ansible/galaxy_token)\""
+    "command": "sh -c \"ansible-galaxy collection publish \\\"$(ls -t dist/jaythomasonprojects-sys_admin-*.tar.gz | head -1)\\\" --token \\\"$(tr -d '\\n' < ~/.ansible/galaxy_token)\\\"\"",
   },
   {
     "label": "Clean: caches",
-    "command": "find . -type d \\( -name __pycache__ -o -name .pytest_cache \\) -exec rm -rf {} +"
+    "command": "find . -type d \\( -name __pycache__ -o -name .pytest_cache \\) -exec rm -rf {} +",
   },
   {
     "label": "Clean: molecule artefacts",
-    "command": "find . -type d -name .molecule -exec rm -rf {} +"
+    "command": "find . -type d -name .molecule -exec rm -rf {} +",
   },
   {
     "label": "Clean: agent artifacts",
-    "command": "find . -type d \\( -name .playwright-cli -o -name .mcp-cache \\) -exec rm -rf {} +"
-  }
+    "command": "find . -type d \\( -name .playwright-cli -o -name .mcp-cache \\) -exec rm -rf {} +",
+  },
 ]
