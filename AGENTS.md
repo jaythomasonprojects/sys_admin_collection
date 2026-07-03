@@ -1,6 +1,35 @@
-# AGENTS.md
+# sys_admin
 
-Reusable Ansible Galaxy collection (`jaythomasonprojects.sys_admin`) of system-administration roles. For Ansible guidance use the `ansible-expert` skill.
+## Project Overview
+
+Reusable Ansible Galaxy collection (`jaythomasonprojects.sys_admin`) of system-administration
+roles. For Ansible guidance use the `ansible-expert` skill.
+
+## Stack
+
+- Ansible >=2.18 (`ansible <14` pinned for molecule-plugins compatibility)
+- Molecule (Docker driver), ansible-lint, yamllint
+- Python 3 venv for tooling (no uv/package build)
+
+## Layout
+
+- `roles/`: 12 role directories, each with tasks/, handlers/, defaults/, meta/
+- `extensions/molecule/`: per-role Molecule test scenarios
+- `meta/runtime.yml`: collection metadata and Ansible version requirement
+- `galaxy.yml`: collection manifest (version source of truth)
+- `CHANGELOG.rst`: versioned release notes
+
+## Commands
+
+```bash
+. .venv/bin/activate
+ansible-lint .
+yamllint .
+molecule test --all
+ansible-galaxy collection build --force --output-path dist
+ansible-galaxy collection publish dist/jaythomasonprojects-sys_admin-*.tar.gz \
+  --token "$(tr -d '\n' < ~/.ansible/galaxy_token)"
+```
 
 ## Project conventions
 

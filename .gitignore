@@ -1,7 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+.ruff_cache/
+.pytest_cache/
+.mypy_cache/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project-specific
 *.tar.gz
 .ansible/
 .cache/
-.venv/
 .molecule/
 extensions/molecule/*/.molecule/
 docs/superpowers/
