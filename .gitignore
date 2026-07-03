@@ -4,3 +4,4 @@
 .venv/
 .molecule/
 extensions/molecule/*/.molecule/
+docs/superpowers/
