@@ -18,6 +18,7 @@ Thumbs.db
 .ansible/
 .cache/
 .molecule/
+.worktrees/
 extensions/molecule/*/.molecule/
 docs/superpowers/
 .superpowers/sdd/
