@@ -1,4 +1,7 @@
 ---
+# WinRM connections are a network logon, and WNetAddConnection2W() cannot
+# authenticate a new outbound SMB session from one. Interactive runas gives
+# the share credentials an interactive-style logon for the SMB connection.
 - name: Map Windows network drive
   ansible.windows.win_mapped_drive:
     letter: >-
@@ -9,13 +12,10 @@
          ~ mount_network_share_item.server
          ~ '\\'
          ~ mount_network_share_item.share }}
-    username: >-
-      {{ mount_network_share_item.username
-         if mount_network_share_item.username is defined
-         else omit }}
-    password: >-
-      {{ mount_network_share_item.password
-         if mount_network_share_item.password is defined
-         else omit }}
     state: '{{ mount_network_share_item.state | default("present") }}'
-  no_log: true
+  become: '{{ mount_network_share_item.username is defined }}'
+  become_flags: 'logon_type=interactive logon_flags=with_profile'
+  become_method: ansible.builtin.runas
+  vars:
+    ansible_become_pass: '{{ mount_network_share_item.password | default("") }}'
+    ansible_become_user: '{{ mount_network_share_item.username | default("") }}'
