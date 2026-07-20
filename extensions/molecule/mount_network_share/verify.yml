@@ -18,8 +18,37 @@
     expected_shared_credentials_option: >-
       credentials=/etc/samba/credentials/shared_docs
   tasks:
-    - name: Verify Windows mapped-drive task definition
-      ansible.builtin.include_tasks: verify_windows_task.yml
+    - name: Load Windows mapped-drive task definition
+      ansible.builtin.set_fact:
+        mount_network_share_expected_become_pass: >-
+          {{ '{{ mount_network_share_item.password | default("") }}' }}
+        mount_network_share_expected_become_user: >-
+          {{ '{{ mount_network_share_item.username | default("") }}' }}
+        mount_network_share_windows_tasks: >-
+          {{ lookup(
+               'ansible.builtin.file',
+               playbook_dir
+               ~ '/../../../roles/mount_network_share/tasks/win_share.yml'
+             ) | from_yaml }}
+
+    - name: Assert Windows mapped-drive impersonation precedence
+      ansible.builtin.assert:
+        that:
+          - mount_network_share_windows_tasks | length == 1
+          - mount_network_share_windows_tasks[0].become_user is not defined
+          - >-
+            mount_network_share_windows_tasks[0]
+            .get('vars', {}).get('ansible_become_user')
+            == mount_network_share_expected_become_user
+          - >-
+            mount_network_share_windows_tasks[0]
+            .get('vars', {}).get('ansible_become_pass')
+            == mount_network_share_expected_become_pass
+          - mount_network_share_windows_tasks[0].no_log is not defined
+        fail_msg: >-
+          The Windows mapped-drive task must use task-level per-share become
+          credentials, not the inventory-overridable become_user keyword, and
+          must leave task errors visible for connection debugging.
 
     - name: Gather mount point state
       ansible.builtin.stat:
