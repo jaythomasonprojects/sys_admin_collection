@@ -1,6 +1,12 @@
 jaythomasonprojects.sys_admin changelog
 =======================================
 
+0.4.2
+-----
+
+- Fixed ``mount_network_share`` Windows mapped-drive impersonation so each
+  share's configured credentials override inventory-level become credentials.
+
 0.4.1
 -----
 
