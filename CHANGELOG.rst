@@ -1,6 +1,13 @@
 jaythomasonprojects.sys_admin changelog
 =======================================
 
+0.4.3
+-----
+
+- Restored initial SMB authentication for Windows mapped drives while
+  retaining per-share interactive ``runas`` impersonation.
+- Left Windows mapped-drive task failures visible for connection debugging.
+
 0.4.2
 -----
 
