@@ -45,17 +45,17 @@ before and after each run:
 ssh root@proxmox02 'qm rollback 101 fresh --start 1'
 ```
 
-The fresh image accepts WinRM as `Admin` with bootstrap password `Yocker95`.
-Use that password only to establish the initial connection and run the user
-configuration, which rotates `Admin` to the password from Ansible Vault. A
-WinRM task following that rotation can fail because its connection still has
+The fresh image accepts WinRM through the bootstrap account configured in the
+inventory. Use it only to establish the initial connection and run the user
+configuration, which rotates the account to the password from Ansible Vault.
+A WinRM task following that rotation can fail because its connection still has
 the bootstrap password; reconnect with the vaulted credentials before
 continuing.
 
 Install the local collection artefact in `AnsiblePlaybooks`, run the R&D
 Windows share tag against `scanner2-pc` with
 `ansible_host=192.168.41.103`, then confirm the configured user's persisted
-drive entry under `HKU\<user-SID>\Network\Z` points to
+`R:` drive entry under `HKU\<user-SID>\Network\R` points to
 `\\192.168.40.1\RnD`. Restore `fresh` once verification finishes.
 
 ## Publish

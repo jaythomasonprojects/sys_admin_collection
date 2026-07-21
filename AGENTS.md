@@ -37,9 +37,8 @@ ansible-galaxy collection publish dist/jaythomasonprojects-sys_admin-*.tar.gz \
 Molecule uses Docker and cannot execute Windows role tasks. Validate Windows
 changes against Proxmox VM `101` at `192.168.41.103`: restore snapshot
 `fresh`, test via WinRM, inspect the resulting configured-user registry
-mapping, then restore `fresh` again. The fresh image uses `Admin` bootstrap
-password `Yocker95`; the first user-configuration pass replaces it with the
-vaulted `Admin` password, so reconnect before later tasks.
+mapping, then restore `fresh` again. The first user-configuration pass rotates
+the bootstrap account to its vaulted password, so reconnect before later tasks.
 
 ## Project conventions
 
