@@ -8,10 +8,7 @@
       {{ mount_network_share_item.mount_point
          | regex_replace(':$', '') }}
     path: >-
-      {{ '\\\\'
-         ~ mount_network_share_item.server
-         ~ '\\'
-         ~ mount_network_share_item.share }}
+      \\{{ windows_share_server }}\{{ windows_share_name }}
     username: >-
       {{ mount_network_share_item.username
          if mount_network_share_item.username is defined
@@ -27,3 +24,5 @@
   vars:
     ansible_become_pass: '{{ mount_network_share_item.password | default("") }}'
     ansible_become_user: '{{ mount_network_share_item.username | default("") }}'
+    windows_share_name: '{{ mount_network_share_item.share }}'
+    windows_share_server: '{{ mount_network_share_item.server }}'
