@@ -35,6 +35,29 @@ molecule verify -s <scenario>
 molecule destroy -s <scenario>
 ```
 
+### Windows role integration test
+
+Docker Molecule scenarios cannot execute Windows tasks. Test Windows roles on
+Proxmox VM `101` (`192.168.41.103`) instead. Restore the `fresh` snapshot
+before and after each run:
+
+```bash
+ssh root@proxmox02 'qm rollback 101 fresh --start 1'
+```
+
+The fresh image accepts WinRM as `Admin` with bootstrap password `Yocker95`.
+Use that password only to establish the initial connection and run the user
+configuration, which rotates `Admin` to the password from Ansible Vault. A
+WinRM task following that rotation can fail because its connection still has
+the bootstrap password; reconnect with the vaulted credentials before
+continuing.
+
+Install the local collection artefact in `AnsiblePlaybooks`, run the R&D
+Windows share tag against `scanner2-pc` with
+`ansible_host=192.168.41.103`, then confirm the configured user's persisted
+drive entry under `HKU\<user-SID>\Network\Z` points to
+`\\192.168.40.1\RnD`. Restore `fresh` once verification finishes.
+
 ## Publish
 
 ```bash
