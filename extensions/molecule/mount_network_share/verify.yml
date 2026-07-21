@@ -38,6 +38,19 @@
           - mount_network_share_windows_tasks[0].become_user is not defined
           - >-
             mount_network_share_windows_tasks[0]
+            ['ansible.windows.win_mapped_drive'].username is defined
+          - >-
+            mount_network_share_windows_tasks[0]
+            ['ansible.windows.win_mapped_drive'].password is defined
+          - mount_network_share_windows_tasks[0].become is defined
+          - >-
+            mount_network_share_windows_tasks[0].become_method
+            == 'ansible.builtin.runas'
+          - >-
+            mount_network_share_windows_tasks[0].become_flags
+            == 'logon_type=interactive logon_flags=with_profile'
+          - >-
+            mount_network_share_windows_tasks[0]
             .get('vars', {}).get('ansible_become_user')
             == mount_network_share_expected_become_user
           - >-
@@ -46,9 +59,10 @@
             == mount_network_share_expected_become_pass
           - mount_network_share_windows_tasks[0].no_log is not defined
         fail_msg: >-
-          The Windows mapped-drive task must use task-level per-share become
-          credentials, not the inventory-overridable become_user keyword, and
-          must leave task errors visible for connection debugging.
+          The Windows mapped-drive task must use profile impersonation and
+          module-level initial SMB credentials, not the inventory-overridable
+          become_user keyword, and must leave task errors visible for
+          connection debugging.
 
     - name: Gather mount point state
       ansible.builtin.stat:

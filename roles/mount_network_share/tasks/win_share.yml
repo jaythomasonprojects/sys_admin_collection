@@ -12,6 +12,14 @@
          ~ mount_network_share_item.server
          ~ '\\'
          ~ mount_network_share_item.share }}
+    username: >-
+      {{ mount_network_share_item.username
+         if mount_network_share_item.username is defined
+         else omit }}
+    password: >-
+      {{ mount_network_share_item.password
+         if mount_network_share_item.password is defined
+         else omit }}
     state: '{{ mount_network_share_item.state | default("present") }}'
   become: '{{ mount_network_share_item.username is defined }}'
   become_flags: 'logon_type=interactive logon_flags=with_profile'
