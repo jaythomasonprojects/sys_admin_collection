@@ -1,6 +1,14 @@
 jaythomasonprojects.sys_admin changelog
 =======================================
 
+0.4.4
+-----
+
+- Made ``config_print_services`` disable printer discovery services whenever
+  the role is invoked.
+- Defined Windows ``mount_network_share`` drive-letter mount points as bare
+  letters, such as ``Z``.
+
 0.4.3
 -----
 

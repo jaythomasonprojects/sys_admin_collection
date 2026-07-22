@@ -7,10 +7,8 @@
         name: '{{ item.name }}'
         state: '{{ item.state }}'
       loop: '{{ config_print_services_discovery_services }}'
-      when:
-        - config_print_services_disable_discovery_services | bool
-        - >-
-          config_print_services_discovery_services | length > 0
+      when: >-
+        config_print_services_discovery_services | length > 0
 
     - name: Disable configured printer discovery services on systemd hosts
       ansible.builtin.systemd:
@@ -18,6 +16,5 @@
         enabled: '{{ item.enabled }}'
       loop: '{{ config_print_services_discovery_services }}'
       when:
-        - config_print_services_disable_discovery_services | bool
         - ansible_facts.service_mgr | default('') == 'systemd'
         - item.enabled is defined

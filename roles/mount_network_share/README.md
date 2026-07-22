@@ -13,7 +13,8 @@ credential files from `mount_network_share_shares`.
   - `name`: label used for the credential filename and task output.
   - `server`: SMB server hostname or address.
   - `share`: remote share name.
-  - `mount_point`: local mount path.
+   - `mount_point`: local mount path on Linux, or a bare drive letter such as
+     `Z` on Windows.
   - `state`: mount state for `ansible.posix.mount`. Defaults to `present`.
   - `owner`, `group`, `mode`: mount point ownership and mode.
   - `fstab_options`: option list or comma-separated string. Defaults to

@@ -23,7 +23,7 @@
         mount_network_share_expected_windows_path: >-
           \\files.example.invalid\Data
         mount_network_share_item:
-          mount_point: 'Z:'
+          mount_point: 'Z'
           password: 'test-password'
           server: 'files.example.invalid'
           share: 'Data'
@@ -56,6 +56,12 @@
           {{ mount_network_share_rendered_windows_tasks[0]
              ['ansible.windows.win_mapped_drive'].path }}
 
+    - name: Render Windows mapped-drive letter
+      ansible.builtin.set_fact:
+        mount_network_share_rendered_windows_letter: >-
+          {{ mount_network_share_rendered_windows_tasks[0]
+             ['ansible.windows.win_mapped_drive'].letter }}
+
     - name: Assert Windows mapped-drive impersonation precedence
       ansible.builtin.assert:
         that:
@@ -63,6 +69,7 @@
           - >-
             mount_network_share_rendered_windows_path
             == mount_network_share_expected_windows_path
+          - mount_network_share_rendered_windows_letter == 'Z'
           - mount_network_share_windows_tasks[0].become_user is not defined
           - >-
             mount_network_share_windows_tasks[0]

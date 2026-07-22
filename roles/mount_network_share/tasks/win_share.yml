@@ -4,9 +4,7 @@
 # the share credentials an interactive-style logon for the SMB connection.
 - name: Map Windows network drive
   ansible.windows.win_mapped_drive:
-    letter: >-
-      {{ mount_network_share_item.mount_point
-         | regex_replace(':$', '') }}
+    letter: '{{ mount_network_share_item.mount_point }}'
     path: >-
       \\{{ windows_share_server }}\{{ windows_share_name }}
     username: >-
