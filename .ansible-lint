@@ -3,6 +3,10 @@ exclude_paths:
   - '.ansible/'
   - '.cache/'
   - '.molecule/'
+  - 'extensions/molecule/auto_updates/verify_apt.yml'
+  - 'extensions/molecule/auto_updates/verify_dnf.yml'
+  - 'extensions/molecule/install_app/verify_apt.yml'
+  - 'extensions/molecule/install_app/verify_dnf.yml'
 skip_list:
   - 'galaxy[no-changelog]'
 use_default_rules: true

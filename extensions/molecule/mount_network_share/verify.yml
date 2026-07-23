@@ -37,6 +37,12 @@
           {{ '{{ mount_network_share_item.password | default("") }}' }}
         mount_network_share_expected_become_user: >-
           {{ '{{ mount_network_share_item.username | default("") }}' }}
+        mount_network_share_expected_credential_name: >-
+          {{ '{{ mount_network_share_item.server }}' }}
+        mount_network_share_expected_credential_secret: >-
+          {{ '{{ mount_network_share_item.password }}' }}
+        mount_network_share_expected_credential_username: >-
+          {{ '{{ mount_network_share_item.username }}' }}
         mount_network_share_windows_tasks: >-
           {{ lookup(
                'ansible.builtin.file',
@@ -50,22 +56,29 @@
                ~ '/../../../roles/mount_network_share/tasks/win_share.yml'
              ) | from_yaml }}
 
+    - name: Assert Windows task count
+      ansible.builtin.assert:
+        that:
+          - mount_network_share_windows_tasks | length == 2
+        fail_msg: >-
+          Windows credentialed shares must persist a credential before mapping
+          the drive.
+
     - name: Render Windows mapped-drive path
       ansible.builtin.set_fact:
         mount_network_share_rendered_windows_path: >-
-          {{ mount_network_share_rendered_windows_tasks[0]
+          {{ mount_network_share_rendered_windows_tasks[1]
              ['ansible.windows.win_mapped_drive'].path }}
 
     - name: Render Windows mapped-drive letter
       ansible.builtin.set_fact:
         mount_network_share_rendered_windows_letter: >-
-          {{ mount_network_share_rendered_windows_tasks[0]
+          {{ mount_network_share_rendered_windows_tasks[1]
              ['ansible.windows.win_mapped_drive'].letter }}
 
-    - name: Assert Windows mapped-drive impersonation precedence
+    - name: Assert Windows mapped-drive credential persistence
       ansible.builtin.assert:
         that:
-          - mount_network_share_windows_tasks | length == 1
           - >-
             mount_network_share_rendered_windows_path
             == mount_network_share_expected_windows_path
@@ -73,11 +86,37 @@
           - mount_network_share_windows_tasks[0].become_user is not defined
           - >-
             mount_network_share_windows_tasks[0]
-            ['ansible.windows.win_mapped_drive'].username is defined
+            ['ansible.windows.win_credential'].name
+            == mount_network_share_expected_credential_name
           - >-
             mount_network_share_windows_tasks[0]
-            ['ansible.windows.win_mapped_drive'].password is defined
+            ['ansible.windows.win_credential'].type == 'domain_password'
+          - >-
+            mount_network_share_windows_tasks[0]
+            ['ansible.windows.win_credential'].username
+            == mount_network_share_expected_credential_username
+          - >-
+            mount_network_share_windows_tasks[0]
+            ['ansible.windows.win_credential'].secret
+            == mount_network_share_expected_credential_secret
+          - >-
+            mount_network_share_windows_tasks[0]
+            ['ansible.windows.win_credential'].persistence == 'local'
+          - >-
+            mount_network_share_windows_tasks[0]
+            ['ansible.windows.win_credential'].state == 'present'
+          - >-
+            mount_network_share_windows_tasks[0].when
+            == 'mount_network_share_item.username is defined'
+          - mount_network_share_windows_tasks[1].become_user is not defined
+          - >-
+            mount_network_share_windows_tasks[1]
+            ['ansible.windows.win_mapped_drive'].username is not defined
+          - >-
+            mount_network_share_windows_tasks[1]
+            ['ansible.windows.win_mapped_drive'].password is not defined
           - mount_network_share_windows_tasks[0].become is defined
+          - mount_network_share_windows_tasks[1].become is defined
           - >-
             mount_network_share_windows_tasks[0].become_method
             == 'ansible.builtin.runas'
@@ -87,17 +126,28 @@
           - >-
             mount_network_share_windows_tasks[0]
             .get('vars', {}).get('ansible_become_user')
-            == mount_network_share_expected_become_user
+            == mount_network_share_expected_credential_username
           - >-
             mount_network_share_windows_tasks[0]
             .get('vars', {}).get('ansible_become_pass')
+            == mount_network_share_expected_credential_secret
+          - >-
+            mount_network_share_windows_tasks[1].become_method
+            == 'ansible.builtin.runas'
+          - >-
+            mount_network_share_windows_tasks[1].become_flags
+            == 'logon_type=interactive logon_flags=with_profile'
+          - >-
+            mount_network_share_windows_tasks[1]
+            .get('vars', {}).get('ansible_become_user')
+            == mount_network_share_expected_become_user
+          - >-
+            mount_network_share_windows_tasks[1]
+            .get('vars', {}).get('ansible_become_pass')
             == mount_network_share_expected_become_pass
-          - mount_network_share_windows_tasks[0].no_log is not defined
         fail_msg: >-
-          The Windows mapped-drive task must use profile impersonation and
-          module-level initial SMB credentials, render a valid UNC path, not
-          use the inventory-overridable become_user keyword, and leave task
-          errors visible for connection debugging.
+          Windows credentialed shares must persist a per-server credential and
+          map drives through that user's Credential Manager.
 
     - name: Gather mount point state
       ansible.builtin.stat:

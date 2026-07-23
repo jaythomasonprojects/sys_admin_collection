@@ -1,6 +1,13 @@
 jaythomasonprojects.sys_admin changelog
 =======================================
 
+0.4.5
+-----
+
+- Persisted credentialed Windows ``mount_network_share`` SMB connections in
+  the configured user's Credential Manager, so mapped drives continue working
+  after that local Windows password changes.
+
 0.4.4
 -----
 

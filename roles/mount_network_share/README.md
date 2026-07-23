@@ -28,3 +28,18 @@ credential files from `mount_network_share_shares`.
 Passwords should come from Ansible Vault or another secret source. Set
 `credentials_path` per share for workstation `.smbcredentials` files or
 system-wide paths such as `/etc/samba/credentials/<name>`.
+
+## Windows credentials
+
+For a Windows share with `username` and `password`, the role saves a local
+Credential Manager `domain_password` entry for `server` in the configured
+user's profile before mapping the drive. Windows then uses that saved SMB
+credential for the mapping, so the drive can continue to connect after the
+local Windows account password changes.
+
+Removing a drive with `state: absent` does not remove its saved server
+credential, because another share on that server may use it. Credential
+Manager permits one `domain_password` credential per server for each user. If
+multiple share definitions use the same server with different credentials, the
+last share processed replaces the credential and is used by all shares on that
+server.
