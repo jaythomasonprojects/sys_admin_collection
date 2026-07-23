@@ -7,6 +7,7 @@ jaythomasonprojects.sys_admin changelog
 - Persisted credentialed Windows ``mount_network_share`` SMB connections in
   the configured user's Credential Manager, so mapped drives continue working
   after that local Windows password changes.
+- Added per-user Windows ``password_never_expires`` support to ``create_user``.
 
 0.4.4
 -----
