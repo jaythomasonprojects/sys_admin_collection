@@ -3,6 +3,7 @@
   ansible.windows.win_user:
     name: '{{ item.name }}'
     password: '{{ item.password }}'
+    password_never_expires: '{{ item.password_never_expires | default(omit) }}'
     state: present
     description: '{{ item.comment | default(omit) }}'
     groups: '{{ item.groups | default(omit) }}'

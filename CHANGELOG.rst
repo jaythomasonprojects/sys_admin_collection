@@ -1,6 +1,11 @@
 jaythomasonprojects.sys_admin changelog
 =======================================
 
+0.4.5
+-----
+
+- Added per-user Windows ``password_never_expires`` support to ``create_user``.
+
 0.4.4
 -----
 
