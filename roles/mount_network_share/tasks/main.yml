@@ -28,26 +28,23 @@
     label: '{{ mount_network_share_item.name | default("unnamed") }}'
   no_log: true
 
-- name: Install SMB/CIFS mount packages on Linux
-  ansible.builtin.package:
-    name: 'cifs-utils'
-    state: present
-  when:
-    - mount_network_share_manage_packages | bool
-    - ansible_facts.os_family != 'Windows'
+- name: Validate mount_network_share operating system
+  ansible.builtin.assert:
+    that:
+      - >-
+        ansible_facts.system == 'Linux'
+        or ansible_facts.os_family == 'Windows'
+    fail_msg: >-
+      mount_network_share supports Linux and Windows hosts only.
 
-- name: Map Windows network drives
-  ansible.builtin.include_tasks: win_share.yml
+- name: Manage network shares on Linux hosts
+  ansible.builtin.include_tasks: 'linux.yml'
+  when: ansible_facts.system == 'Linux'
+
+- name: Manage network shares on Windows hosts
+  ansible.builtin.include_tasks: 'windows_share.yml'
   loop: '{{ mount_network_share_shares }}'
   loop_control:
     loop_var: mount_network_share_item
     label: '{{ mount_network_share_item.name }}'
   when: ansible_facts.os_family == 'Windows'
-
-- name: Manage SMB/CIFS shares on Linux
-  ansible.builtin.include_tasks: share.yml
-  loop: '{{ mount_network_share_shares }}'
-  loop_control:
-    loop_var: mount_network_share_item
-    label: '{{ mount_network_share_item.name }}'
-  when: ansible_facts.os_family != 'Windows'

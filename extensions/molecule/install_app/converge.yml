@@ -22,4 +22,29 @@
         install_app_debs: []
       when: ansible_facts.pkg_mgr != 'apt'
   roles:
-    - role: "jaythomasonprojects.sys_admin.install_app"
+    - role: 'jaythomasonprojects.sys_admin.install_app'
+  tasks:
+    - name: Reject unsupported operating systems
+      block:
+        - name: Configure unsupported operating system
+          ansible.builtin.include_role:
+            name: 'jaythomasonprojects.sys_admin.install_app'
+          vars:
+            ansible_facts:
+              os_family: 'Darwin'
+              system: 'Darwin'
+            install_app_debs: []
+            install_app_flatpaks: []
+            install_app_packages: []
+      rescue:
+        - name: Record unsupported operating system rejection
+          ansible.builtin.set_fact:
+            install_app_unsupported_platform_failure: >-
+              {{ ansible_failed_result.msg | default('') }}
+
+    - name: Assert unsupported operating system was rejected
+      ansible.builtin.assert:
+        that:
+          - >-
+            install_app_unsupported_platform_failure ==
+            'install_app supports Linux and Windows hosts only.'

@@ -5,3 +5,4 @@
   chocolatey.chocolatey.win_chocolatey:
     name: '{{ install_app_packages }}'
     state: present
+  when: install_app_packages | length > 0

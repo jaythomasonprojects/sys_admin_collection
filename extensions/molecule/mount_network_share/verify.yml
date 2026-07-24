@@ -47,13 +47,13 @@
           {{ lookup(
                'ansible.builtin.file',
                playbook_dir
-               ~ '/../../../roles/mount_network_share/tasks/win_share.yml'
+               ~ '/../../../roles/mount_network_share/tasks/windows_share.yml'
              ) | from_yaml }}
         mount_network_share_rendered_windows_tasks: >-
           {{ lookup(
                'ansible.builtin.template',
                playbook_dir
-               ~ '/../../../roles/mount_network_share/tasks/win_share.yml'
+               ~ '/../../../roles/mount_network_share/tasks/windows_share.yml'
              ) | from_yaml }}
 
     - name: Assert Windows task count

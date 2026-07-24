@@ -1,6 +1,16 @@
 jaythomasonprojects.sys_admin changelog
 =======================================
 
+0.4.6
+-----
+
+- Normalized Linux and Windows task dispatch in the ``create_user``,
+  ``config_ssh``, ``install_app``, and ``mount_network_share`` roles.
+- Prevented Windows ``install_app`` runs from entering Linux-only Debian and
+  Flatpak task paths.
+- Applied Windows SSH keys before rotating managed account passwords so the
+  active WinRM connection remains valid through key configuration.
+
 0.4.5
 -----
 
