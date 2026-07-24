@@ -17,4 +17,27 @@
         ssh_authorized_keys:
           - "{{ create_user_test_key }}"
   roles:
-    - role: "jaythomasonprojects.sys_admin.create_user"
+    - role: 'jaythomasonprojects.sys_admin.create_user'
+  tasks:
+    - name: Reject unsupported operating systems
+      block:
+        - name: Configure unsupported operating system
+          ansible.builtin.include_role:
+            name: 'jaythomasonprojects.sys_admin.create_user'
+          vars:
+            ansible_facts:
+              os_family: 'Darwin'
+              system: 'Darwin'
+            create_user_accounts: []
+      rescue:
+        - name: Record unsupported operating system rejection
+          ansible.builtin.set_fact:
+            create_user_unsupported_platform_failure: >-
+              {{ ansible_failed_result.msg | default('') }}
+
+    - name: Assert unsupported operating system was rejected
+      ansible.builtin.assert:
+        that:
+          - >-
+            create_user_unsupported_platform_failure ==
+            'create_user supports Linux and Windows hosts only.'
