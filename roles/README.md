@@ -1,28 +1,13 @@
 # Roles
 
-Extracted collection roles for `jaythomasonprojects.sys_admin` now live in this directory.
+Collection roles for `jaythomasonprojects.sys_admin`, consumed from the
+installed collection via FQCN such as
+`jaythomasonprojects.sys_admin.create_user`.
 
-## Available roles
+Each role directory carries its own `README.md` documenting that role's
+variables and behaviour. The directory listing is the catalogue; a list
+maintained here drifts as roles are added and removed.
 
-- `create_user`
-- `config_git`
-- `config_ssh`
-- `config_desktop`
-- `install_app`
-- `mount_network_share`
-- `workstation_hardening`
-- `time_sync`
-- `auto_updates`
-
-These roles were extracted from the playbook-local roles and are now consumed
-from the installed collection via FQCNs such as `jaythomasonprojects.sys_admin.create_user`.
-
-## Validation coverage
-
-- Supported scenarios: `extensions/molecule/create_user`,
-  `extensions/molecule/config_git`, `extensions/molecule/config_ssh`,
-  `extensions/molecule/config_desktop`, `extensions/molecule/install_app`,
-  `extensions/molecule/auto_updates`,
-  `extensions/molecule/mount_network_share`,
-  `extensions/molecule/workstation_hardening`,
-  `extensions/molecule/time_sync`
+Molecule scenarios live in `extensions/molecule/<role>/`. See
+`extensions/molecule/README.md` for the shared harness pattern, the runtime
+assumptions for new scenarios, and the release gate.

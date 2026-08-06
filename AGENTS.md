@@ -26,11 +26,27 @@ For Ansible guidance use the `ansible-expert` skill.
 . .venv/bin/activate
 ansible-lint .
 yamllint .
-molecule test --all
+ANSIBLE_CONFIG=ansible.cfg molecule test -s <scenario>   # per-change gate
+ANSIBLE_CONFIG=ansible.cfg molecule test --all           # pre-publish gate only
 ansible-galaxy collection build --force --output-path dist
 ansible-galaxy collection publish dist/jaythomasonprojects-sys_admin-*.tar.gz \
   --token "$(tr -d '\n' < ~/.ansible/galaxy_token)"
 ```
+
+## Test gate
+
+Molecule invocations carry `ANSIBLE_CONFIG=ansible.cfg`, as the release gate in
+`extensions/molecule/README.md` does. `ansible.cfg` sets `collections_path` relative to the repo
+root, so without it the collection under test can resolve to an installed copy instead of this
+checkout. Read `extensions/molecule/README.md` before debugging the harness: it holds the shared
+scenario pattern, the reference harness, the runtime assumptions for new scenarios, and the
+deferred coverage gaps.
+
+- The gate for a change is `ansible-lint .`, `yamllint .`, and the scenario covering the change.
+  `molecule test --all` is the pre-publish gate, not a per-change one.
+- A scenario failing for reasons unrelated to your change is a report, not a block. Name it, say why
+  it is unrelated, and continue.
+- No scenarios are currently known-failing. Record one here if it recurs, and remove it once fixed.
 
 ## Windows Integration Testing
 
