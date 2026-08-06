@@ -3,13 +3,23 @@ driver:
   name: "docker"
 
 platforms:
-  - name: "ubuntu"
-    command: "sleep infinity"
-    image: "docker.io/geerlingguy/docker-ubuntu2204-ansible:latest"
+  - name: 'ubuntu'
+    command: 'sleep infinity'
+    groups:
+      - 'npm_success'
+    image: 'docker.io/geerlingguy/docker-ubuntu2204-ansible:latest'
     pre_build_image: true
-  - name: "fedora"
-    command: "sleep infinity"
-    image: "docker.io/geerlingguy/docker-fedora41-ansible:latest"
+  - name: 'fedora'
+    command: 'sleep infinity'
+    groups:
+      - 'npm_success'
+    image: 'docker.io/geerlingguy/docker-fedora41-ansible:latest'
+    pre_build_image: true
+  - name: 'ubuntu-npm-missing'
+    command: 'sleep infinity'
+    groups:
+      - 'npm_missing'
+    image: 'docker.io/geerlingguy/docker-ubuntu2204-ansible:latest'
     pre_build_image: true
 
 scenario:

@@ -1,20 +1,49 @@
 ---
-- name: Converge install_app scenario
-  hosts: all
+- name: Verify missing npm dependency contract
+  hosts: npm_missing
   become: true
   gather_facts: true
   vars:
-    install_app_packages:
-      - "jq"
+    install_app_npm_packages:
+      - 'is-number'
+  tasks:
+    - name: Request npm application without npm
+      block:
+        - name: Run install_app without npm
+          ansible.builtin.include_role:
+            name: 'jaythomasonprojects.sys_admin.install_app'
+      rescue:
+        - name: Record missing npm dependency rejection
+          ansible.builtin.set_fact:
+            install_app_npm_dependency_failure: >-
+              {{ ansible_failed_result.msg | default('') }}
+
+    - name: Assert missing npm dependency was rejected
+      ansible.builtin.assert:
+        that:
+          - >-
+            install_app_npm_dependency_failure ==
+            'Global npm applications require npm to be installed as a native package and available in PATH.'
+
+- name: Converge install_app scenario
+  hosts: npm_success
+  become: true
+  gather_facts: true
+  vars:
     install_app_flatpaks: []
     install_app_manage_flatpak_remote: false
+    install_app_npm_packages:
+      - 'is-number'
+    install_app_packages:
+      - 'jq'
+      - 'npm'
   pre_tasks:
     - name: Set Debian fixture list for APT hosts
       ansible.builtin.set_fact:
         install_app_debs:
-          - name: "install-app-fixture"
-            deb: "/usr/local/src/install-app-fixture.deb"
-            creates: "/usr/local/bin/install-app-fixture"
+          - name: 'install-app-fixture'
+            deb: '/usr/local/src/install-app-fixture.deb'
+            creates: '/usr/local/bin/install-app-fixture'
       when: ansible_facts.pkg_mgr == 'apt'
 
     - name: Set empty Debian fixture list for non-APT hosts
@@ -35,6 +64,7 @@
               system: 'Darwin'
             install_app_debs: []
             install_app_flatpaks: []
+            install_app_npm_packages: []
             install_app_packages: []
       rescue:
         - name: Record unsupported operating system rejection

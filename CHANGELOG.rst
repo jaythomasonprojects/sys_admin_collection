@@ -9,6 +9,9 @@ jaythomasonprojects.sys_admin changelog
   Debian package handling.
 - Installed requested Flatpak applications in one operation and failed clearly
   when Flatpak was unavailable instead of completing with applications missing.
+- Added global npm application installation to ``install_app`` through a
+  host-provided package-name list, with explicit native npm and executable
+  dependency validation.
 
 0.4.6
 -----
