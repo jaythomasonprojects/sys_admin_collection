@@ -4,6 +4,7 @@
   gather_facts: false
   vars:
     config_systemd_units_fixture_dir: '/etc/systemd/system'
+    config_systemd_units_vendor_fixture_dir: '/usr/lib/systemd/system'
     config_systemd_units_fixtures:
       - name: 'cups-browsed.service'
         description: 'Molecule cups-browsed fixture'
@@ -33,7 +34,25 @@
           WantedBy=multi-user.target
       loop: >-
         {{ config_systemd_units_fixtures
-           | rejectattr('name', 'equalto', 'avahi-daemon.socket') }}
+           | rejectattr('name', 'equalto', 'avahi-daemon.socket')
+           | rejectattr('name', 'equalto', 'molecule-mask.service') }}
+
+    - name: Seed masking fixture
+      ansible.builtin.copy:
+        dest: >-
+          {{ config_systemd_units_vendor_fixture_dir }}/molecule-mask.service
+        owner: 'root'
+        group: 'root'
+        mode: '0644'
+        content: |
+          [Unit]
+          Description=Molecule masking fixture
+
+          [Service]
+          ExecStart=/usr/bin/sleep infinity
+
+          [Install]
+          WantedBy=multi-user.target
 
     - name: Seed socket fixture
       ansible.builtin.copy:
