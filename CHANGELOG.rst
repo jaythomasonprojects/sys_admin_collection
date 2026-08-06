@@ -1,6 +1,15 @@
 jaythomasonprojects.sys_admin changelog
 =======================================
 
+0.6.0
+-----
+
+- Added ``config_systemd_units`` to manage existing systemd units and inline
+  custom unit files through host-provided policy.
+- Removed the superseded ``config_print_services`` role and
+  ``workstation_hardening_services`` interface. Printer and hardening service
+  policies now use ``config_systemd_units``.
+
 0.5.0
 -----
 
