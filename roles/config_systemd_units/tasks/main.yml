@@ -74,6 +74,35 @@
       - 'started'
       - 'stopped'
 
+- name: Inspect existing systemd units
+  ansible.builtin.command:
+    argv:
+      - 'systemctl'
+      - 'show'
+      - '--property=LoadState'
+      - '--value'
+      - '{{ item.name }}'
+  loop: >-
+    {{ config_systemd_units | rejectattr('unit_content', 'defined') }}
+  loop_control:
+    label: '{{ item.name }}'
+  register: config_systemd_units_existing_units
+  changed_when: false
+  check_mode: false
+  failed_when: false
+
+- name: Require existing systemd units
+  ansible.builtin.assert:
+    that:
+      - item.rc == 0
+      - item.stdout != 'not-found'
+    fail_msg: >-
+      config_systemd_units requires an existing unit when unit_content is not
+      provided: {{ item.item.name }}.
+  loop: '{{ config_systemd_units_existing_units.results }}'
+  loop_control:
+    label: '{{ item.item.name }}'
+
 - name: Inspect unit files selected for removal
   ansible.builtin.stat:
     path: '/etc/systemd/system/{{ item.name }}'

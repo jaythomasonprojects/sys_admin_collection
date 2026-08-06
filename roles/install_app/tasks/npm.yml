@@ -1,4 +1,15 @@
 ---
+- name: Validate npm package names
+  ansible.builtin.assert:
+    that:
+      - >-
+        item is string and item is match(
+        '^(?:@[a-z0-9][a-z0-9._-]*/)?[a-z0-9][a-z0-9._-]*$')
+    fail_msg: 'install_app_npm_packages accepts bare npm package names only.'
+  loop: '{{ install_app_npm_packages }}'
+  loop_control:
+    label: '{{ item | string }}'
+
 - name: Gather native package facts for npm
   ansible.builtin.package_facts:
     manager: 'auto'

@@ -56,6 +56,24 @@
           WantedBy=multi-user.target
       become: true
 
+    - name: Seed removal fallback fixture
+      ansible.builtin.copy:
+        dest: >-
+          {{ config_systemd_units_vendor_fixture_dir }}/molecule-remove.service
+        owner: 'root'
+        group: 'root'
+        mode: '0644'
+        content: |
+          [Unit]
+          Description=Molecule removal fallback fixture
+
+          [Service]
+          ExecStart=/usr/bin/sleep infinity
+
+          [Install]
+          WantedBy=multi-user.target
+      become: true
+
     - name: Seed socket fixture
       ansible.builtin.copy:
         dest: '{{ config_systemd_units_fixture_dir }}/avahi-daemon.socket'

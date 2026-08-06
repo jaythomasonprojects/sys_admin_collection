@@ -104,3 +104,25 @@
             (install_app_missing_flatpak_failure | default('')) ==
             'install_app requires Flatpak to be installed when '
             ~ 'install_app_flatpaks is not empty.'
+
+    - name: Reject versioned npm package requests
+      block:
+        - name: Request a versioned npm package
+          ansible.builtin.include_role:
+            name: 'jaythomasonprojects.sys_admin.install_app'
+          vars:
+            install_app_debs: []
+            install_app_flatpaks: []
+            install_app_npm_packages:
+              - 'is-number@7.0.0'
+            install_app_packages: []
+      rescue:
+        - name: Record versioned npm package rejection
+          ansible.builtin.set_fact:
+            install_app_versioned_npm_rejected: true
+
+    - name: Assert versioned npm package was rejected
+      ansible.builtin.assert:
+        that:
+          - >-
+            install_app_versioned_npm_rejected | default(false)

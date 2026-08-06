@@ -6,6 +6,9 @@ jaythomasonprojects.sys_admin changelog
 
 - Added ``config_systemd_units`` to manage existing systemd units and inline
   custom unit files through host-provided policy.
+- Added global npm application installation to ``install_app`` through a
+  host-provided package-name list, with explicit native npm and executable
+  dependency validation.
 - Removed the superseded ``config_print_services`` role and
   ``workstation_hardening_services`` interface. Printer and hardening service
   policies now use ``config_systemd_units``.
@@ -18,9 +21,6 @@ jaythomasonprojects.sys_admin changelog
   Debian package handling.
 - Installed requested Flatpak applications in one operation and failed clearly
   when Flatpak was unavailable instead of completing with applications missing.
-- Added global npm application installation to ``install_app`` through a
-  host-provided package-name list, with explicit native npm and executable
-  dependency validation.
 
 0.4.6
 -----
