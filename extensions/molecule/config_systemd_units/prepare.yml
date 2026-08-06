@@ -36,6 +36,7 @@
         {{ config_systemd_units_fixtures
            | rejectattr('name', 'equalto', 'avahi-daemon.socket')
            | rejectattr('name', 'equalto', 'molecule-mask.service') }}
+      become: true
 
     - name: Seed masking fixture
       ansible.builtin.copy:
@@ -53,6 +54,7 @@
 
           [Install]
           WantedBy=multi-user.target
+      become: true
 
     - name: Seed socket fixture
       ansible.builtin.copy:
@@ -69,6 +71,7 @@
 
           [Install]
           WantedBy=sockets.target
+      become: true
 
     - name: Reload fixture unit files
       ansible.builtin.systemd_service:

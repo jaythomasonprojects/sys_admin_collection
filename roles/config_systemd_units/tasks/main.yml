@@ -100,7 +100,7 @@
 - name: Remove managed unit files
   ansible.builtin.file:
     path: '/etc/systemd/system/{{ item.name }}'
-    state: absent
+    state: 'absent'
   loop: '{{ config_systemd_units }}'
   loop_control:
     label: '{{ item.name }}'
