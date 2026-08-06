@@ -30,16 +30,16 @@ collection.
   DNF automatic-update path.
 - `mount_network_share` verifies credential file handling, directory creation,
   and `/etc/fstab` rendering without attempting a real CIFS mount.
-- `workstation_hardening` verifies rendered blacklist policy while keeping runtime
-  service and module changes disabled for Docker compatibility.
+- `workstation_hardening` verifies rendered blacklist policy while keeping
+  runtime module changes disabled for Docker compatibility.
 - `time_sync` verifies rendered `ntpsec` configuration for a caller-provided NTP
   server without requiring live NTP reachability.
 - `config_ssh` installs OpenSSH server support during preparation so Molecule
   can verify drop-in rendering, cloud-init cleanup, `sshd -t`, and
   distro-appropriate SSH service restarts.
-- `config_print_services` uses a systemd-capable Fedora container with dummy
-  printer discovery units to verify no-op defaults and opt-in stop or disable
-  behaviour without requiring real CUPS or Avahi packages.
+- `config_systemd_units` uses a systemd-capable Fedora container to verify
+  existing-unit policy, custom unit creation, explicit removal, masking, and
+  validation failures.
 
 ## What the reference harness proves
 
@@ -103,4 +103,4 @@ Before publishing:
 10. run `ANSIBLE_CONFIG=ansible.cfg molecule test -s mount_network_share`
 11. run `ANSIBLE_CONFIG=ansible.cfg molecule test -s workstation_hardening`
 12. run `ANSIBLE_CONFIG=ansible.cfg molecule test -s time_sync`
-13. run `ANSIBLE_CONFIG=ansible.cfg molecule test -s config_print_services`
+13. run `ANSIBLE_CONFIG=ansible.cfg molecule test -s config_systemd_units`

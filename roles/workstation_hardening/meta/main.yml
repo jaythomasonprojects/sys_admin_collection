@@ -1,8 +1,7 @@
 ---
 galaxy_info:
   author: 'Jay Thomason'
-  description: >-
-    Manage opt-in workstation service and kernel module hardening policy
+  description: 'Manage workstation kernel module hardening policy'
   license: 'MIT'
   min_ansible_version: '2.18'
   platforms:

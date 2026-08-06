@@ -8,6 +8,7 @@ Extracted collection roles for `jaythomasonprojects.sys_admin` now live in this 
 - `config_git`
 - `config_ssh`
 - `config_desktop`
+- `config_systemd_units`
 - `install_app`
 - `mount_network_share`
 - `workstation_hardening`
@@ -24,5 +25,6 @@ from the installed collection via FQCNs such as `jaythomasonprojects.sys_admin.c
   `extensions/molecule/config_desktop`, `extensions/molecule/install_app`,
   `extensions/molecule/auto_updates`,
   `extensions/molecule/mount_network_share`,
+  `extensions/molecule/config_systemd_units`,
   `extensions/molecule/workstation_hardening`,
   `extensions/molecule/time_sync`
