@@ -23,7 +23,8 @@
         that:
           - >-
             install_app_npm_dependency_failure ==
-            'Global npm applications require npm to be installed as a native package and available in PATH.'
+            'Global npm applications require npm to be installed as a
+            native package and available in PATH.'
 
 - name: Converge install_app scenario
   hosts: npm_success
