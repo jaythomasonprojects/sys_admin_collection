@@ -34,7 +34,7 @@ collection.
   service and module changes disabled for Docker compatibility.
 - `time_sync` verifies rendered `ntpsec` configuration for a caller-provided NTP
   server without requiring live NTP reachability.
-- `config_ssh` extends the base image with OpenSSH server support so Molecule
+- `config_ssh` installs OpenSSH server support during preparation so Molecule
   can verify drop-in rendering, cloud-init cleanup, `sshd -t`, and
   distro-appropriate SSH service restarts.
 - `config_print_services` uses a systemd-capable Fedora container with dummy
@@ -67,10 +67,9 @@ Future scenarios should satisfy these assumptions before they copy the
    SSHD layout needs an image that makes those behaviors deterministic; if not,
    keep the scenario deferred and document the missing capability in shared
    docs.
-5. If a lightweight role only needs one missing binary (for example `git` for
-   `community.general.git_config`), prefer a scenario-local Dockerfile that
-   extends the stable base image at image-build time instead of installing
-   packages during `prepare`.
+5. If a lightweight role only needs one missing package (for example `git` for
+   `community.general.git_config`), install it during `prepare` instead of
+   building a scenario-local image.
 
 ## Deferred coverage gaps
 
