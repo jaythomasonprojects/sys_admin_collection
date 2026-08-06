@@ -1,0 +1,147 @@
+---
+- name: Require systemd service management
+  ansible.builtin.assert:
+    that:
+      - ansible_facts.service_mgr | default('') == 'systemd'
+    fail_msg: >-
+      config_systemd_units requires a host using systemd as its service manager.
+
+- name: Validate unit policy item types
+  ansible.builtin.assert:
+    that:
+      - item is mapping
+    fail_msg: 'Each config_systemd_units item must be a mapping.'
+  loop: '{{ config_systemd_units }}'
+  loop_control:
+    label: '{{ item.name | default(item) }}'
+
+- name: Validate unit policies
+  ansible.builtin.assert:
+    that:
+      - item.name is defined
+      - item.name is string
+      - item.name is match('^[A-Za-z0-9_.@:-]+$')
+      - >-
+        item.keys()
+        | difference(config_systemd_units_supported_keys)
+        | length == 0
+      - >-
+        item.state is not defined or
+        item.state in config_systemd_units_supported_states
+      - item.enabled is not defined or item.enabled is boolean
+      - item.masked is not defined or item.masked is boolean
+      - item.unit_content is not defined or item.unit_content is string
+      - >-
+        item.unit_file_state is not defined or
+        item.unit_file_state in ['present', 'absent']
+      - >-
+        item.state is defined or
+        item.enabled is defined or
+        item.masked is defined or
+        item.unit_content is defined or
+        item.unit_file_state is defined
+      - >-
+        item.unit_file_state is not defined or
+        item.unit_file_state != 'present' or
+        item.unit_content is defined
+      - >-
+        item.unit_file_state | default('present') != 'absent' or
+        item.unit_content is not defined
+      - >-
+        item.unit_file_state | default('present') != 'absent' or
+        item.state | default('') == 'stopped'
+      - >-
+        item.unit_file_state | default('present') != 'absent' or
+        item.enabled | default(true) == false
+      - >-
+        item.unit_content is not defined or
+        item.masked | default(false) == false
+    fail_msg: >-
+      Invalid config_systemd_units policy for
+      {{ item.name | default('unnamed unit') }}.
+  loop: '{{ config_systemd_units }}'
+  loop_control:
+    label: '{{ item.name | default("unnamed unit") }}'
+  vars:
+    config_systemd_units_supported_keys:
+      - 'enabled'
+      - 'masked'
+      - 'name'
+      - 'state'
+      - 'unit_content'
+      - 'unit_file_state'
+    config_systemd_units_supported_states:
+      - 'started'
+      - 'stopped'
+
+- name: Inspect unit files selected for removal
+  ansible.builtin.stat:
+    path: '/etc/systemd/system/{{ item.name }}'
+  loop: '{{ config_systemd_units }}'
+  loop_control:
+    label: '{{ item.name }}'
+  register: config_systemd_units_removal_files
+  become: true
+  when: item.unit_file_state | default('present') == 'absent'
+
+- name: Stop and disable unit files selected for removal
+  ansible.builtin.systemd_service:
+    name: '{{ item.item.name }}'
+    enabled: false
+    state: 'stopped'
+  loop: '{{ config_systemd_units_removal_files.results }}'
+  loop_control:
+    label: '{{ item.item.name }}'
+  become: true
+  when:
+    - not item.skipped | default(false)
+    - item.stat.exists
+
+- name: Remove managed unit files
+  ansible.builtin.file:
+    path: '/etc/systemd/system/{{ item.name }}'
+    state: absent
+  loop: '{{ config_systemd_units }}'
+  loop_control:
+    label: '{{ item.name }}'
+  register: config_systemd_units_removed_files
+  become: true
+  when: item.unit_file_state | default('present') == 'absent'
+
+- name: Write managed unit files
+  ansible.builtin.copy:
+    dest: '/etc/systemd/system/{{ item.name }}'
+    owner: 'root'
+    group: 'root'
+    mode: '0644'
+    content: '{{ item.unit_content }}'
+  loop: '{{ config_systemd_units }}'
+  loop_control:
+    label: '{{ item.name }}'
+  register: config_systemd_units_written_files
+  become: true
+  when:
+    - item.unit_content is defined
+    - item.unit_file_state | default('present') == 'present'
+
+- name: Reload changed systemd unit files
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+  become: true
+  when: >-
+    config_systemd_units_removed_files is changed or
+    config_systemd_units_written_files is changed
+
+- name: Apply systemd unit policy
+  ansible.builtin.systemd_service:
+    name: '{{ item.name }}'
+    state: '{{ item.state | default(omit) }}'
+    enabled: '{{ item.enabled | default(omit) }}'
+    masked: '{{ item.masked | default(omit) }}'
+  loop: '{{ config_systemd_units }}'
+  loop_control:
+    label: '{{ item.name }}'
+  become: true
+  when:
+    - item.unit_file_state | default('present') != 'absent'
+    - item.state is defined or item.enabled is defined or item.masked is defined
