@@ -34,8 +34,8 @@ modules used to implement it.
 - A capability role owns all prerequisites required to deliver its promise: package or Windows
   feature installation, configuration, validation, firewall access, and service state.
 - A generic policy role remains valid when generic policy is itself the capability. `install_app`
-  and `config_systemd_units` therefore remain first-class roles, but other roles do not require
-  callers to compose them to become functional.
+  therefore remains a first-class role, but other roles do not require callers to compose it to
+  become functional.
 - No two roles manage the same artefact for the same purpose.
 - Unsupported platforms fail explicitly with a useful message rather than silently skipping work.
 
@@ -174,11 +174,20 @@ Boolean that merely suppresses a required implementation step is removed.
 
 ### `config_systemd_units`
 
-- Is Linux-only and retains its generic unit-policy interface.
-- Splits the current large implementation into focused validation, unit-file lifecycle, and service
-  policy tasks beneath `tasks/linux/`.
-- Remains available for arbitrary caller-owned units but is not required to complete another role's
-  capability.
+- Is Linux-only and ceases to be a generic lifecycle wrapper for arbitrary existing units.
+- Uses `tasks/linux/printer_services.yml` for the opinionated printer-discovery policy. When
+  `config_systemd_units_disable_printer_services` is true, the task stops and disables
+  `cups-browsed.service`, `avahi-daemon.service`, and `avahi-daemon.socket` when they exist. Missing
+  printer services are already compliant rather than errors.
+- Uses `tasks/linux/custom_services.yml` to create explicitly defined, role-owned systemd services.
+  `config_systemd_units_custom_services` is a list of definitions requiring `name` and
+  `unit_content`; definitions may select `state`, `enabled`, and `unit_file_state`. The role writes
+  files beneath `/etc/systemd/system`, reloads systemd when files change, and applies their desired
+  lifecycle. Removal is permitted only for units created through this interface.
+- Removes the existing `config_systemd_units` pass-through list and its support for starting,
+  stopping, enabling, disabling, or masking arbitrary externally owned units.
+- Defaults printer-service disabling to enabled, preserving the collection's opinionated workstation
+  policy. The custom-service list defaults to empty.
 
 ### `create_user`
 
@@ -219,10 +228,17 @@ Boolean that merely suppresses a required implementation step is removed.
 
 - Replaces the misleading `workstation_hardening` role name. The existing implementation manages
   kernel-module blacklist policy, not general workstation hardening.
-- Is Linux-only and retains configuration and optional immediate module unloading.
-- Renames public variables to the new role prefix without aliases.
-- Retains the runtime-change Boolean because it selects meaningful immediate enforcement rather than
-  suppressing a prerequisite.
+- Is Linux-only and exposes supported module policies as explicit Boolean capabilities rather than
+  accepting arbitrary module names.
+- Initially supports only `blacklist_kernel_modules_disable_usb_storage`, enabled by default.
+- Uses `tasks/linux/usb_storage.yml` to persistently blacklist the `usb-storage` kernel module and
+  unload it when already loaded. This disables USB mass-storage devices without disabling USB input
+  devices or the wider USB controller stack.
+- Removes `workstation_hardening_blacklisted_modules` and
+  `workstation_hardening_apply_runtime_changes` without aliases. The role does not offer a switch
+  that leaves a selected module policy unapplied until reboot.
+- Future module policies receive their own Boolean and focused task file because their enforcement
+  steps may differ; an unrestricted module-name list is not reintroduced.
 
 No other roles are renamed. Cosmetic pluralisation does not justify additional migration cost.
 
@@ -248,9 +264,13 @@ The collection `README.md` explains the opinionated capability model and links t
 interfaces. It also warns that releases before `1.0.0` may contain breaking changes and directs
 readers to the changelog for migrations.
 
-Each role README describes what including the role guarantees, supported platforms, required
-variables, optional policy, defaults, and breaking migrations. Documentation points to defaults and
-task files where duplicating executable reference material would drift.
+Each role README is the local design record for users, agents, and maintainers. It describes what
+including the role guarantees, what the role owns and deliberately does not own, supported
+platforms, its platform-directory structure, why focused task files exist, required inputs, optional
+policy, useful defaults, invariants, and breaking migrations. It names the relevant task files so a
+maintainer can locate each responsibility without reverse-engineering the dispatcher. Executable
+variable values remain sourced from defaults rather than being duplicated into a second reference
+catalogue.
 
 `extensions/molecule/README.md` records the expected assertions for platform dispatch and the rule
 that test-only package or service opt-outs must not be added to weaken a role interface.
@@ -263,6 +283,8 @@ compatibility aliases. `CHANGELOG.rst` receives a newest-first `0.7.0` section t
 - the `workstation_hardening` to `blacklist_kernel_modules` rename;
 - all removed or renamed public variables;
 - the combined platform-agnostic ping flag;
+- removal of arbitrary existing-unit lifecycle policy from `config_systemd_units`;
+- the new printer-service, custom-service, and USB-storage capability interfaces;
 - prerequisite ownership changes;
 - explicit unsupported-platform failures; and
 - the new task-layout convention.
@@ -278,6 +300,11 @@ Tests exercise observable role contracts rather than task-file shape.
   unsupported-platform rejection where Docker can exercise the contract.
 - Scenarios for roles that now own prerequisites stop preparing or suppressing those prerequisites
   when the role itself should provide them.
+- The `config_systemd_units` scenario verifies printer services are stopped and disabled when
+  present, missing printer services are accepted, custom unit creation and removal are idempotent,
+  and arbitrary externally owned units remain untouched.
+- The renamed `blacklist_kernel_modules` scenario verifies the `usb-storage` modprobe policy and
+  exercises runtime unloading only where the container can safely provide a fixture module state.
 - Static tests that parse internal YAML structure are removed or replaced with observable behaviour.
 - Windows behaviour is validated against the documented Proxmox VM workflow because Docker cannot
   execute Windows tasks. The Windows checks cover SSH reachability and firewall ownership, user key
