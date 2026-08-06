@@ -1,0 +1,2 @@
+---
+config_systemd_units: []  # noqa var-naming[no-role-prefix]

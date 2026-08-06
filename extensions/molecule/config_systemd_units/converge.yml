@@ -1,0 +1,122 @@
+---
+- name: Converge config_systemd_units scenario
+  hosts: all
+  gather_facts: true
+  vars:
+    config_systemd_units:
+      - name: 'cups-browsed.service'
+        state: 'stopped'
+        enabled: false
+      - name: 'avahi-daemon.socket'
+        state: 'stopped'
+      - name: 'avahi-daemon.service'
+        state: 'stopped'
+        enabled: false
+      - name: 'molecule-mask.service'
+        state: 'stopped'
+        enabled: false
+        masked: true
+      - name: 'molecule-created.service'
+        unit_content: |
+          [Unit]
+          Description=Molecule role-created fixture
+
+          [Service]
+          ExecStart=/usr/bin/sleep infinity
+
+          [Install]
+          WantedBy=multi-user.target
+        state: 'started'
+        enabled: true
+      - name: 'molecule-remove.service'
+        unit_file_state: 'absent'
+        state: 'stopped'
+        enabled: false
+  roles:
+    - role: 'jaythomasonprojects.sys_admin.config_systemd_units'
+
+  tasks:
+    - name: Initialise policy rejection results
+      ansible.builtin.set_fact:
+        config_systemd_units_invalid_rejected: false
+        config_systemd_units_missing_masked_rejected: false
+        config_systemd_units_missing_rejected: false
+        config_systemd_units_missing_removal_rejected: false
+
+    - name: Exercise missing external unit failure
+      block:
+        - name: Apply missing external unit policy
+          ansible.builtin.include_role:
+            name: 'jaythomasonprojects.sys_admin.config_systemd_units'
+          vars:
+            config_systemd_units:
+              - name: 'molecule-missing.service'
+                state: 'stopped'
+      rescue:
+        - name: Record missing unit rejection
+          ansible.builtin.set_fact:
+            config_systemd_units_missing_rejected: true
+
+    - name: Assert missing external unit was rejected
+      ansible.builtin.assert:
+        that:
+          - config_systemd_units_missing_rejected | default(false)
+
+    - name: Exercise missing masked unit failure
+      block:
+        - name: Apply missing masked unit policy
+          ansible.builtin.include_role:
+            name: 'jaythomasonprojects.sys_admin.config_systemd_units'
+          vars:
+            config_systemd_units:
+              - name: 'molecule-missing-mask.service'
+                masked: true
+      rescue:
+        - name: Record missing masked unit rejection
+          ansible.builtin.set_fact:
+            config_systemd_units_missing_masked_rejected: true
+
+    - name: Exercise missing unit removal failure
+      block:
+        - name: Apply missing unit removal policy
+          ansible.builtin.include_role:
+            name: 'jaythomasonprojects.sys_admin.config_systemd_units'
+          vars:
+            config_systemd_units:
+              - name: 'molecule-missing-remove.service'
+                unit_file_state: 'absent'
+                state: 'stopped'
+                enabled: false
+      rescue:
+        - name: Record missing unit removal rejection
+          ansible.builtin.set_fact:
+            config_systemd_units_missing_removal_rejected: true
+
+    - name: Assert missing unit removal was rejected
+      ansible.builtin.assert:
+        that:
+          - config_systemd_units_missing_removal_rejected | default(false)
+
+    - name: Assert missing masked unit was rejected
+      ansible.builtin.assert:
+        that:
+          - config_systemd_units_missing_masked_rejected | default(false)
+
+    - name: Exercise invalid policy failure
+      block:
+        - name: Apply invalid unit policy
+          ansible.builtin.include_role:
+            name: 'jaythomasonprojects.sys_admin.config_systemd_units'
+          vars:
+            config_systemd_units:
+              - name: 'cups-browsed.service'
+                unsupported: true
+      rescue:
+        - name: Record invalid policy rejection
+          ansible.builtin.set_fact:
+            config_systemd_units_invalid_rejected: true
+
+    - name: Assert invalid policy was rejected
+      ansible.builtin.assert:
+        that:
+          - config_systemd_units_invalid_rejected | default(false)

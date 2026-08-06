@@ -1,6 +1,0 @@
----
-- name: Converge config_print_services scenario
-  hosts: all
-  gather_facts: true
-  roles:
-    - role: 'jaythomasonprojects.sys_admin.config_print_services'

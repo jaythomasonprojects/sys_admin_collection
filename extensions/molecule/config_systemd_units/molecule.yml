@@ -16,5 +16,10 @@ platforms:
     volumes:
       - '/sys/fs/cgroup:/sys/fs/cgroup:rw'
 
+provisioner:
+  name: 'ansible'
+  env:
+    ANSIBLE_REMOTE_USER: 'root'
+
 scenario:
-  name: 'config_print_services'
+  name: 'config_systemd_units'

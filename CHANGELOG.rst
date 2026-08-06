@@ -1,6 +1,18 @@
 jaythomasonprojects.sys_admin changelog
 =======================================
 
+0.6.0
+-----
+
+- Added ``config_systemd_units`` to manage existing systemd units and inline
+  custom unit files through host-provided policy.
+- Added global npm application installation to ``install_app`` through a
+  host-provided package-name list, with explicit native npm and executable
+  dependency validation.
+- Removed the superseded ``config_print_services`` role and
+  ``workstation_hardening_services`` interface. Printer and hardening service
+  policies now use ``config_systemd_units``.
+
 0.5.0
 -----
 

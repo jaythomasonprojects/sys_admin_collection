@@ -1,6 +1,6 @@
 ---
 - name: Verify install_app results
-  hosts: all
+  hosts: npm_success
   become: true
   gather_facts: true
   vars:
@@ -16,3 +16,22 @@
     - name: Verify DNF package installation
       ansible.builtin.include_tasks: "verify_dnf.yml"
       when: ansible_facts["pkg_mgr"] in ["dnf", "dnf5"]
+
+    - name: Query globally installed npm fixture
+      ansible.builtin.command:
+        argv:
+          - 'npm'
+          - 'list'
+          - '--global'
+          - '--depth=0'
+          - 'is-number'
+      register: install_app_npm_fixture
+      changed_when: false
+
+    - name: Assert global npm fixture installation
+      ansible.builtin.assert:
+        that:
+          - install_app_npm_fixture.rc == 0
+          - install_app_npm_fixture.stdout is search('is-number@')
+        fail_msg: >-
+          install_app did not install is-number globally through npm.

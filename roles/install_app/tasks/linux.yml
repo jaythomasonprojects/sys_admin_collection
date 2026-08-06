@@ -1,6 +1,7 @@
 ---
 - name: Update APT cache
   ansible.builtin.apt:
+    cache_valid_time: 3600
     update_cache: true
   when:
     - install_app_packages | length > 0
@@ -37,6 +38,10 @@
     - ansible_facts.pkg_mgr is defined
     - ansible_facts.pkg_mgr == 'apt'
     - install_app_deb.enabled | default(true)
+
+- name: Install global npm applications
+  ansible.builtin.include_tasks: 'npm.yml'
+  when: install_app_npm_packages | length > 0
 
 - name: Install Flatpaks
   ansible.builtin.include_tasks: 'flatpaks.yml'

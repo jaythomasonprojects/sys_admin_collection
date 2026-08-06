@@ -1,0 +1,44 @@
+---
+- name: Validate npm package names
+  ansible.builtin.assert:
+    that:
+      - >-
+        item is string and item is match(
+        '^(?:@[a-z0-9][a-z0-9._-]*/)?[a-z0-9][a-z0-9._-]*$')
+    fail_msg: 'install_app_npm_packages accepts bare npm package names only.'
+  loop: '{{ install_app_npm_packages }}'
+  loop_control:
+    label: '{{ item | string }}'
+
+- name: Gather native package facts for npm
+  ansible.builtin.package_facts:
+    manager: 'auto'
+
+- name: Check npm executable
+  ansible.builtin.command:
+    argv:
+      - 'npm'
+      - '--version'
+  register: install_app_npm_version
+  changed_when: false
+  check_mode: false
+  failed_when: false
+
+- name: Validate npm dependency
+  ansible.builtin.assert:
+    that:
+      - >-
+        'npm' in ansible_facts.packages
+        or 'nodejs-npm' in ansible_facts.packages
+      - install_app_npm_version.rc == 0
+    fail_msg: >-
+      Global npm applications require npm to be installed as a native package
+      and available in PATH.
+
+- name: Install global npm applications
+  community.general.npm:
+    global: true
+    name: '{{ item }}'
+    state: present
+  loop: '{{ install_app_npm_packages }}'
+  become: true

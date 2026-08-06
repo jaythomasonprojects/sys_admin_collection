@@ -2,7 +2,7 @@
 
 Installs native Linux packages through the package manager detected by Ansible,
 optional local or remote `.deb` files, Flatpak applications, and Chocolatey
-packages on Windows.
+packages on Windows, plus global npm applications on Linux.
 
 ## Requirements
 
@@ -30,5 +30,14 @@ executable is unavailable.
 - `install_app_flatpaks`: Flatpak refs to install. Defaults to `[]`.
 - `install_app_manage_flatpak_remote`: ensure Flathub is configured before
   installing Flatpak refs. Defaults to `true`.
+- `install_app_npm_packages`: npm package names to install globally on Linux
+  hosts. Defaults to `[]`. The role requires npm to be installed as a native
+  package through `install_app_packages` or an earlier task and available in
+  `PATH`; it does not install or version Node.js or npm. Entries must be bare
+  package names, such as `eslint` or `@scope/tool`.
 
 Non-APT hosts skip `install_app_debs` with a debug message instead of failing.
+
+Native packages are processed before global npm applications. Requested npm
+applications fail with a dependency message unless the resulting host has an
+installed `npm` or `nodejs-npm` native package and a working `npm` executable.
