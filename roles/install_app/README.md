@@ -1,11 +1,19 @@
 # install_app
 
-Installs native OS packages, optional local or remote `.deb` files, and Flatpak
-applications.
+Installs native Linux packages through the package manager detected by Ansible,
+optional local or remote `.deb` files, Flatpak applications, and Chocolatey
+packages on Windows.
+
+## Requirements
+
+Flatpak must already be installed when `install_app_flatpaks` is non-empty. The
+role fails rather than skipping requested Flatpak applications when the
+executable is unavailable.
 
 ## Variables
 
-- `install_app_packages`: package names to install. Defaults to `[]`.
+- `install_app_packages`: native Linux package names or Windows Chocolatey
+  package names to install. Defaults to `[]`.
 - `install_app_debs`: Debian package installers to apply on APT hosts. Defaults
   to `[]`. Each item supports:
   - `name`: human-readable label used in task output.

@@ -48,3 +48,28 @@
           - >-
             install_app_unsupported_platform_failure ==
             'install_app supports Linux and Windows hosts only.'
+
+    - name: Reject Flatpak requests when Flatpak is unavailable
+      block:
+        - name: Request a Flatpak without its prerequisite
+          ansible.builtin.include_role:
+            name: 'jaythomasonprojects.sys_admin.install_app'
+          vars:
+            install_app_debs: []
+            install_app_flatpaks:
+              - 'org.example.MissingPrerequisite'
+            install_app_manage_flatpak_remote: false
+            install_app_packages: []
+      rescue:
+        - name: Record missing Flatpak rejection
+          ansible.builtin.set_fact:
+            install_app_missing_flatpak_failure: >-
+              {{ ansible_failed_result.msg | default('') }}
+
+    - name: Assert missing Flatpak was rejected
+      ansible.builtin.assert:
+        that:
+          - >-
+            (install_app_missing_flatpak_failure | default('')) ==
+            'install_app requires Flatpak to be installed when '
+            ~ 'install_app_flatpaks is not empty.'

@@ -1,6 +1,15 @@
 jaythomasonprojects.sys_admin changelog
 =======================================
 
+0.5.0
+-----
+
+- Delegated native Linux package installation in ``install_app`` to Ansible's
+  detected package manager while retaining APT cache refreshes and specialised
+  Debian package handling.
+- Installed requested Flatpak applications in one operation and failed clearly
+  when Flatpak was unavailable instead of completing with applications missing.
+
 0.4.6
 -----
 

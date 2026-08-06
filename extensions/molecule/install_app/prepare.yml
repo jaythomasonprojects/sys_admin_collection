@@ -16,6 +16,11 @@
         state: present
       when: ansible_facts['pkg_mgr'] in ['dnf', 'dnf5']
 
+    - name: Remove Flatpak for missing prerequisite coverage
+      ansible.builtin.package:
+        name: 'flatpak'
+        state: absent
+
     - name: Create Debian package fixture directories
       ansible.builtin.file:
         path: "{{ item.path }}"

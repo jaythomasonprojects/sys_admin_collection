@@ -1,28 +1,31 @@
 ---
-- name: Gather package facts for Flatpak availability
-  ansible.builtin.package_facts:
-    manager: auto
+- name: Check Flatpak availability
+  ansible.builtin.command:
+    argv:
+      - 'flatpak'
+      - '--version'
+  changed_when: false
+  check_mode: false
+  failed_when: false
+  register: install_app_flatpak_version
+
+- name: Require Flatpak for requested applications
+  ansible.builtin.assert:
+    that:
+      - install_app_flatpak_version.rc | default(1) == 0
+    fail_msg: >-
+      install_app requires Flatpak to be installed when
+      install_app_flatpaks is not empty.
 
 - name: Ensure Flathub is configured
   community.general.flatpak_remote:
     name: 'flathub'
     state: present
     flatpakrepo_url: 'https://dl.flathub.org/repo/flathub.flatpakrepo'
-  when:
-    - install_app_manage_flatpak_remote
-    - "'flatpak' in ansible_facts.packages"
+  when: install_app_manage_flatpak_remote
 
-- name: Install flatpaks
+- name: Install Flatpaks
   community.general.flatpak:
-    name: "{{ item }}"
+    name: '{{ install_app_flatpaks }}'
     state: present
     remote: 'flathub'
-  loop: "{{ install_app_flatpaks }}"
-  when: "'flatpak' in ansible_facts.packages"
-
-- name: Display flatpak unavailable message
-  ansible.builtin.debug:
-    msg: >-
-      Flatpak is unavailable. Add the native flatpak package before requesting
-      Flatpak installs.
-  when: "'flatpak' not in ansible_facts.packages"
