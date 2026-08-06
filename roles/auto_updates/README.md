@@ -9,8 +9,8 @@ imperative "upgrade everything now" runs during every play.
 
 Installs `unattended-upgrades` and manages two files in `/etc/apt/apt.conf.d/`:
 
-- **`20auto-upgrades`** — the schedule: tells APT's periodic daemon to refresh package lists, download, and install upgrades daily. This is the canonical filename the `unattended-upgrades` package ships; we overwrite it with our own values.
-- **`52jtprojects-unattended-upgrades`** — the policy: controls which repos are trusted for upgrades, which packages are excluded, and whether the system may reboot. The `52` prefix ensures it loads after the package's own default policy file (`50unattended-upgrades`), so our settings win.
+- **`20auto-upgrades`** is the schedule. It tells APT's periodic daemon to refresh package lists, download, and install upgrades daily. This is the canonical filename the `unattended-upgrades` package ships; we overwrite it with our own values.
+- **`52jtprojects-unattended-upgrades`** is the policy. It controls which repos are trusted for upgrades, which packages are excluded, and whether the system may reboot. The `52` prefix ensures it loads after the package's own default policy file (`50unattended-upgrades`), so our settings win.
 
 APT reads `/etc/apt/apt.conf.d/` in filename order. The numbering convention: packages own the low range (≤ 50), admins own the high range (≥ 50). Later files override earlier ones.
 
