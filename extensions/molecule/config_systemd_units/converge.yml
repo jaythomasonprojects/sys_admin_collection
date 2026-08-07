@@ -29,6 +29,7 @@
       ansible.builtin.set_fact:
         config_systemd_units_absent_lifecycle_rejected: false
         config_systemd_units_duplicate_rejected: false
+        config_systemd_units_external_removal_rejected: false
         config_systemd_units_missing_content_rejected: false
         config_systemd_units_printer_name_rejected: false
         config_systemd_units_unknown_key_rejected: false
@@ -117,11 +118,29 @@
           ansible.builtin.set_fact:
             config_systemd_units_absent_lifecycle_rejected: true
 
+    - name: Exercise external service removal failure
+      block:
+        - name: Remove externally authored service
+          ansible.builtin.include_role:
+            name: 'jaythomasonprojects.sys_admin.config_systemd_units'
+          vars:
+            config_systemd_units_custom_services:
+              - name: 'molecule-external.service'
+                unit_file_state: 'absent'
+                unit_content: |
+                  [Service]
+                  ExecStart=/usr/bin/true
+      rescue:
+        - name: Record external service removal rejection
+          ansible.builtin.set_fact:
+            config_systemd_units_external_removal_rejected: true
+
     - name: Assert custom-service validation rejections
       ansible.builtin.assert:
         that:
           - config_systemd_units_absent_lifecycle_rejected
           - config_systemd_units_duplicate_rejected
+          - config_systemd_units_external_removal_rejected
           - config_systemd_units_missing_content_rejected
           - config_systemd_units_printer_name_rejected
           - config_systemd_units_unknown_key_rejected

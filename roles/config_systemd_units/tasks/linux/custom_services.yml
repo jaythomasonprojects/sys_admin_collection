@@ -70,6 +70,33 @@
   become: true
   when: item.unit_file_state | default('present') == 'absent'
 
+- name: Read existing service files selected for removal
+  ansible.builtin.slurp:
+    src: '/etc/systemd/system/{{ item.item.name }}'
+  loop: '{{ config_systemd_units_removal_files.results }}'
+  loop_control:
+    label: '{{ item.item.name }}'
+  register: config_systemd_units_removal_file_contents
+  become: true
+  when:
+    - not item.skipped | default(false)
+    - item.stat.exists
+
+- name: Require role ownership before removing service files
+  ansible.builtin.assert:
+    that:
+      - >-
+        item.content | b64decode is match(
+        '^# Ansible managed: config_systemd_units custom service\.\n')
+    fail_msg: >-
+      Refusing to remove {{ item.item.item.name }} because it is not managed by
+      config_systemd_units.
+  loop: '{{ config_systemd_units_removal_file_contents.results }}'
+  loop_control:
+    label: '{{ item.item.item.name }}'
+  become: true
+  when: not item.skipped | default(false)
+
 - name: Stop and disable role-owned services selected for removal
   ansible.builtin.systemd_service:
     enabled: false
@@ -96,7 +123,9 @@
 
 - name: Write role-owned service files
   ansible.builtin.copy:
-    content: '{{ item.unit_content }}'
+    content: |
+      # Ansible managed: config_systemd_units custom service.
+      {{ item.unit_content | trim }}
     dest: '/etc/systemd/system/{{ item.name }}'
     group: 'root'
     mode: '0644'

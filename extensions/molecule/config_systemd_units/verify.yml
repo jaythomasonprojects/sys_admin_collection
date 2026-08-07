@@ -70,3 +70,25 @@
           - config_systemd_units_files.results[0].stat.gr_name == 'root'
           - config_systemd_units_files.results[0].stat.mode == '0644'
           - not config_systemd_units_files.results[1].stat.exists
+
+    - name: Read externally authored unit file
+      ansible.builtin.slurp:
+        src: '/etc/systemd/system/molecule-external.service'
+      register: config_systemd_units_external_file
+
+    - name: Assert externally authored unit file is unchanged
+      ansible.builtin.assert:
+        that:
+          - >-
+            config_systemd_units_external_file.content | b64decode ==
+            config_systemd_units_external_content
+      vars:
+        config_systemd_units_external_content: |
+          [Unit]
+          Description=Molecule external fixture
+
+          [Service]
+          ExecStart=/usr/bin/sleep infinity
+
+          [Install]
+          WantedBy=multi-user.target
