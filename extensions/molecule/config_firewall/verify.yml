@@ -1,9 +1,0 @@
----
-- name: Verify config_firewall rejection scenario
-  hosts: all
-  gather_facts: false
-  tasks:
-    - name: Assert Docker scenario requires no supported-path verification
-      ansible.builtin.assert:
-        that:
-          - true
