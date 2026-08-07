@@ -1,0 +1,130 @@
+---
+- name: Validate custom service item types
+  ansible.builtin.assert:
+    that:
+      - item is mapping
+    fail_msg: >-
+      Each config_systemd_units_custom_services item must be a mapping.
+  loop: '{{ config_systemd_units_custom_services }}'
+  loop_control:
+    label: '{{ item.name | default(item) }}'
+
+- name: Validate custom service definitions
+  ansible.builtin.assert:
+    that:
+      - item.name is defined
+      - item.name is string
+      - item.name is match('^[A-Za-z0-9_.@:-]+\.service$')
+      - item.unit_content is defined
+      - item.unit_content is string
+      - item.unit_content | trim | length > 0
+      - >-
+        item.keys() | difference(config_systemd_units_custom_service_keys)
+        | length == 0
+      - item.state is not defined or item.state in ['started', 'stopped']
+      - item.enabled is not defined or item.enabled is boolean
+      - >-
+        item.unit_file_state is not defined or
+        item.unit_file_state in ['present', 'absent']
+      - >-
+        item.name not in config_systemd_units_printer_services
+      - >-
+        item.unit_file_state | default('present') != 'absent' or
+        item.state | default('stopped') == 'stopped'
+      - >-
+        item.unit_file_state | default('present') != 'absent' or
+        item.enabled | default(false) == false
+    fail_msg: >-
+      Invalid config_systemd_units custom service for
+      {{ item.name | default('unnamed service') }}.
+  loop: '{{ config_systemd_units_custom_services }}'
+  loop_control:
+    label: '{{ item.name | default("unnamed service") }}'
+  vars:
+    config_systemd_units_custom_service_keys:
+      - 'enabled'
+      - 'name'
+      - 'state'
+      - 'unit_content'
+      - 'unit_file_state'
+    config_systemd_units_printer_services:
+      - 'cups-browsed.service'
+      - 'avahi-daemon.service'
+      - 'avahi-daemon.socket'
+
+- name: Reject duplicate custom service names
+  ansible.builtin.assert:
+    that:
+      - >-
+        config_systemd_units_custom_services | map(attribute='name') | list
+        | unique | length == config_systemd_units_custom_services | length
+    fail_msg: 'config_systemd_units custom service names must be unique.'
+
+- name: Inspect role-owned service files selected for removal
+  ansible.builtin.stat:
+    path: '/etc/systemd/system/{{ item.name }}'
+  loop: '{{ config_systemd_units_custom_services }}'
+  loop_control:
+    label: '{{ item.name }}'
+  register: config_systemd_units_removal_files
+  become: true
+  when: item.unit_file_state | default('present') == 'absent'
+
+- name: Stop and disable role-owned services selected for removal
+  ansible.builtin.systemd_service:
+    enabled: false
+    name: '{{ item.item.name }}'
+    state: 'stopped'
+  loop: '{{ config_systemd_units_removal_files.results }}'
+  loop_control:
+    label: '{{ item.item.name }}'
+  become: true
+  when:
+    - not item.skipped | default(false)
+    - item.stat.exists
+
+- name: Remove role-owned service files
+  ansible.builtin.file:
+    path: '/etc/systemd/system/{{ item.name }}'
+    state: 'absent'
+  loop: '{{ config_systemd_units_custom_services }}'
+  loop_control:
+    label: '{{ item.name }}'
+  register: config_systemd_units_removed_files
+  become: true
+  when: item.unit_file_state | default('present') == 'absent'
+
+- name: Write role-owned service files
+  ansible.builtin.copy:
+    content: '{{ item.unit_content }}'
+    dest: '/etc/systemd/system/{{ item.name }}'
+    group: 'root'
+    mode: '0644'
+    owner: 'root'
+  loop: '{{ config_systemd_units_custom_services }}'
+  loop_control:
+    label: '{{ item.name }}'
+  register: config_systemd_units_written_files
+  become: true
+  when: item.unit_file_state | default('present') == 'present'
+
+- name: Reload changed role-owned service files
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+  become: true
+  when: >-
+    config_systemd_units_removed_files is changed or
+    config_systemd_units_written_files is changed
+
+- name: Apply custom service lifecycle
+  ansible.builtin.systemd_service:
+    enabled: '{{ item.enabled | default(omit) }}'
+    name: '{{ item.name }}'
+    state: '{{ item.state | default(omit) }}'
+  loop: '{{ config_systemd_units_custom_services }}'
+  loop_control:
+    label: '{{ item.name }}'
+  become: true
+  when:
+    - item.unit_file_state | default('present') == 'present'
+    - item.state is defined or item.enabled is defined
