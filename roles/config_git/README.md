@@ -18,9 +18,22 @@ orchestration.
 - Debian
 - Ubuntu
 
+## Implementation
+
+- `tasks/main.yml` rejects non-Linux hosts and dispatches to Linux tasks.
+- `tasks/linux/main.yml` rejects unsupported Linux distributions, installs the
+  `git` package, and configures the requested global identity keys.
+
 ## Variables
 
 - `config_git_user_name`: global Git user name. An empty value leaves the key
   unmanaged.
 - `config_git_user_email`: global Git user email. An empty value leaves the key
   unmanaged.
+
+## Migration from pre-0.7
+
+Before 0.7, callers had to ensure Git was installed before applying this role.
+The role now owns the `git` package, so remove that duplicate package-management
+step. The identity variables and effective-user global configuration semantics
+are unchanged.
