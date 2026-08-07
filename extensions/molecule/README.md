@@ -26,6 +26,13 @@ validated in a lightweight Docker container:
 - explicit prepare and cleanup playbooks
 - verify assertions that inspect the runtime state directly
 
+## Scenario conventions
+
+Scenarios must test supported behaviour, idempotence, and explicit
+unsupported-platform rejection. Test runtime state rather than parsing the
+static task tree. Do not add test-only package or service opt-outs: scenarios
+must exercise the role's supported behaviour.
+
 ## Runtime assumptions for future scenarios
 
 Future scenarios should satisfy these assumptions before they copy the
@@ -60,18 +67,22 @@ the following:
 
 ## Release gate
 
-Before publishing, lint, build, then run every scenario:
+Before publishing, lint, run every scenario, complete Windows integration
+testing, then build:
 
 ```bash
 ansible-lint .
 yamllint .
-ansible-galaxy collection build --force
 ANSIBLE_CONFIG=ansible.cfg molecule test --all
+ansible-galaxy collection build --force
 ```
 
 `--all` discovers whatever scenarios exist under `extensions/molecule/`, so it
 stays correct as roles are added or removed. While iterating, run a single
 scenario with `ANSIBLE_CONFIG=ansible.cfg molecule test -s <scenario>`.
+
+Complete Windows integration testing as described in `AGENTS.md` before the
+collection build.
 
 A scenario that cannot pass under Docker belongs in Deferred coverage gaps
 above, with its missing capability named. Do not skip it silently.
