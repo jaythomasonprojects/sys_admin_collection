@@ -1,0 +1,6 @@
+---
+- name: Set power plan
+  community.windows.win_power_plan:
+    name: '{{ config_power_power_plan }}'
+  when:
+    - config_power_power_plan | length > 0

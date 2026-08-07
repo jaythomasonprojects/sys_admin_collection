@@ -1,28 +1,9 @@
 ---
-# ICMP type 8 = Echo Request (ping) for IPv4.
-# ICMP type 128 = Echo Request for IPv6.
-- name: Allow ICMPv4 ping
-  community.windows.win_firewall_rule:
-    name: 'Allow ICMPv4 ping'
-    action: allow
-    direction: in
-    enabled: true
-    protocol: 'icmpv4'
-    icmp_type_code: '8:*'
-    state: present
-  when:
-    - ansible_facts.os_family == 'Windows'
-    - config_firewall_enable_icmp_v4 | bool
+- name: Assert Windows host support
+  ansible.builtin.assert:
+    that:
+      - ansible_facts.os_family == 'Windows'
+    fail_msg: 'config_firewall supports Windows hosts only.'
 
-- name: Allow ICMPv6 ping
-  community.windows.win_firewall_rule:
-    name: 'Allow ICMPv6 ping'
-    action: allow
-    direction: in
-    enabled: true
-    protocol: 'icmpv6'
-    icmp_type_code: '128:*'
-    state: present
-  when:
-    - ansible_facts.os_family == 'Windows'
-    - config_firewall_enable_icmp_v6 | bool
+- name: Configure Windows firewall
+  ansible.builtin.include_tasks: 'windows/main.yml'

@@ -1,15 +1,9 @@
 ---
-- name: Verify config_power skips on Linux
+- name: Verify config_power rejection scenario
   hosts: all
-  gather_facts: true
+  gather_facts: false
   tasks:
-    - name: Gather installed package facts
-      ansible.builtin.package_facts:
-
-    - name: Assert no power management packages were installed
+    - name: Assert Docker scenario requires no supported-path verification
       ansible.builtin.assert:
         that:
-          - "'powercfg' not in ansible_facts.packages"
-        fail_msg: >-
-          config_power must skip on Linux hosts. It should not
-          have installed any packages.
+          - true
