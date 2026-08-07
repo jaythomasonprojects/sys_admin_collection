@@ -25,6 +25,7 @@
   ansible.windows.win_powershell:
     script: |
       $path = 'C:\ProgramData\ssh\administrators_authorized_keys'
+      $Ansible.Changed = $false
       $administrators = New-Object `
         -TypeName System.Security.Principal.SecurityIdentifier `
         -ArgumentList 'S-1-5-32-544'
@@ -32,19 +33,44 @@
         -TypeName System.Security.Principal.SecurityIdentifier `
         -ArgumentList 'S-1-5-18'
       $acl = Get-Acl -LiteralPath $path
-      $acl.SetOwner($administrators)
-      $acl.SetAccessRuleProtection($true, $false)
-      foreach ($rule in @($acl.Access)) {
-        [void] $acl.RemoveAccessRuleSpecific($rule)
+      $expectedSids = @($administrators, $system)
+      $fullControl =
+        [System.Security.AccessControl.FileSystemRights]::FullControl
+      $rules = @($acl.GetAccessRules(
+        $true, $true,
+        [System.Security.Principal.SecurityIdentifier]))
+      $aclMatches = $acl.AreAccessRulesProtected -and
+        $acl.GetOwner([System.Security.Principal.SecurityIdentifier]).Value -eq
+        $administrators.Value -and
+        $rules.Count -eq $expectedSids.Count
+      foreach ($sid in $expectedSids) {
+        $matchingRules = @($rules | Where-Object {
+          $_.IdentityReference.Value -eq $sid.Value -and
+          -not $_.IsInherited -and
+          $_.AccessControlType -eq 'Allow' -and
+          [int] $_.FileSystemRights -eq
+          [int] $fullControl -and
+          $_.InheritanceFlags -eq 'None' -and
+          $_.PropagationFlags -eq 'None'
+        })
+        $aclMatches = $aclMatches -and ($matchingRules.Count -eq 1)
       }
-      foreach ($sid in @($administrators, $system)) {
-        $rule = New-Object System.Security.AccessControl.FileSystemAccessRule(
-          $sid, 'FullControl', 'Allow')
-        [void] $acl.AddAccessRule($rule)
+      if (-not $aclMatches) {
+        $acl.SetOwner($administrators)
+        $acl.SetAccessRuleProtection($true, $false)
+        foreach ($rule in @($acl.Access)) {
+          [void] $acl.RemoveAccessRuleSpecific($rule)
+        }
+        foreach ($sid in $expectedSids) {
+          $rule = New-Object `
+            -TypeName System.Security.AccessControl.FileSystemAccessRule `
+            -ArgumentList $sid, 'FullControl', 'Allow'
+          [void] $acl.AddAccessRule($rule)
+        }
+        Set-Acl -LiteralPath $path -AclObject $acl
+        $Ansible.Changed = $true
       }
-      Set-Acl -LiteralPath $path -AclObject $acl
   when: create_user_windows_administrators | length > 0
-  changed_when: false
 
 - name: Create standard-user SSH directories
   ansible.windows.win_file:
@@ -72,6 +98,7 @@
         [String] $UserName
       )
 
+      $Ansible.Changed = $false
       $account = New-Object System.Security.Principal.NTAccount(
         $env:COMPUTERNAME, $UserName)
       $owner = $account.Translate(
@@ -87,17 +114,44 @@
         "C:\Users\$UserName\.ssh\authorized_keys"
       )) {
         $acl = Get-Acl -LiteralPath $path
-        $acl.SetOwner($owner)
-        $acl.SetAccessRuleProtection($true, $false)
-        foreach ($rule in @($acl.Access)) {
-          [void] $acl.RemoveAccessRuleSpecific($rule)
+        $expectedSids = @($owner, $administrators, $system)
+        $fullControl =
+          [System.Security.AccessControl.FileSystemRights]::FullControl
+        $rules = @($acl.GetAccessRules(
+          $true, $true,
+          [System.Security.Principal.SecurityIdentifier]))
+        $actualOwner = $acl.GetOwner(
+          [System.Security.Principal.SecurityIdentifier])
+        $aclMatches = $acl.AreAccessRulesProtected -and
+          $actualOwner.Value -eq $owner.Value -and
+          $rules.Count -eq $expectedSids.Count
+        foreach ($sid in $expectedSids) {
+          $matchingRules = @($rules | Where-Object {
+            $_.IdentityReference.Value -eq $sid.Value -and
+            -not $_.IsInherited -and
+            $_.AccessControlType -eq 'Allow' -and
+            [int] $_.FileSystemRights -eq
+            [int] $fullControl -and
+            $_.InheritanceFlags -eq 'None' -and
+            $_.PropagationFlags -eq 'None'
+          })
+          $aclMatches = $aclMatches -and ($matchingRules.Count -eq 1)
         }
-        foreach ($sid in @($owner, $administrators, $system)) {
-          $rule = New-Object System.Security.AccessControl.FileSystemAccessRule(
-            $sid, 'FullControl', 'Allow')
-          [void] $acl.AddAccessRule($rule)
+        if (-not $aclMatches) {
+          $acl.SetOwner($owner)
+          $acl.SetAccessRuleProtection($true, $false)
+          foreach ($rule in @($acl.Access)) {
+            [void] $acl.RemoveAccessRuleSpecific($rule)
+          }
+          foreach ($sid in $expectedSids) {
+            $rule = New-Object `
+              -TypeName System.Security.AccessControl.FileSystemAccessRule `
+              -ArgumentList $sid, 'FullControl', 'Allow'
+            [void] $acl.AddAccessRule($rule)
+          }
+          Set-Acl -LiteralPath $path -AclObject $acl
+          $Ansible.Changed = $true
         }
-        Set-Acl -LiteralPath $path -AclObject $acl
       }
     parameters:
       UserName: '{{ item.name }}'
@@ -105,4 +159,3 @@
   when:
     - item.ssh_authorized_keys is defined
     - item.groups is not defined or 'Administrators' not in item.groups
-  changed_when: false

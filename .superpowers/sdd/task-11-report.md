@@ -71,3 +71,39 @@ VM 101 was therefore not restored or modified. Once Proxmox is reachable, run
 the prescribed snapshot restore, WinRM validation, reconnect after bootstrap
 password rotation, inspect the Windows OpenSSH and key ACL contracts, and
 restore `fresh` again.
+
+## Review Fix
+
+- Updated `roles/create_user/tasks/windows/authorized_keys.yml` so both ACL
+  tasks compare the current owner, inheritance protection, and complete
+  explicit DACL with the required SID-based full-control rules before calling
+  `Set-Acl`.
+- The tasks set `$Ansible.Changed` only after correcting a differing ACL. A
+  compliant ACL makes no mutation and reports unchanged; owner or DACL drift
+  is remediated and reports changed.
+
+## Review Verification
+
+- Built `dist/jaythomasonprojects-sys_admin-0.6.0.tar.gz` from this checkout
+  and installed it into `.ansible/collections` before testing.
+- `ansible-lint .` passed with zero failures. It emitted the existing duplicate
+  collection and incompatible yamllint-configuration warnings.
+- `yamllint .` passed.
+- `molecule test -s create_user` passed convergence, idempotence, verification,
+  cleanup, and destruction using the checkout-built artefact. Its included task
+  paths resolved under this checkout's `.ansible/collections` directory. The
+  existing missing optional `requirements.yml` dependency entries were reported.
+
+## Review Windows Validation Blocker
+
+Proxmox was reachable and VM 101 was restored to `fresh`. The built artefact
+was installed into `Projects/AnsiblePlaybooks/.ansible/collections`, but the
+Windows playbook could not start because the required vault file is unreadable:
+
+```text
+Could not read vault password file '/home/jthomason/.vault_pass': [Errno 13] Permission denied
+```
+
+The file is owned by `root` with mode `0600`; `sudo -n` also failed because it
+requires a password. The VM was restored to `fresh` again after the attempt,
+and no WinRM task ran.
