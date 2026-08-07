@@ -11,7 +11,7 @@
     dest: /etc/apt/apt.conf.d/20auto-upgrades
     owner: root
     group: root
-    mode: "0644"
+    mode: '0644'
 
 - name: Configure unattended-upgrades policy
   ansible.builtin.template:
@@ -19,4 +19,4 @@
     dest: /etc/apt/apt.conf.d/52jtprojects-unattended-upgrades
     owner: root
     group: root
-    mode: "0644"
+    mode: '0644'
