@@ -2,11 +2,32 @@
 - name: Converge config_git scenario
   hosts: all
   become: true
-  gather_facts: false
+  gather_facts: true
   environment:
-    HOME: "/root"
+    HOME: '/root'
   vars:
-    config_git_user_name: "Molecule User"
-    config_git_user_email: "molecule@example.invalid"
+    config_git_user_name: 'Molecule User'
+    config_git_user_email: 'molecule@example.invalid'
   roles:
-    - role: "jaythomasonprojects.sys_admin.config_git"
+    - role: 'jaythomasonprojects.sys_admin.config_git'
+  tasks:
+    - name: Reject unsupported operating systems
+      block:
+        - name: Configure unsupported operating system
+          ansible.builtin.include_role:
+            name: 'jaythomasonprojects.sys_admin.config_git'
+          vars:
+            ansible_facts:
+              system: 'Darwin'
+      rescue:
+        - name: Record unsupported operating system rejection
+          ansible.builtin.set_fact:
+            config_git_unsupported_platform_failure: >-
+              {{ ansible_failed_result.msg | default('') }}
+
+    - name: Assert unsupported operating system was rejected
+      ansible.builtin.assert:
+        that:
+          - >-
+            config_git_unsupported_platform_failure ==
+            'config_git supports Linux hosts only.'

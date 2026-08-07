@@ -1,0 +1,27 @@
+---
+- name: Assert supported Linux distribution
+  ansible.builtin.assert:
+    that:
+      - ansible_facts.distribution in ['Debian', 'Ubuntu']
+    fail_msg: 'config_git supports Debian and Ubuntu hosts only.'
+
+- name: Install Git
+  ansible.builtin.apt:
+    name: 'git'
+    state: present
+    update_cache: true
+  become: true
+
+- name: Set git user name
+  community.general.git_config:
+    name: 'user.name'
+    scope: 'global'
+    value: '{{ config_git_user_name }}'
+  when: config_git_user_name | length > 0
+
+- name: Set git user email
+  community.general.git_config:
+    name: 'user.email'
+    scope: 'global'
+    value: '{{ config_git_user_email }}'
+  when: config_git_user_email | length > 0

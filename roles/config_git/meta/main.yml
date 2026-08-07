@@ -11,4 +11,6 @@ galaxy_info:
     - name: 'Ubuntu'
       versions:
         - 'all'
+collections:
+  - 'community.general'
 dependencies: []
