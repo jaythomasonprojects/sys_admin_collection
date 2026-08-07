@@ -1,0 +1,3 @@
+---
+- name: Configure SSH server
+  ansible.builtin.include_tasks: 'server.yml'

@@ -1,0 +1,47 @@
+---
+- name: Find cloud-init SSH configuration files
+  ansible.builtin.find:
+    paths: '/etc/ssh/sshd_config.d'
+    patterns:
+      - '*cloud-init*'
+      - '*cloudimg*'
+  register: config_ssh_cloudinit_conf
+  become: true
+
+- name: Delete cloud-init SSH configuration files
+  ansible.builtin.file:
+    path: '{{ item.path }}'
+    state: absent
+  loop: '{{ config_ssh_cloudinit_conf.files }}'
+  notify: Restart SSH service
+  become: true
+
+- name: Create SSH server drop-in directory
+  ansible.builtin.file:
+    path: '/etc/ssh/sshd_config.d'
+    state: directory
+    mode: '0755'
+  become: true
+
+- name: Deploy SSH server configuration
+  ansible.builtin.template:
+    src: 'sshd_custom.conf.j2'
+    dest: '/etc/ssh/sshd_config.d/99-custom.conf'
+    mode: '0640'
+  notify: Restart SSH service
+  become: true
+
+- name: Validate SSH server configuration
+  ansible.builtin.command:
+    argv:
+      - 'sshd'
+      - '-t'
+  changed_when: false
+  become: true
+
+- name: Enable and start SSH service
+  ansible.builtin.systemd_service:
+    name: '{{ config_ssh_service_name }}'
+    enabled: true
+    state: started
+  become: true

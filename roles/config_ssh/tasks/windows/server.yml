@@ -8,44 +8,21 @@
       Add-WindowsCapability -Online -Name $sshCap.Name
       Write-Output 'CAPABILITY_INSTALLED'
     }
-  become: true
+  register: config_ssh_install
   changed_when: >-
     config_ssh_install.stdout is search('CAPABILITY_INSTALLED')
-  register: config_ssh_install
+  become: true
 
-- name: Ensure sshd_config directory exists
+- name: Create SSH server configuration directory
   ansible.windows.win_file:
     path: 'C:\ProgramData\ssh'
     state: directory
 
-- name: Deploy Windows sshd_config
+- name: Deploy Windows SSH server configuration
   ansible.windows.win_template:
     dest: 'C:\ProgramData\ssh\sshd_config'
     src: 'sshd_config_win.j2'
   notify: Restart Windows SSH service
-
-- name: Ensure administrators_authorized_keys exists
-  ansible.windows.win_copy:
-    content: ''
-    dest: 'C:\ProgramData\ssh\administrators_authorized_keys'
-    force: false
-
-- name: Lock administrators_authorized_keys ACL
-  ansible.windows.win_powershell:
-    script: |
-      $path = 'C:\ProgramData\ssh\administrators_authorized_keys'
-      $acl = Get-Acl $path
-      $acl.SetAccessRuleProtection($true, $false)
-      $adminRule = New-Object `
-        System.Security.AccessControl.FileSystemAccessRule(
-          'Administrators', 'FullControl', 'Allow')
-      $systemRule = New-Object `
-        System.Security.AccessControl.FileSystemAccessRule(
-          'SYSTEM', 'FullControl', 'Allow')
-      $acl.AddAccessRule($adminRule)
-      $acl.AddAccessRule($systemRule)
-      Set-Acl $path $acl
-  changed_when: false
 
 - name: Create firewall rule for SSH port
   community.windows.win_firewall_rule:
@@ -57,7 +34,7 @@
     protocol: 'TCP'
     state: present
 
-- name: Start and enable sshd service
+- name: Enable and start SSH service
   ansible.windows.win_service:
     name: 'sshd'
     start_mode: auto

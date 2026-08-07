@@ -1,0 +1,6 @@
+---
+- name: Configure Linux accounts
+  ansible.builtin.include_tasks: 'accounts.yml'
+
+- name: Configure Linux authorised keys
+  ansible.builtin.include_tasks: 'authorized_keys.yml'

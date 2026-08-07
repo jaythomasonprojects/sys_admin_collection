@@ -8,8 +8,7 @@ config_ssh_sshd_listen_address: '0.0.0.0'
 # Authentication Settings
 config_ssh_sshd_login_grace_time: '1m'  # Time allowed for authentication
 # Allow root user to login (yes/no/prohibit-password)
-config_ssh_sshd_permit_root_login: >-
-  {{ sshd_permit_root_login | default('no') }}
+config_ssh_sshd_permit_root_login: 'no'
 # Maximum authentication attempts per connection
 config_ssh_sshd_max_auth_tries: 3
 

@@ -1,0 +1,9 @@
+---
+- name: Configure Windows accounts
+  ansible.builtin.include_tasks: 'accounts.yml'
+
+- name: Configure Windows authorised keys
+  ansible.builtin.include_tasks: 'authorized_keys.yml'
+
+- name: Configure Windows password policy
+  ansible.builtin.include_tasks: 'passwords.yml'

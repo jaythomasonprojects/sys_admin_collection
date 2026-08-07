@@ -1,0 +1,108 @@
+---
+- name: Collect Windows administrator accounts
+  ansible.builtin.set_fact:
+    create_user_windows_administrators: >-
+      {{ create_user_accounts
+         | selectattr('groups', 'defined')
+         | selectattr('groups', 'contains', 'Administrators')
+         | list }}
+
+- name: Collect Windows administrator authorised keys
+  ansible.builtin.set_fact:
+    create_user_windows_administrator_keys: >-
+      {{ create_user_windows_administrators
+         | map(attribute='ssh_authorized_keys', default=[])
+         | flatten
+         | list }}
+
+- name: Write administrator authorised keys
+  ansible.windows.win_copy:
+    content: '{{ create_user_windows_administrator_keys | join("\n") }}'
+    dest: 'C:\ProgramData\ssh\administrators_authorized_keys'
+  when: create_user_windows_administrators | length > 0
+
+- name: Set administrator authorised-key ACL
+  ansible.windows.win_powershell:
+    script: |
+      $path = 'C:\ProgramData\ssh\administrators_authorized_keys'
+      $administrators = New-Object `
+        -TypeName System.Security.Principal.SecurityIdentifier `
+        -ArgumentList 'S-1-5-32-544'
+      $system = New-Object `
+        -TypeName System.Security.Principal.SecurityIdentifier `
+        -ArgumentList 'S-1-5-18'
+      $acl = Get-Acl -LiteralPath $path
+      $acl.SetOwner($administrators)
+      $acl.SetAccessRuleProtection($true, $false)
+      foreach ($rule in @($acl.Access)) {
+        [void] $acl.RemoveAccessRuleSpecific($rule)
+      }
+      foreach ($sid in @($administrators, $system)) {
+        $rule = New-Object System.Security.AccessControl.FileSystemAccessRule(
+          $sid, 'FullControl', 'Allow')
+        [void] $acl.AddAccessRule($rule)
+      }
+      Set-Acl -LiteralPath $path -AclObject $acl
+  when: create_user_windows_administrators | length > 0
+  changed_when: false
+
+- name: Create standard-user SSH directories
+  ansible.windows.win_file:
+    path: 'C:\Users\{{ item.name }}\.ssh'
+    state: directory
+  loop: '{{ create_user_accounts }}'
+  when:
+    - item.ssh_authorized_keys is defined
+    - item.groups is not defined or 'Administrators' not in item.groups
+
+- name: Write standard-user authorised keys
+  ansible.windows.win_copy:
+    content: '{{ item.ssh_authorized_keys | join("\n") }}'
+    dest: 'C:\Users\{{ item.name }}\.ssh\authorized_keys'
+  loop: '{{ create_user_accounts }}'
+  when:
+    - item.ssh_authorized_keys is defined
+    - item.groups is not defined or 'Administrators' not in item.groups
+
+- name: Set standard-user SSH ACLs
+  ansible.windows.win_powershell:
+    script: |
+      [CmdletBinding()]
+      param (
+        [String] $UserName
+      )
+
+      $account = New-Object System.Security.Principal.NTAccount(
+        $env:COMPUTERNAME, $UserName)
+      $owner = $account.Translate(
+        [System.Security.Principal.SecurityIdentifier])
+      $administrators = New-Object `
+        -TypeName System.Security.Principal.SecurityIdentifier `
+        -ArgumentList 'S-1-5-32-544'
+      $system = New-Object `
+        -TypeName System.Security.Principal.SecurityIdentifier `
+        -ArgumentList 'S-1-5-18'
+      foreach ($path in @(
+        "C:\Users\$UserName\.ssh",
+        "C:\Users\$UserName\.ssh\authorized_keys"
+      )) {
+        $acl = Get-Acl -LiteralPath $path
+        $acl.SetOwner($owner)
+        $acl.SetAccessRuleProtection($true, $false)
+        foreach ($rule in @($acl.Access)) {
+          [void] $acl.RemoveAccessRuleSpecific($rule)
+        }
+        foreach ($sid in @($owner, $administrators, $system)) {
+          $rule = New-Object System.Security.AccessControl.FileSystemAccessRule(
+            $sid, 'FullControl', 'Allow')
+          [void] $acl.AddAccessRule($rule)
+        }
+        Set-Acl -LiteralPath $path -AclObject $acl
+      }
+    parameters:
+      UserName: '{{ item.name }}'
+  loop: '{{ create_user_accounts }}'
+  when:
+    - item.ssh_authorized_keys is defined
+    - item.groups is not defined or 'Administrators' not in item.groups
+  changed_when: false

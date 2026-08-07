@@ -15,5 +15,6 @@ galaxy_info:
       versions:
         - 'all'
 collections:
+  - 'ansible.posix'
   - 'ansible.windows'
 dependencies: []
