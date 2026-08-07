@@ -1,7 +1,7 @@
 ---
 galaxy_info:
   author: 'Jay Thomason'
-  description: 'Manage workstation kernel module hardening policy'
+  description: 'Manage opinionated USB mass-storage kernel module policy'
   license: 'MIT'
   min_ansible_version: '2.18'
   platforms:
