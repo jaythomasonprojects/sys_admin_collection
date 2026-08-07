@@ -440,7 +440,7 @@ Expected: FAIL because the current fixture suppresses package and service owners
 
 - [ ] **Step 3: Implement the cohesive Linux flow**
 
-Root main asserts Linux. Linux main rejects hosts outside the Debian/Ubuntu APT contract before package work. Move the current configuration flow to `linux/main.yml`, remove both management guards, always install `ntpsec`, and ensure the `ntp` service is enabled and started. Keep the handler unconditional when notified by configuration change.
+Root main asserts Linux. Linux main rejects hosts outside the Debian/Ubuntu APT contract before package work. Move the current configuration flow to `linux/main.yml`, remove both management guards, always install `ntpsec`, and ensure `ntpsec.service` is enabled and started. Keep the handler unconditional when notified by configuration change.
 
 - [ ] **Step 4: Rewrite metadata and README**
 

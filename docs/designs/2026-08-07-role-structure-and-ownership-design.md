@@ -221,7 +221,7 @@ Boolean that merely suppresses a required implementation step is removed.
 
 - Is Linux-only and remains specifically an `ntpsec` capability.
 - Always installs `ntpsec`, validates and writes its configuration, and applies it through the
-  service.
+  `ntpsec.service` service.
 - Removes `time_sync_manage_package` and `time_sync_manage_service`.
 - Remains in `linux/main.yml` while cohesive; file count is not a goal.
 
