@@ -1,6 +1,42 @@
 jaythomasonprojects.sys_admin changelog
 =======================================
 
+0.7.0
+-----
+
+- Renamed ``workstation_hardening`` to ``blacklist_kernel_modules``. Removed
+  ``workstation_hardening_blacklisted_modules`` and
+  ``workstation_hardening_apply_runtime_changes``; added
+  ``blacklist_kernel_modules_disable_usb_storage``. The replacement owns a
+  fixed persistent USB-storage policy for ``usb-storage`` and ``uas`` and
+  unloads both modules when enabled.
+- Replaced arbitrary existing-unit ``config_systemd_units`` policy with
+  ``config_systemd_units_disable_printer_services`` and
+  ``config_systemd_units_custom_services``. The role owns fixed printer-service
+  disabling and explicitly declared, role-marked custom unit files; it does not
+  manage arbitrary vendor units.
+- Replaced ``config_firewall_enable_icmp_v4`` and
+  ``config_firewall_enable_icmp_v6`` with ``config_firewall_allow_ping``. When
+  enabled, ``config_firewall`` owns both Windows ping rules with their required
+  protocols and ICMP types.
+- Removed ``time_sync_manage_package`` and ``time_sync_manage_service``.
+  ``time_sync`` now owns the Debian/Ubuntu ``ntpsec`` package, configuration,
+  and enabled service.
+- Removed ``mount_network_share_manage_packages``. Linux
+  ``mount_network_share`` now always owns its ``cifs-utils`` prerequisite.
+- Removed the unprefixed ``sshd_permit_root_login`` compatibility fallback.
+  ``config_ssh_sshd_permit_root_login`` now defaults directly to ``'no'``.
+- Moved Windows authorised-key contents and ACL ownership from ``config_ssh``
+  to ``create_user``. ``config_ssh`` owns complete server reachability:
+  OpenSSH Server, validated configuration, the exact firewall rule, running
+  automatic service, and the PowerShell default shell.
+- Made ``config_git`` own the Debian/Ubuntu ``git`` package. ``install_app``
+  now owns native npm and Flatpak prerequisites when those channels are
+  requested; ``auto_updates`` retains persistent Linux policy and immediate
+  Windows update installation.
+- All roles now use a root platform validator and platform-specific task tree;
+  unsupported platforms fail explicitly instead of silently skipping policy.
+
 0.6.0
 -----
 
