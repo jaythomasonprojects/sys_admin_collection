@@ -183,7 +183,8 @@ Boolean that merely suppresses a required implementation step is removed.
   `config_systemd_units_custom_services` is a list of definitions requiring `name` and
   `unit_content`; definitions may select `state`, `enabled`, and `unit_file_state`. The role writes
   files beneath `/etc/systemd/system`, reloads systemd when files change, and applies their desired
-  lifecycle. Removal is permitted only for units created through this interface.
+  lifecycle. It prefixes each managed unit with a fixed ownership marker. Removal is permitted only
+  when the target file carries that marker.
 - Removes the existing `config_systemd_units` pass-through list and its support for starting,
   stopping, enabling, disabling, or masking arbitrary externally owned units.
 - Defaults printer-service disabling to enabled, preserving the collection's opinionated workstation

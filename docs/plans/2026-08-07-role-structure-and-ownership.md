@@ -172,7 +172,7 @@ Keep this list internal to the task file.
 
 - [ ] **Step 5: Implement role-owned custom services**
 
-Validate every item before mutation. Require `name` ending in `.service` and non-empty `unit_content`; permit only `enabled`, `name`, `state`, `unit_content`, and `unit_file_state`. Reject duplicates and printer names. Write present files under `/etc/systemd/system` as `root:root` mode `0644`, reload once after file changes, and apply optional `started|stopped` and `enabled`. For absent files, stop and disable an existing role-owned path before removal. Never inspect or mutate arbitrary vendor units.
+Validate every item before mutation. Require `name` ending in `.service` and non-empty `unit_content`; permit only `enabled`, `name`, `state`, `unit_content`, and `unit_file_state`. Reject duplicates and printer names. Prefix every written file with the fixed ownership marker `# Ansible managed: config_systemd_units custom service.` before `unit_content`, then write it under `/etc/systemd/system` as `root:root` mode `0644`, reload once after file changes, and apply optional `started|stopped` and `enabled`. For absent files, read the target file, reject it unless it has the exact marker, then stop and disable it before removal. Never inspect or mutate arbitrary vendor units.
 
 - [ ] **Step 6: Rewrite metadata and README**
 
