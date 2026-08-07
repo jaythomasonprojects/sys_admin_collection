@@ -38,13 +38,9 @@
       mount_network_share supports Linux and Windows hosts only.
 
 - name: Manage network shares on Linux hosts
-  ansible.builtin.include_tasks: 'linux.yml'
+  ansible.builtin.include_tasks: 'linux/main.yml'
   when: ansible_facts.system == 'Linux'
 
 - name: Manage network shares on Windows hosts
-  ansible.builtin.include_tasks: 'windows_share.yml'
-  loop: '{{ mount_network_share_shares }}'
-  loop_control:
-    loop_var: mount_network_share_item
-    label: '{{ mount_network_share_item.name }}'
+  ansible.builtin.include_tasks: 'windows/main.yml'
   when: ansible_facts.os_family == 'Windows'
