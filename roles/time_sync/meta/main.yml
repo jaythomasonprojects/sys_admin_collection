@@ -1,7 +1,7 @@
 ---
 galaxy_info:
   author: 'Jay Thomason'
-  description: 'Configure ntpsec with a caller-provided upstream NTP server'
+  description: 'Manage ntpsec time synchronisation policy on Debian and Ubuntu'
   license: 'MIT'
   min_ansible_version: '2.18'
   platforms:

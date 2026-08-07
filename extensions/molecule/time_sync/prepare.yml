@@ -4,16 +4,6 @@
   become: true
   gather_facts: false
   tasks:
-    - name: Ensure ntpsec configuration directory exists
-      ansible.builtin.file:
-        path: '/etc/ntpsec'
-        state: directory
-        mode: '0755'
-
-    - name: Seed ntpsec configuration file
-      ansible.builtin.copy:
-        dest: '/etc/ntpsec/ntp.conf'
-        mode: '0644'
-        content: |
-          driftfile /var/lib/ntpsec/ntp.drift
-          pool 0.ubuntu.pool.ntp.org iburst
+    - name: Refresh APT package metadata
+      ansible.builtin.apt:
+        update_cache: true

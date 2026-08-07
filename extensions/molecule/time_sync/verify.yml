@@ -4,6 +4,24 @@
   become: true
   gather_facts: false
   tasks:
+    - name: Inspect ntpsec package status  # noqa: command-instead-of-module
+      ansible.builtin.command:
+        cmd: 'dpkg-query --show --showformat=${db:Status-Status} ntpsec'
+      register: time_sync_package_state
+      changed_when: false
+
+    - name: Inspect ntpsec service activity  # noqa: command-instead-of-module
+      ansible.builtin.command:
+        cmd: 'systemctl is-active ntpsec'
+      register: time_sync_service_activity
+      changed_when: false
+
+    - name: Inspect ntpsec service enablement  # noqa: command-instead-of-module
+      ansible.builtin.command:
+        cmd: 'systemctl is-enabled ntpsec'
+      register: time_sync_service_enablement
+      changed_when: false
+
     - name: Gather rendered ntp config state
       ansible.builtin.stat:
         path: '/etc/ntpsec/ntp.conf'
@@ -21,6 +39,9 @@
     - name: Assert ntp configuration content
       ansible.builtin.assert:
         that:
+          - time_sync_package_state.stdout == 'installed'
+          - time_sync_service_activity.stdout == 'active'
+          - time_sync_service_enablement.stdout == 'enabled'
           - time_sync_config_state.stat.exists
           - time_sync_config_state.stat.pw_name == 'root'
           - time_sync_config_state.stat.gr_name == 'root'
