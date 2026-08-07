@@ -231,9 +231,9 @@ Boolean that merely suppresses a required implementation step is removed.
 - Is Linux-only and exposes supported module policies as explicit Boolean capabilities rather than
   accepting arbitrary module names.
 - Initially supports only `blacklist_kernel_modules_disable_usb_storage`, enabled by default.
-- Uses `tasks/linux/usb_storage.yml` to persistently blacklist the `usb-storage` kernel module and
-  unload it when already loaded. This disables USB mass-storage devices without disabling USB input
-  devices or the wider USB controller stack.
+- Uses `tasks/linux/usb_storage.yml` to persistently blacklist the `usb-storage` and `uas` kernel
+  modules and unload either when already loaded. This disables USB mass-storage devices without
+  disabling USB input devices or the wider USB controller stack.
 - Removes `workstation_hardening_blacklisted_modules` and
   `workstation_hardening_apply_runtime_changes` without aliases. The role does not offer a switch
   that leaves a selected module policy unapplied until reboot.
