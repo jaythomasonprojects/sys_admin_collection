@@ -9,3 +9,24 @@
     config_desktop_qt5ct: true
   roles:
     - role: "jaythomasonprojects.sys_admin.config_desktop"
+  tasks:
+    - name: Reject unsupported operating systems
+      block:
+        - name: Configure unsupported operating system
+          ansible.builtin.include_role:
+            name: 'jaythomasonprojects.sys_admin.config_desktop'
+          vars:
+            ansible_facts:
+              system: 'Darwin'
+      rescue:
+        - name: Record unsupported operating system rejection
+          ansible.builtin.set_fact:
+            config_desktop_unsupported_platform_failure: >-
+              {{ ansible_failed_result.msg | default('') }}
+
+    - name: Assert unsupported operating system was rejected
+      ansible.builtin.assert:
+        that:
+          - >-
+            config_desktop_unsupported_platform_failure ==
+            'config_desktop supports Linux hosts only.'
