@@ -1,0 +1,32 @@
+---
+- name: Install native packages
+  vars:
+    install_app_channel_packages: >-
+      {{
+        (['npm']
+        if install_app_npm_packages | length > 0
+        and ansible_facts.pkg_mgr == 'apt' else [])
+        + (['nodejs-npm']
+        if install_app_npm_packages | length > 0
+        and ansible_facts.pkg_mgr in ['dnf', 'dnf5'] else [])
+        + (['flatpak'] if install_app_flatpaks | length > 0 else [])
+      }}
+  block:
+    - name: Update APT cache
+      ansible.builtin.apt:
+        cache_valid_time: 3600
+        update_cache: true
+      when:
+        - >-
+          (install_app_packages + install_app_channel_packages) | unique
+          | length > 0
+        - ansible_facts.pkg_mgr | default('') == 'apt'
+
+    - name: Install native packages
+      ansible.builtin.package:
+        name: >-
+          {{ (install_app_packages + install_app_channel_packages) | unique }}
+        state: present
+      when: >-
+        (install_app_packages + install_app_channel_packages) | unique
+        | length > 0

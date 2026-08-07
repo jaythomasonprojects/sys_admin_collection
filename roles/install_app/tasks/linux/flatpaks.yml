@@ -1,5 +1,5 @@
 ---
-- name: Check Flatpak availability
+- name: Check Flatpak executable
   ansible.builtin.command:
     argv:
       - 'flatpak'
@@ -9,13 +9,12 @@
   failed_when: false
   register: install_app_flatpak_version
 
-- name: Require Flatpak for requested applications
+- name: Validate Flatpak executable
   ansible.builtin.assert:
     that:
-      - install_app_flatpak_version.rc | default(1) == 0
+      - install_app_flatpak_version.rc == 0
     fail_msg: >-
-      install_app requires Flatpak to be installed when
-      install_app_flatpaks is not empty.
+      install_app could not run Flatpak after installing its prerequisite.
 
 - name: Ensure Flathub is configured
   community.general.flatpak_remote:

@@ -1,6 +1,6 @@
 ---
-# win_chocolatey auto-installs Chocolatey if it is missing from the
-# system, so a separate bootstrap step is not needed.
+# win_chocolatey installs Chocolatey when it is absent, so the role does not
+# need a separate bootstrap task.
 - name: Install Chocolatey packages
   chocolatey.chocolatey.win_chocolatey:
     name: '{{ install_app_packages }}'

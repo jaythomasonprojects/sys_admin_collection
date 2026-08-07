@@ -1,7 +1,8 @@
 ---
 galaxy_info:
   author: 'Jay Thomason'
-  description: 'Install OS packages and Flatpak applications'
+  description: >-
+    Install applications through native, Debian, npm, and Flatpak channels
   license: 'MIT'
   min_ansible_version: '2.18'
   platforms:

@@ -56,9 +56,9 @@ Future scenarios should satisfy these assumptions before they copy the
 
 ### `install_app` Flatpak coverage
 
-The first supported `install_app` scenario intentionally proves only native OS
-package installation. Promote Flatpak coverage only after the harness has all of
-the following:
+The first supported `install_app` scenario proves native package installation,
+npm prerequisite ownership, and Debian installer validation and skipping.
+Promote Flatpak coverage only after the harness has all of the following:
 
 1. an image with a working `flatpak` binary under Docker
 2. a predictable Flatpak remote that can be seeded during the scenario
