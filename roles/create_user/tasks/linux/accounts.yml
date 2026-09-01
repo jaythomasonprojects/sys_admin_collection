@@ -15,3 +15,4 @@
   loop: '{{ create_user_accounts }}'
   when: create_user_accounts | length > 0
   become: true
+  no_log: true

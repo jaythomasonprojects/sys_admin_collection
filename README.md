@@ -30,7 +30,7 @@ Run all scenarios:
 . .venv/bin/activate
 ansible-lint .
 yamllint .
-ANSIBLE_CONFIG=ansible.cfg molecule test --all
+ANSIBLE_CONFIG=ansible.cfg MOLECULE_GLOB='extensions/molecule/**/molecule.yml' molecule test --all
 ```
 
 Scenario names are the directories under `extensions/molecule/`. To run or iterate on one:

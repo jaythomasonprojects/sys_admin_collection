@@ -82,4 +82,7 @@ uses interactive `runas` so that user's Credential Manager profile receives a
 local `domain_password` entry before drive mapping. Windows permits one such
 credential per server per user, so every share for a given server and user must
 use the same credentials. Removing a mapped drive intentionally retains the
-server credential because another share can still use it.
+server credential because another share can still use it. The credential secret
+refreshes on every run so inventory password changes take effect; Windows does
+not expose stored secrets for comparison, so this refresh is reported as a
+change even when the mapped drives are already compliant.

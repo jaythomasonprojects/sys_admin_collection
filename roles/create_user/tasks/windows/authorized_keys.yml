@@ -80,6 +80,7 @@
   when:
     - item.ssh_authorized_keys is defined
     - item.groups is not defined or 'Administrators' not in item.groups
+  no_log: true
 
 - name: Write standard-user authorised keys
   ansible.windows.win_copy:
@@ -89,6 +90,7 @@
   when:
     - item.ssh_authorized_keys is defined
     - item.groups is not defined or 'Administrators' not in item.groups
+  no_log: true
 
 - name: Set standard-user SSH ACLs
   ansible.windows.win_powershell:
@@ -159,3 +161,4 @@
   when:
     - item.ssh_authorized_keys is defined
     - item.groups is not defined or 'Administrators' not in item.groups
+  no_log: true

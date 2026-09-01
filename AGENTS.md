@@ -27,7 +27,7 @@ For Ansible guidance use the `ansible-expert` skill.
 ansible-lint .
 yamllint .
 ANSIBLE_CONFIG=ansible.cfg molecule test -s <scenario>   # per-change gate
-ANSIBLE_CONFIG=ansible.cfg molecule test --all           # pre-publish gate only
+ANSIBLE_CONFIG=ansible.cfg MOLECULE_GLOB='extensions/molecule/**/molecule.yml' molecule test --all  # pre-publish gate only
 ansible-galaxy collection build --force --output-path dist
 ansible-galaxy collection publish dist/jaythomasonprojects-sys_admin-*.tar.gz \
   --token "$(tr -d '\n' < ~/.ansible/galaxy_token)"

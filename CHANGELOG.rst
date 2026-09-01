@@ -1,6 +1,12 @@
 jaythomasonprojects.sys_admin changelog
 =======================================
 
+0.7.1
+-----
+
+- Prevented user account passwords and SSH keys appearing in task output when
+  account or authorised-key tasks are skipped or fail.
+
 0.7.0
 -----
 

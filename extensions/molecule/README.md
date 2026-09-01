@@ -73,13 +73,14 @@ testing, then build:
 ```bash
 ansible-lint .
 yamllint .
-ANSIBLE_CONFIG=ansible.cfg molecule test --all
+ANSIBLE_CONFIG=ansible.cfg MOLECULE_GLOB='extensions/molecule/**/molecule.yml' molecule test --all
 ansible-galaxy collection build --force
 ```
 
-`--all` discovers whatever scenarios exist under `extensions/molecule/`, so it
-stays correct as roles are added or removed. While iterating, run a single
-scenario with `ANSIBLE_CONFIG=ansible.cfg molecule test -s <scenario>`.
+`MOLECULE_GLOB` makes `--all` discover whatever scenarios exist under
+`extensions/molecule/`, so it stays correct as roles are added or removed.
+While iterating, run a single scenario with
+`ANSIBLE_CONFIG=ansible.cfg molecule test -s <scenario>`.
 
 Complete Windows integration testing as described in `AGENTS.md` before the
 collection build.
