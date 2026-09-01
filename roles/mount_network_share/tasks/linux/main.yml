@@ -1,0 +1,12 @@
+---
+- name: Install SMB/CIFS mount packages
+  ansible.builtin.package:
+    name: 'cifs-utils'
+    state: present
+
+- name: Manage SMB/CIFS shares
+  ansible.builtin.include_tasks: 'share.yml'
+  loop: '{{ mount_network_share_shares }}'
+  loop_control:
+    loop_var: mount_network_share_item
+    label: '{{ mount_network_share_item.name }}'

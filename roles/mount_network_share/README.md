@@ -1,45 +1,85 @@
 # mount_network_share
 
-Manage SMB/CIFS fstab entries, mount point directories, and optional
-credential files from `mount_network_share_shares`.
+Manages SMB/CIFS network-share policy on Linux and Windows hosts. The role owns
+the Linux `cifs-utils` prerequisite, Linux mount points and `/etc/fstab`
+entries, credential files, and Windows mapped drives and Credential Manager
+entries.
+
+## Supported platforms
+
+- Linux: mounts SMB/CIFS shares at filesystem paths.
+- Windows: maps SMB shares to bare drive letters such as `Z`.
+
+The role fails on other platforms.
+
+## Implementation map
+
+- `tasks/main.yml`: validates the share schema and dispatches once to the
+  supported platform flow.
+- `tasks/linux/main.yml`: installs `cifs-utils` and processes each Linux share.
+- `tasks/linux/share.yml`: manages mount points, credentials, and fstab.
+- `tasks/windows/main.yml`: processes each Windows share.
+- `tasks/windows/share.yml`: persists SMB credentials and maps drive letters.
 
 ## Variables
 
-- `mount_network_share_manage_packages`: install `cifs-utils`. Default: `true`.
-- `mount_network_share_reload_remote_fs`: restart `remote-fs.target` after
-  share changes. Default: `false`.
-- `mount_network_share_shares`: list of share definitions. Defaults to `[]`.
-  Each item supports:
-  - `name`: label used for the credential filename and task output.
-  - `server`: SMB server hostname or address.
-  - `share`: remote share name.
-   - `mount_point`: local mount path on Linux, or a bare drive letter such as
-     `Z` on Windows.
-  - `state`: mount state for `ansible.posix.mount`. Defaults to `present`.
-  - `owner`, `group`, `mode`: mount point ownership and mode.
-  - `fstab_options`: option list or comma-separated string. Defaults to
-    `_netdev,nofail,iocharset=utf8`.
-  - `username`, `password`: optional SMB credentials; define both or neither.
-  - `credentials_path`: optional path for workstation `.smbcredentials` files
-    or system paths such as `/etc/samba/credentials/<name>`.
-  - `credentials_owner`, `credentials_group`, `credentials_mode`: optional
-    ownership and mode for the credential file.
+```yaml
+mount_network_share_reload_remote_fs: false
+mount_network_share_shares:
+  - name: 'workstation_data'
+    server: 'files.example.invalid'
+    share: 'Data'
+    mount_point: '/mnt/workstation-data'
+    owner: 'molecule'
+    group: 'molecule'
+    mode: '0750'
+    fstab_options:
+      - '_netdev'
+      - 'nofail'
+    credentials_path: '/home/molecule/.smbcredentials'
+    credentials_owner: 'molecule'
+    credentials_group: 'molecule'
+    credentials_mode: '0600'
+    username: 'molecule'
+    password: '{{ vault_mount_network_share_password }}'
+```
 
-Passwords should come from Ansible Vault or another secret source. Set
-`credentials_path` per share for workstation `.smbcredentials` files or
-system-wide paths such as `/etc/samba/credentials/<name>`.
+`mount_network_share_shares` defaults to `[]`. Every entry must define
+`name`, `server`, `share`, and `mount_point`. Define `username` and `password`
+together as non-empty strings, or omit both.
 
-## Windows credentials
+On Linux, `mount_point` is a filesystem path. `state` is passed to
+`ansible.posix.mount` and defaults to `present`; `absent` and
+`absent_from_fstab` remove the managed credential file when credentials were
+declared. `owner`, `group`, and `mode` configure present mount points. Set
+`fstab_options` as a list or comma-separated string; it defaults to
+`_netdev,nofail,iocharset=utf8`.
 
-For a Windows share with `username` and `password`, the role saves a local
-Credential Manager `domain_password` entry for `server` in the configured
-user's profile before mapping the drive. Windows then uses that saved SMB
-credential for the mapping, so the drive can continue to connect after the
-local Windows account password changes.
+With credentials, Linux writes a file at `credentials_path`, defaulting to
+`/etc/samba/credentials/<name>`. `credentials_owner`, `credentials_group`, and
+`credentials_mode` default to `root`, `root`, and `0600`. Keep passwords in
+Ansible Vault or another secret source. A credential path must be suitable for
+the configured account and should not be shared by shares requiring different
+credentials.
 
-Removing a drive with `state: absent` does not remove its saved server
-credential, because another share on that server may use it. Credential
-Manager permits one `domain_password` credential per server for each user. If
-multiple share definitions use the same server with different credentials, the
-last share processed replaces the credential and is used by all shares on that
-server.
+On Windows, `mount_point` must be a bare mapped-drive letter. The role maps
+`\\server\share`; Linux-only fstab and credential-path settings do not apply.
+
+## Activation policy
+
+`mount_network_share_reload_remote_fs` defaults to `false`. Set it to `true`
+to restart `remote-fs.target` after a Linux credential, fstab, or mount change.
+The role does not mount a remote filesystem merely to validate connectivity.
+
+## Invariants and migration
+
+Linux package installation is mandatory. The
+`mount_network_share_manage_packages` opt-out has been removed, so remove it
+from inventories and playbooks.
+
+Windows SMB authentication is coupled to the configured local user. The role
+uses interactive `runas` so that user's Credential Manager profile receives a
+local `domain_password` entry before drive mapping. Windows permits one such
+credential per server per user, so every share for a given server and user must
+use the same credentials. Removing a mapped drive intentionally retains the
+server credential because another share can still use it.

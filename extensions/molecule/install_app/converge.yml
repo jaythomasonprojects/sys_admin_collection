@@ -1,30 +1,41 @@
 ---
-- name: Verify missing npm dependency contract
+- name: Verify npm prerequisite ownership
   hosts: npm_missing
   become: true
   gather_facts: true
   vars:
+    install_app_debs: []
+    install_app_flatpaks: []
+    install_app_manage_flatpak_remote: false
     install_app_npm_packages:
       - 'is-number'
+    install_app_packages: []
   tasks:
-    - name: Request npm application without npm
-      block:
-        - name: Run install_app without npm
-          ansible.builtin.include_role:
-            name: 'jaythomasonprojects.sys_admin.install_app'
-      rescue:
-        - name: Record missing npm dependency rejection
-          ansible.builtin.set_fact:
-            install_app_npm_dependency_failure: >-
-              {{ ansible_failed_result.msg | default('') }}
+    - name: Run install_app with an npm application
+      ansible.builtin.include_role:
+        name: 'jaythomasonprojects.sys_admin.install_app'
 
-    - name: Assert missing npm dependency was rejected
+    - name: Gather package facts
+      ansible.builtin.package_facts:
+
+    - name: Check npm executable
+      ansible.builtin.command:
+        argv:
+          - 'npm'
+          - '--version'
+      changed_when: false
+      register: install_app_npm_version
+
+    - name: Assert npm prerequisite installation
       ansible.builtin.assert:
         that:
           - >-
-            install_app_npm_dependency_failure ==
-            'Global npm applications require npm to be installed as a
-            native package and available in PATH.'
+            'npm' in ansible_facts.packages
+            or 'nodejs-npm' in ansible_facts.packages
+          - install_app_npm_version.rc == 0
+        fail_msg: >-
+          install_app did not install its npm prerequisite before installing
+          requested npm applications.
 
 - name: Converge install_app scenario
   hosts: npm_success
@@ -37,20 +48,16 @@
       - 'is-number'
     install_app_packages:
       - 'jq'
-      - 'npm'
   pre_tasks:
-    - name: Set Debian fixture list for APT hosts
+    - name: Set Debian fixture list
       ansible.builtin.set_fact:
         install_app_debs:
           - name: 'install-app-fixture'
-            deb: '/usr/local/src/install-app-fixture.deb'
+            deb: >-
+              {{ '/usr/local/src/install-app-fixture.deb'
+              if ansible_facts.pkg_mgr == 'apt'
+              else '/usr/local/src/unavailable-install-app-fixture.deb' }}
             creates: '/usr/local/bin/install-app-fixture'
-      when: ansible_facts.pkg_mgr == 'apt'
-
-    - name: Set empty Debian fixture list for non-APT hosts
-      ansible.builtin.set_fact:
-        install_app_debs: []
-      when: ansible_facts.pkg_mgr != 'apt'
   roles:
     - role: 'jaythomasonprojects.sys_admin.install_app'
   tasks:
@@ -80,30 +87,34 @@
             install_app_unsupported_platform_failure ==
             'install_app supports Linux and Windows hosts only.'
 
-    - name: Reject Flatpak requests when Flatpak is unavailable
+    - name: Reject invalid Debian package installer definitions
       block:
-        - name: Request a Flatpak without its prerequisite
+        - name: Run install_app with an invalid Debian package definition
           ansible.builtin.include_role:
             name: 'jaythomasonprojects.sys_admin.install_app'
           vars:
-            install_app_debs: []
+            install_app_debs:
+              - name: 'invalid-install-app-fixture'
             install_app_flatpaks:
-              - 'org.example.MissingPrerequisite'
+              []
             install_app_manage_flatpak_remote: false
+            install_app_npm_packages: []
             install_app_packages: []
       rescue:
-        - name: Record missing Flatpak rejection
+        - name: Record invalid Debian package definition rejection
           ansible.builtin.set_fact:
-            install_app_missing_flatpak_failure: >-
+            install_app_invalid_deb_failure: >-
               {{ ansible_failed_result.msg | default('') }}
 
-    - name: Assert missing Flatpak was rejected
+    - name: Assert invalid Debian package definition was rejected
       ansible.builtin.assert:
         that:
           - >-
-            (install_app_missing_flatpak_failure | default('')) ==
-            'install_app requires Flatpak to be installed when '
-            ~ 'install_app_flatpaks is not empty.'
+            install_app_invalid_deb_failure | default('') ==
+            'Each install_app_debs item must define either src, url, or deb. '
+            ~ 'Items that define src or url must also define dest. Do not '
+            ~ 'define both src and url.'
+      when: ansible_facts.pkg_mgr == 'apt'
 
     - name: Reject versioned npm package requests
       block:

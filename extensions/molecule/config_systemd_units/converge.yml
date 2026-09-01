@@ -3,20 +3,10 @@
   hosts: all
   gather_facts: true
   vars:
-    config_systemd_units:
-      - name: 'cups-browsed.service'
-        state: 'stopped'
-        enabled: false
-      - name: 'avahi-daemon.socket'
-        state: 'stopped'
-      - name: 'avahi-daemon.service'
-        state: 'stopped'
-        enabled: false
-      - name: 'molecule-mask.service'
-        state: 'stopped'
-        enabled: false
-        masked: true
+    config_systemd_units_custom_services:
       - name: 'molecule-created.service'
+        enabled: true
+        state: 'started'
         unit_content: |
           [Unit]
           Description=Molecule role-created fixture
@@ -26,97 +16,131 @@
 
           [Install]
           WantedBy=multi-user.target
-        state: 'started'
-        enabled: true
       - name: 'molecule-remove.service'
         unit_file_state: 'absent'
-        state: 'stopped'
-        enabled: false
+        unit_content: |
+          [Service]
+          ExecStart=/usr/bin/true
   roles:
     - role: 'jaythomasonprojects.sys_admin.config_systemd_units'
 
   tasks:
-    - name: Initialise policy rejection results
+    - name: Initialise custom-service rejection results
       ansible.builtin.set_fact:
-        config_systemd_units_invalid_rejected: false
-        config_systemd_units_missing_masked_rejected: false
-        config_systemd_units_missing_rejected: false
-        config_systemd_units_missing_removal_rejected: false
+        config_systemd_units_absent_lifecycle_rejected: false
+        config_systemd_units_duplicate_rejected: false
+        config_systemd_units_external_removal_rejected: false
+        config_systemd_units_missing_content_rejected: false
+        config_systemd_units_printer_name_rejected: false
+        config_systemd_units_unknown_key_rejected: false
 
-    - name: Exercise missing external unit failure
+    - name: Exercise missing unit content failure
       block:
-        - name: Apply missing external unit policy
+        - name: Apply service without unit content
           ansible.builtin.include_role:
             name: 'jaythomasonprojects.sys_admin.config_systemd_units'
           vars:
-            config_systemd_units:
-              - name: 'molecule-missing.service'
-                state: 'stopped'
+            config_systemd_units_custom_services:
+              - name: 'molecule-missing-content.service'
       rescue:
-        - name: Record missing unit rejection
+        - name: Record missing unit content rejection
           ansible.builtin.set_fact:
-            config_systemd_units_missing_rejected: true
+            config_systemd_units_missing_content_rejected: true
 
-    - name: Assert missing external unit was rejected
-      ansible.builtin.assert:
-        that:
-          - config_systemd_units_missing_rejected | default(false)
-
-    - name: Exercise missing masked unit failure
+    - name: Exercise unknown key failure
       block:
-        - name: Apply missing masked unit policy
+        - name: Apply service with masked policy
           ansible.builtin.include_role:
             name: 'jaythomasonprojects.sys_admin.config_systemd_units'
           vars:
-            config_systemd_units:
-              - name: 'molecule-missing-mask.service'
+            config_systemd_units_custom_services:
+              - name: 'molecule-unknown-key.service'
                 masked: true
+                unit_content: |
+                  [Service]
+                  ExecStart=/usr/bin/true
       rescue:
-        - name: Record missing masked unit rejection
+        - name: Record unknown key rejection
           ansible.builtin.set_fact:
-            config_systemd_units_missing_masked_rejected: true
+            config_systemd_units_unknown_key_rejected: true
 
-    - name: Exercise missing unit removal failure
+    - name: Exercise duplicate name failure
       block:
-        - name: Apply missing unit removal policy
+        - name: Apply services with duplicate names
           ansible.builtin.include_role:
             name: 'jaythomasonprojects.sys_admin.config_systemd_units'
           vars:
-            config_systemd_units:
-              - name: 'molecule-missing-remove.service'
+            config_systemd_units_custom_services:
+              - name: 'molecule-duplicate.service'
+                unit_content: |
+                  [Service]
+                  ExecStart=/usr/bin/true
+              - name: 'molecule-duplicate.service'
+                unit_content: |
+                  [Service]
+                  ExecStart=/usr/bin/true
+      rescue:
+        - name: Record duplicate name rejection
+          ansible.builtin.set_fact:
+            config_systemd_units_duplicate_rejected: true
+
+    - name: Exercise printer policy name failure
+      block:
+        - name: Apply printer-named custom service
+          ansible.builtin.include_role:
+            name: 'jaythomasonprojects.sys_admin.config_systemd_units'
+          vars:
+            config_systemd_units_custom_services:
+              - name: 'avahi-daemon.service'
+                unit_content: |
+                  [Service]
+                  ExecStart=/usr/bin/true
+      rescue:
+        - name: Record printer policy name rejection
+          ansible.builtin.set_fact:
+            config_systemd_units_printer_name_rejected: true
+
+    - name: Exercise absent lifecycle failure
+      block:
+        - name: Remove service with contradictory lifecycle
+          ansible.builtin.include_role:
+            name: 'jaythomasonprojects.sys_admin.config_systemd_units'
+          vars:
+            config_systemd_units_custom_services:
+              - name: 'molecule-absent-lifecycle.service'
+                enabled: true
                 unit_file_state: 'absent'
-                state: 'stopped'
-                enabled: false
+                unit_content: |
+                  [Service]
+                  ExecStart=/usr/bin/true
       rescue:
-        - name: Record missing unit removal rejection
+        - name: Record absent lifecycle rejection
           ansible.builtin.set_fact:
-            config_systemd_units_missing_removal_rejected: true
+            config_systemd_units_absent_lifecycle_rejected: true
 
-    - name: Assert missing unit removal was rejected
-      ansible.builtin.assert:
-        that:
-          - config_systemd_units_missing_removal_rejected | default(false)
-
-    - name: Assert missing masked unit was rejected
-      ansible.builtin.assert:
-        that:
-          - config_systemd_units_missing_masked_rejected | default(false)
-
-    - name: Exercise invalid policy failure
+    - name: Exercise external service removal failure
       block:
-        - name: Apply invalid unit policy
+        - name: Remove externally authored service
           ansible.builtin.include_role:
             name: 'jaythomasonprojects.sys_admin.config_systemd_units'
           vars:
-            config_systemd_units:
-              - name: 'cups-browsed.service'
-                unsupported: true
+            config_systemd_units_custom_services:
+              - name: 'molecule-external.service'
+                unit_file_state: 'absent'
+                unit_content: |
+                  [Service]
+                  ExecStart=/usr/bin/true
       rescue:
-        - name: Record invalid policy rejection
+        - name: Record external service removal rejection
           ansible.builtin.set_fact:
-            config_systemd_units_invalid_rejected: true
+            config_systemd_units_external_removal_rejected: true
 
-    - name: Assert invalid policy was rejected
+    - name: Assert custom-service validation rejections
       ansible.builtin.assert:
         that:
-          - config_systemd_units_invalid_rejected | default(false)
+          - config_systemd_units_absent_lifecycle_rejected
+          - config_systemd_units_duplicate_rejected
+          - config_systemd_units_external_removal_rejected
+          - config_systemd_units_missing_content_rejected
+          - config_systemd_units_printer_name_rejected
+          - config_systemd_units_unknown_key_rejected

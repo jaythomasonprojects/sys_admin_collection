@@ -1,14 +1,9 @@
 ---
-- name: Set git user name
-  community.general.git_config:
-    name: 'user.name'
-    scope: 'global'
-    value: "{{ config_git_user_name }}"
-  when: config_git_user_name | length > 0
+- name: Assert supported platform
+  ansible.builtin.assert:
+    that:
+      - ansible_facts.system == 'Linux'
+    fail_msg: 'config_git supports Linux hosts only.'
 
-- name: Set git user email
-  community.general.git_config:
-    name: 'user.email'
-    scope: 'global'
-    value: "{{ config_git_user_email }}"
-  when: config_git_user_email | length > 0
+- name: Configure Git on Linux hosts
+  ansible.builtin.import_tasks: 'linux/main.yml'

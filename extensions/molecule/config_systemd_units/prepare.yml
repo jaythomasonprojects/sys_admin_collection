@@ -1,28 +1,19 @@
 ---
 - name: Prepare config_systemd_units scenario
   hosts: all
-  gather_facts: false
+  gather_facts: true
   vars:
     config_systemd_units_fixture_dir: '/etc/systemd/system'
-    config_systemd_units_vendor_fixture_dir: '/usr/lib/systemd/system'
-    config_systemd_units_fixtures:
-      - name: 'cups-browsed.service'
-        description: 'Molecule cups-browsed fixture'
+    config_systemd_units_active_fixtures:
       - name: 'avahi-daemon.service'
-        description: 'Molecule avahi-daemon fixture'
+        description: 'Molecule avahi service fixture'
       - name: 'avahi-daemon.socket'
         description: 'Molecule avahi socket fixture'
-      - name: 'molecule-mask.service'
-        description: 'Molecule masking fixture'
-      - name: 'molecule-remove.service'
-        description: 'Molecule removal fixture'
+      - name: 'molecule-external.service'
+        description: 'Molecule external fixture'
   tasks:
     - name: Seed service fixtures
       ansible.builtin.copy:
-        dest: '{{ config_systemd_units_fixture_dir }}/{{ item.name }}'
-        owner: 'root'
-        group: 'root'
-        mode: '0644'
         content: |
           [Unit]
           Description={{ item.description }}
@@ -32,54 +23,17 @@
 
           [Install]
           WantedBy=multi-user.target
+        dest: '{{ config_systemd_units_fixture_dir }}/{{ item.name }}'
+        group: 'root'
+        mode: '0644'
+        owner: 'root'
       loop: >-
-        {{ config_systemd_units_fixtures
-           | rejectattr('name', 'equalto', 'avahi-daemon.socket')
-           | rejectattr('name', 'equalto', 'molecule-mask.service') }}
-      become: true
-
-    - name: Seed masking fixture
-      ansible.builtin.copy:
-        dest: >-
-          {{ config_systemd_units_vendor_fixture_dir }}/molecule-mask.service
-        owner: 'root'
-        group: 'root'
-        mode: '0644'
-        content: |
-          [Unit]
-          Description=Molecule masking fixture
-
-          [Service]
-          ExecStart=/usr/bin/sleep infinity
-
-          [Install]
-          WantedBy=multi-user.target
-      become: true
-
-    - name: Seed removal fallback fixture
-      ansible.builtin.copy:
-        dest: >-
-          {{ config_systemd_units_vendor_fixture_dir }}/molecule-remove.service
-        owner: 'root'
-        group: 'root'
-        mode: '0644'
-        content: |
-          [Unit]
-          Description=Molecule removal fallback fixture
-
-          [Service]
-          ExecStart=/usr/bin/sleep infinity
-
-          [Install]
-          WantedBy=multi-user.target
+        {{ config_systemd_units_active_fixtures
+           | rejectattr('name', 'equalto', 'avahi-daemon.socket') }}
       become: true
 
     - name: Seed socket fixture
       ansible.builtin.copy:
-        dest: '{{ config_systemd_units_fixture_dir }}/avahi-daemon.socket'
-        owner: 'root'
-        group: 'root'
-        mode: '0644'
         content: |
           [Unit]
           Description=Molecule avahi socket fixture
@@ -89,6 +43,10 @@
 
           [Install]
           WantedBy=sockets.target
+        dest: '{{ config_systemd_units_fixture_dir }}/avahi-daemon.socket'
+        group: 'root'
+        mode: '0644'
+        owner: 'root'
       become: true
 
     - name: Reload fixture unit files
@@ -98,18 +56,26 @@
 
     - name: Enable and start service fixtures
       ansible.builtin.systemd_service:
-        name: '{{ item }}'
         enabled: true
+        name: '{{ item }}'
         state: 'started'
       loop:
-        - 'cups-browsed.service'
         - 'avahi-daemon.service'
-        - 'molecule-mask.service'
-        - 'molecule-remove.service'
+        - 'molecule-external.service'
       become: true
 
     - name: Enable socket fixture
       ansible.builtin.systemd_service:
-        name: 'avahi-daemon.socket'
         enabled: true
+        name: 'avahi-daemon.socket'
       become: true
+
+    - name: Create role-owned removal fixture
+      ansible.builtin.include_role:
+        name: 'jaythomasonprojects.sys_admin.config_systemd_units'
+      vars:
+        config_systemd_units_custom_services:
+          - name: 'molecule-remove.service'
+            unit_content: |
+              [Service]
+              ExecStart=/usr/bin/true

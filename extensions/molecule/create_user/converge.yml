@@ -8,14 +8,19 @@
       ssh-ed25519
       AAAAC3NzaC1lZDI1NTE5AAAAIKsIYhl725LLJoPLD114F8CbnMD4HzyBbs6k8ZZrVSu2
       molecule@test
+    create_user_second_test_key: >-
+      ssh-ed25519
+      AAAAC3NzaC1lZDI1NTE5AAAAIKsIYhl725LLJoPLD114F8CbnMD4HzyBbs6k8ZZrVSu3
+      molecule-second@test
     create_user_accounts:
-      - name: "molecule"
-        comment: "Molecule managed user"
+      - name: 'molecule'
+        comment: 'Molecule managed user'
         create_home: true
-        password: "!"
-        shell: "/bin/bash"
+        password: '!'
+        shell: '/bin/bash'
         ssh_authorized_keys:
-          - "{{ create_user_test_key }}"
+          - '{{ create_user_test_key }}'
+          - '{{ create_user_second_test_key }}'
   roles:
     - role: 'jaythomasonprojects.sys_admin.create_user'
   tasks:

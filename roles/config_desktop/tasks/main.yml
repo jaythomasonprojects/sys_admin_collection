@@ -1,25 +1,9 @@
 ---
+- name: Assert supported platform
+  ansible.builtin.assert:
+    that:
+      - ansible_facts.system == 'Linux'
+    fail_msg: 'config_desktop supports Linux hosts only.'
+
 - name: Configure desktop on Linux hosts
-  when: ansible_facts.os_family != 'Windows'
-  block:
-    - name: Check if GDM configuration is present
-      ansible.builtin.stat:
-        path: '/etc/gdm3/custom.conf'
-      register: config_desktop_gdm_config
-
-    - name: Configure GDM
-      ansible.builtin.include_tasks: gdm.yml
-      when: config_desktop_gdm_config.stat.exists
-
-    - name: Check if LightDM configuration directory is present
-      ansible.builtin.stat:
-        path: '/etc/lightdm/lightdm.conf.d'
-      register: config_desktop_lightdm_config
-
-    - name: Configure LightDM
-      ansible.builtin.include_tasks: lightdm.yml
-      when: config_desktop_lightdm_config.stat.exists
-
-    - name: Configure QT platform theme
-      ansible.builtin.include_tasks: qt5ct.yml
-      when: config_desktop_qt5ct | bool
+  ansible.builtin.import_tasks: 'linux/main.yml'

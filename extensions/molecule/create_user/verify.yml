@@ -8,6 +8,10 @@
       ssh-ed25519
       AAAAC3NzaC1lZDI1NTE5AAAAIKsIYhl725LLJoPLD114F8CbnMD4HzyBbs6k8ZZrVSu2
       molecule@test
+    create_user_second_test_key: >-
+      ssh-ed25519
+      AAAAC3NzaC1lZDI1NTE5AAAAIKsIYhl725LLJoPLD114F8CbnMD4HzyBbs6k8ZZrVSu3
+      molecule-second@test
   tasks:
     - name: Gather passwd entry for molecule user
       ansible.builtin.getent:
@@ -19,6 +23,16 @@
         path: '/home/molecule/.ssh/authorized_keys'
       register: create_user_authorized_keys_stat
 
+    - name: Stat managed user home directory
+      ansible.builtin.stat:
+        path: '/home/molecule'
+      register: create_user_home_stat
+
+    - name: Stat managed user SSH directory
+      ansible.builtin.stat:
+        path: '/home/molecule/.ssh'
+      register: create_user_ssh_directory_stat
+
     - name: Read authorized_keys file
       ansible.builtin.slurp:
         src: '/home/molecule/.ssh/authorized_keys'
@@ -29,7 +43,22 @@
       ansible.builtin.assert:
         that:
           - "ansible_facts.getent_passwd['molecule'] is defined"
+          - >-
+            ansible_facts.getent_passwd['molecule'][3] ==
+            'Molecule managed user'
+          - "ansible_facts.getent_passwd['molecule'][4] == '/home/molecule'"
+          - "ansible_facts.getent_passwd['molecule'][5] == '/bin/bash'"
+          - 'create_user_home_stat.stat.exists'
+          - "create_user_home_stat.stat.pw_name == 'molecule'"
+          - 'create_user_ssh_directory_stat.stat.exists'
+          - "create_user_ssh_directory_stat.stat.pw_name == 'molecule'"
+          - "create_user_ssh_directory_stat.stat.mode == '0700'"
           - 'create_user_authorized_keys_stat.stat.exists'
+          - "create_user_authorized_keys_stat.stat.pw_name == 'molecule'"
+          - "create_user_authorized_keys_stat.stat.mode == '0600'"
           - >-
             create_user_test_key in
+            (create_user_authorized_keys.content | b64decode)
+          - >-
+            create_user_second_test_key in
             (create_user_authorized_keys.content | b64decode)

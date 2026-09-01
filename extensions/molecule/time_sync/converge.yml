@@ -4,8 +4,32 @@
   become: true
   gather_facts: true
   vars:
-    time_sync_manage_package: false
-    time_sync_manage_service: false
-    time_sync_server: "ntp1.example.invalid"
+    time_sync_server: 'ntp1.example.invalid'
   roles:
-    - role: "jaythomasonprojects.sys_admin.time_sync"
+    - role: 'jaythomasonprojects.sys_admin.time_sync'
+
+  tasks:
+    - name: Initialise unsupported-platform rejection result
+      ansible.builtin.set_fact:
+        time_sync_unsupported_platform_rejected: false
+
+    - name: Exercise unsupported Linux distribution failure
+      block:
+        - name: Configure time synchronisation on unsupported Linux distribution
+          ansible.builtin.include_role:
+            name: 'jaythomasonprojects.sys_admin.time_sync'
+          vars:
+            ansible_facts:
+              distribution: 'Fedora'
+              os_family: 'Debian'
+              system: 'Linux'
+            time_sync_server: 'ntp1.example.invalid'
+      rescue:
+        - name: Record unsupported-platform rejection
+          ansible.builtin.set_fact:
+            time_sync_unsupported_platform_rejected: true
+
+    - name: Assert unsupported platform is rejected
+      ansible.builtin.assert:
+        that:
+          - time_sync_unsupported_platform_rejected

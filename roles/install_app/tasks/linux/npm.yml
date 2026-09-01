@@ -1,0 +1,36 @@
+---
+- name: Validate npm package names
+  ansible.builtin.assert:
+    that:
+      - >-
+        item is string and item is match(
+        '^(?:@[a-z0-9][a-z0-9._-]*/)?[a-z0-9][a-z0-9._-]*$')
+    fail_msg: 'install_app_npm_packages accepts bare npm package names only.'
+  loop: '{{ install_app_npm_packages }}'
+  loop_control:
+    label: '{{ item | string }}'
+
+- name: Check npm executable
+  ansible.builtin.command:
+    argv:
+      - 'npm'
+      - '--version'
+  changed_when: false
+  check_mode: false
+  failed_when: false
+  register: install_app_npm_version
+
+- name: Validate npm executable
+  ansible.builtin.assert:
+    that:
+      - install_app_npm_version.rc == 0
+    fail_msg: >-
+      install_app could not run npm after installing its prerequisite.
+
+- name: Install global npm applications
+  community.general.npm:
+    global: true
+    name: '{{ item }}'
+    state: present
+  loop: '{{ install_app_npm_packages }}'
+  become: true

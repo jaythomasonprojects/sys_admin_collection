@@ -1,0 +1,9 @@
+---
+- name: Prepare mount_network_share scenario
+  hosts: all
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Refresh APT package metadata
+      ansible.builtin.apt:
+        update_cache: true

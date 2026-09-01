@@ -1,0 +1,14 @@
+---
+- name: Install native packages
+  ansible.builtin.include_tasks: 'native_packages.yml'
+
+- name: Install Debian packages
+  ansible.builtin.include_tasks: 'debian_packages.yml'
+
+- name: Install npm applications
+  ansible.builtin.include_tasks: 'npm.yml'
+  when: install_app_npm_packages | length > 0
+
+- name: Install Flatpak applications
+  ansible.builtin.include_tasks: 'flatpaks.yml'
+  when: install_app_flatpaks | length > 0

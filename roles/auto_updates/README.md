@@ -1,9 +1,37 @@
 # auto_updates
 
-Configures native package-manager auto-update mechanisms instead of performing
-imperative "upgrade everything now" runs during every play.
+Configures persistent native automatic updates on Linux and immediately installs
+available updates on Windows.
 
-## How It Works
+## Guarantee
+
+On Linux, the role owns the supported package manager's persistent automatic
+update configuration. On Windows, it immediately installs available updates
+with `ansible.windows.win_updates`; Windows has no scheduled configuration and
+does not use `auto_updates_enabled`.
+
+## Ownership
+
+- APT: the `unattended-upgrades` package plus
+  `/etc/apt/apt.conf.d/20auto-upgrades` and
+  `/etc/apt/apt.conf.d/52jtprojects-unattended-upgrades`.
+- DNF: the `dnf-automatic` package, `/etc/dnf/automatic.conf`, and
+  `dnf-automatic.timer` state.
+- Windows: the immediate update installation requested through
+  `ansible.windows.win_updates`.
+
+## Supported platforms
+
+- Linux with `apt`, `dnf`, or `dnf5`.
+- Windows.
+
+Unsupported operating systems and Linux package managers fail explicitly.
+
+## Implementation
+
+`tasks/main.yml` validates the operating system, then dispatches Linux hosts to
+`tasks/linux/main.yml` and Windows hosts to `tasks/windows/main.yml`. The Linux
+dispatcher validates the package manager before selecting APT or DNF tasks.
 
 ### APT (Debian/Ubuntu)
 
@@ -18,9 +46,10 @@ APT reads `/etc/apt/apt.conf.d/` in filename order. The numbering convention: pa
 
 Installs `dnf-automatic` and writes `/etc/dnf/automatic.conf`. A systemd timer (`dnf-automatic.timer`) triggers it on schedule. The config controls whether updates are downloaded only or also applied, and how results are reported.
 
-## Variables
+## Interface
 
-- `auto_updates_enabled`: enable or disable native auto-update scheduling.
+- `auto_updates_enabled`: enable or disable the Linux update schedule. It sets
+  APT's periodic entries and DNF's timer state; Windows ignores this setting.
 - `auto_updates_apt_origins`: explicit APT origins pattern override.
 - `auto_updates_apt_package_blacklist`: packages to exclude from unattended
   upgrades.
@@ -31,4 +60,16 @@ Installs `dnf-automatic` and writes `/etc/dnf/automatic.conf`. A systemd timer (
   `dnf-automatic`.
 - `auto_updates_dnf_apply_updates`: install downloaded updates with
   `dnf-automatic`.
+- `auto_updates_dnf_random_sleep`: maximum random delay before DNF starts.
+- `auto_updates_dnf_upgrade_type`: DNF upgrade type.
 - `auto_updates_dnf_reboot`: DNF reboot policy (`never`, `when-needed`, etc.).
+- `auto_updates_dnf_emit_via`: DNF update notification transport.
+- `auto_updates_win_reboot`: allow the immediate Windows update installation to
+  reboot the host when required.
+
+## Invariants
+
+- Linux configures persistent package-manager automatic updates.
+- Windows always performs an immediate installation, independently of
+  `auto_updates_enabled`.
+- Windows update installation uses `state: installed`.

@@ -1,52 +1,9 @@
 ---
-- name: Set power plan
-  community.windows.win_power_plan:
-    name: '{{ config_power_power_plan }}'
-  when:
-    - ansible_facts.os_family == 'Windows'
-    - config_power_power_plan | length > 0
+- name: Assert Windows host support
+  ansible.builtin.assert:
+    that:
+      - ansible_facts.os_family == 'Windows'
+    fail_msg: 'config_power supports Windows hosts only.'
 
-# powercfg /change sets timeouts to 0 (never). The script uses
-# $Ansible.Result.changed to report idempotency: it checks current
-# values first and only runs powercfg /change when a value is
-# non-zero.
-- name: Disable sleep and standby timeouts
-  ansible.windows.win_powershell:
-    script: |
-      if ($null -eq $Ansible.Result) {
-          $Ansible.Result = @{}
-      }
-      $Ansible.Result.changed = $false
-      $settings = @(
-          'monitor-timeout-ac',
-          'standby-timeout-ac',
-          'monitor-timeout-dc',
-          'standby-timeout-dc'
-      )
-      foreach ($setting in $settings) {
-          $query = powercfg /query SCHEME_CURRENT
-          $match = $query | Select-String `
-            "$setting.*Index: 0x([0-9a-f]+)"
-          if ($match) {
-              $val = [Convert]::ToInt32(
-                  $match.Matches.Groups[1].Value, 16)
-              if ($val -ne 0) {
-                  powercfg /change $setting 0
-                  $Ansible.Result.changed = $true
-              }
-          }
-      }
-  register: config_power_sleep_result
-  when:
-    - ansible_facts.os_family == 'Windows'
-    - config_power_disable_sleep | bool
-  changed_when: >-
-    config_power_sleep_result.result.changed
-    | default(false)
-
-- name: Disable hibernate
-  ansible.windows.win_command: 'powercfg /hibernate off'
-  when:
-    - ansible_facts.os_family == 'Windows'
-    - config_power_disable_hibernate | bool
-  changed_when: false
+- name: Configure Windows power policy
+  ansible.builtin.include_tasks: 'windows/main.yml'

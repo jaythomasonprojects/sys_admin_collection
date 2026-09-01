@@ -1,0 +1,22 @@
+---
+galaxy_info:
+  author: 'Jay Thomason'
+  description: 'Manage opinionated USB mass-storage kernel module policy'
+  license: 'MIT'
+  min_ansible_version: '2.18'
+  platforms:
+    - name: 'Debian'
+      versions:
+        - 'all'
+    - name: 'Ubuntu'
+      versions:
+        - 'all'
+    - name: 'EL'
+      versions:
+        - 'all'
+    - name: 'Fedora'
+      versions:
+        - 'all'
+collections:
+  - 'community.general'
+dependencies: []

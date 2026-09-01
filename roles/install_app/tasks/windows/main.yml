@@ -1,0 +1,8 @@
+---
+# win_chocolatey installs Chocolatey when it is absent, so the role does not
+# need a separate bootstrap task.
+- name: Install Chocolatey packages
+  chocolatey.chocolatey.win_chocolatey:
+    name: '{{ install_app_packages }}'
+    state: present
+  when: install_app_packages | length > 0

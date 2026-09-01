@@ -1,0 +1,15 @@
+---
+- name: Create Windows users
+  ansible.windows.win_user:
+    name: '{{ item.name }}'
+    description: '{{ item.comment | default(omit) }}'
+    groups: '{{ item.groups | default(omit) }}'
+    groups_action: >-
+      {{ 'add' if item.append | default(false) else 'replace' }}
+    password: '{{ item.password }}'
+    password_never_expires: '{{ item.password_never_expires | default(omit) }}'
+    state: present
+    update_password: on_create
+  loop: '{{ create_user_accounts }}'
+  when: create_user_accounts | length > 0
+  no_log: true

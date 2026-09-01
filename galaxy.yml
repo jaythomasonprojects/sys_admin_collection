@@ -4,13 +4,13 @@
 # jaythomasonprojects.sys_admin.
 namespace: jaythomasonprojects
 name: sys_admin
-version: '0.6.0'
+version: '0.7.0'
 readme: README.md
 authors:
   - Jay Thomason
 description: >-
-  System administration roles for local user bootstrap and git
-  configuration, with additional extracted roles staged for future validation
+  Opinionated system-administration capability roles that own required
+  packages, configuration, validation, firewall access, and service state
 license:
   - MIT
 tags:

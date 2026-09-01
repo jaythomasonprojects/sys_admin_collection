@@ -1,6 +1,13 @@
 # jaythomasonprojects.sys_admin
 
-Reusable Ansible Galaxy collection. Environment-agnostic roles for system setup and configuration.
+Reusable Ansible Galaxy collection of opinionated system-administration
+capabilities. Each role owns the packages or features it requires, its
+configuration, validation, firewall access, and service state. Role-specific
+guarantees, supported platforms, interfaces, invariants, and migration notes
+live in the corresponding [`roles/<role>/README.md`](roles/README.md).
+
+> [!WARNING]
+> Releases before `1.0.0` may contain breaking role and variable changes. Review `CHANGELOG.rst` before upgrading.
 
 ## Setup
 
@@ -23,16 +30,16 @@ Run all scenarios:
 . .venv/bin/activate
 ansible-lint .
 yamllint .
-molecule test --all
+ANSIBLE_CONFIG=ansible.cfg molecule test --all
 ```
 
 Scenario names are the directories under `extensions/molecule/`. To run or iterate on one:
 
 ```bash
-molecule test -s <scenario>
-molecule converge -s <scenario>
-molecule verify -s <scenario>
-molecule destroy -s <scenario>
+ANSIBLE_CONFIG=ansible.cfg molecule test -s <scenario>
+ANSIBLE_CONFIG=ansible.cfg molecule converge -s <scenario>
+ANSIBLE_CONFIG=ansible.cfg molecule verify -s <scenario>
+ANSIBLE_CONFIG=ansible.cfg molecule destroy -s <scenario>
 ```
 
 ### Windows role integration test

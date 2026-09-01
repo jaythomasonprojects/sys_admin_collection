@@ -1,12 +1,25 @@
 ---
 driver:
-  name: "docker"
+  name: 'docker'
 
 platforms:
-  - name: "ubuntu"
-    command: "sleep infinity"
-    image: "docker.io/geerlingguy/docker-ubuntu2204-ansible:latest"
+  - name: 'ubuntu'
+    image: 'docker.io/geerlingguy/docker-ubuntu2204-ansible:latest'
     pre_build_image: true
+    privileged: true
+    user: 'root'
+    command: '/usr/sbin/init'
+    tty: true
+    env:
+      container: 'docker'
+    cgroupns_mode: 'host'
+    volumes:
+      - '/sys/fs/cgroup:/sys/fs/cgroup:rw'
+
+provisioner:
+  name: 'ansible'
+  env:
+    ANSIBLE_REMOTE_USER: 'root'
 
 scenario:
-  name: "config_ssh"
+  name: 'config_ssh'

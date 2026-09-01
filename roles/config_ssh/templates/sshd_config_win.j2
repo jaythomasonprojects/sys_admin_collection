@@ -38,7 +38,6 @@ ClientAliveCountMax {{ config_ssh_sshd_client_alive_count_max }}
 
 UseDNS {{ config_ssh_sshd_use_dns }}
 
-# Administrator keys are read from this central file, not the user
-# profile. The ACL is locked by the create_user role.
+# Administrator keys are owned by the create_user role.
 Match Group administrators
     AuthorizedKeysFile C:/ProgramData/ssh/administrators_authorized_keys

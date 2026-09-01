@@ -4,7 +4,6 @@
   become: true
   gather_facts: true
   vars:
-    mount_network_share_manage_packages: false
     mount_network_share_reload_remote_fs: false
     mount_network_share_shares:
       - name: "workstation_data"

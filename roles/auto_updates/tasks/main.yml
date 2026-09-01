@@ -1,16 +1,18 @@
 ---
+- name: Validate auto_updates operating system
+  ansible.builtin.assert:
+    that:
+      - >-
+        ansible_facts.system == 'Linux'
+        or ansible_facts.os_family == 'Windows'
+    fail_msg: >-
+      Unsupported operating system. auto_updates supports Linux and Windows
+      hosts only.
+
+- name: Configure Linux automatic updates
+  ansible.builtin.include_tasks: 'linux/main.yml'
+  when: ansible_facts.system == 'Linux'
+
 - name: Install Windows updates
-  ansible.builtin.include_tasks: win.yml
+  ansible.builtin.include_tasks: 'windows/main.yml'
   when: ansible_facts.os_family == 'Windows'
-
-- name: Configure unattended-upgrades for APT systems
-  ansible.builtin.include_tasks: apt.yml
-  when:
-    - ansible_facts.pkg_mgr is defined
-    - ansible_facts.pkg_mgr == 'apt'
-
-- name: Configure dnf-automatic for DNF systems
-  ansible.builtin.include_tasks: dnf.yml
-  when:
-    - ansible_facts.pkg_mgr is defined
-    - ansible_facts.pkg_mgr in ['dnf', 'dnf5']

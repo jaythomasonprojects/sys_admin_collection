@@ -36,6 +36,13 @@
         config_ssh_server_content: >-
           {{ config_ssh_server_config.content | b64decode }}
 
+    - name: Gather service facts
+      ansible.builtin.service_facts:
+
+    - name: Query installed OpenSSH packages
+      ansible.builtin.package_facts:
+        manager: 'apt'
+
     - name: Validate final sshd configuration
       ansible.builtin.command:
         argv:
@@ -49,6 +56,11 @@
         that:
           - "not config_ssh_cloudinit_stat.stat.exists"
           - "config_ssh_sshd_validation.rc == 0"
+          - "'openssh-client' in ansible_facts.packages"
+          - "'openssh-server' in ansible_facts.packages"
+          - "'ssh.service' in ansible_facts.services"
+          - "ansible_facts.services['ssh.service'].state == 'running'"
+          - "ansible_facts.services['ssh.service'].status == 'enabled'"
           - >-
             expected_client_strict_host_key_checking in
             config_ssh_client_content

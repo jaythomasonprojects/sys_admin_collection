@@ -6,6 +6,10 @@
   environment:
     HOME: '/root'
   tasks:
+    - name: Gather package facts
+      ansible.builtin.package_facts:
+        manager: 'auto'
+
     - name: Read configured git user name
       ansible.builtin.command:
         argv:
@@ -28,8 +32,9 @@
       register: config_git_user_email_result
       changed_when: false
 
-    - name: Assert managed git identity
+    - name: Assert managed Git capability
       ansible.builtin.assert:
         that:
+          - "'git' in ansible_facts.packages"
           - "config_git_user_name_result.stdout == 'Molecule User'"
           - "config_git_user_email_result.stdout == 'molecule@example.invalid'"

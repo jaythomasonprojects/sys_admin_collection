@@ -1,0 +1,24 @@
+---
+- name: Require systemd service management
+  ansible.builtin.assert:
+    that:
+      - ansible_facts.service_mgr == 'systemd'
+    fail_msg: >-
+      config_systemd_units requires a host using systemd as its service manager.
+
+- name: Validate top-level configuration types
+  ansible.builtin.assert:
+    that:
+      - config_systemd_units_custom_services is sequence
+      - config_systemd_units_custom_services is not string
+      - config_systemd_units_disable_printer_services is boolean
+    fail_msg: >-
+      config_systemd_units custom services must be a list and printer service
+      suppression must be a boolean.
+
+- name: Disable printer services
+  ansible.builtin.include_tasks: 'printer_services.yml'
+  when: config_systemd_units_disable_printer_services
+
+- name: Configure custom services
+  ansible.builtin.include_tasks: 'custom_services.yml'

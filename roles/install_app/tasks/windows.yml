@@ -1,8 +1,0 @@
----
-# win_chocolatey auto-installs Chocolatey if it is missing from the
-# system, so a separate bootstrap step is not needed.
-- name: Install Chocolatey packages
-  chocolatey.chocolatey.win_chocolatey:
-    name: '{{ install_app_packages }}'
-    state: present
-  when: install_app_packages | length > 0

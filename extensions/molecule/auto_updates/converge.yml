@@ -19,3 +19,60 @@
     auto_updates_dnf_emit_via: "stdio"
   roles:
     - role: "jaythomasonprojects.sys_admin.auto_updates"
+
+  tasks:
+    - name: Initialise unsupported operating system rejection result
+      ansible.builtin.set_fact:
+        auto_updates_unsupported_os_rejected: false
+
+    - name: Assert unsupported operating systems are rejected
+      block:
+        - name: Include auto_updates with unsupported operating system facts
+          ansible.builtin.include_role:
+            name: 'jaythomasonprojects.sys_admin.auto_updates'
+          vars:
+            ansible_facts:
+              os_family: 'Darwin'
+              pkg_mgr: 'homebrew'
+              system: 'Darwin'
+      rescue:
+        - name: Assert unsupported operating system failed
+          ansible.builtin.assert:
+            that:
+              - "'Unsupported operating system' in ansible_failed_result.msg"
+        - name: Record unsupported operating system rejection
+          ansible.builtin.set_fact:
+            auto_updates_unsupported_os_rejected: true
+
+    - name: Confirm unsupported operating system was rejected
+      ansible.builtin.assert:
+        that:
+          - auto_updates_unsupported_os_rejected
+
+    - name: Initialise unsupported package manager rejection result
+      ansible.builtin.set_fact:
+        auto_updates_unsupported_package_manager_rejected: false
+
+    - name: Assert unsupported Linux package managers are rejected
+      block:
+        - name: Include auto_updates with unsupported package manager facts
+          ansible.builtin.include_role:
+            name: 'jaythomasonprojects.sys_admin.auto_updates'
+          vars:
+            ansible_facts:
+              os_family: 'Debian'
+              pkg_mgr: 'zypper'
+              system: 'Linux'
+      rescue:
+        - name: Assert unsupported package manager failed
+          ansible.builtin.assert:
+            that:
+              - "'Unsupported package manager' in ansible_failed_result.msg"
+        - name: Record unsupported package manager rejection
+          ansible.builtin.set_fact:
+            auto_updates_unsupported_package_manager_rejected: true
+
+    - name: Confirm unsupported package manager was rejected
+      ansible.builtin.assert:
+        that:
+          - auto_updates_unsupported_package_manager_rejected

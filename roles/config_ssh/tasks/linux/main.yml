@@ -1,0 +1,27 @@
+---
+- name: Install OpenSSH packages
+  ansible.builtin.apt:
+    name:
+      - 'openssh-client'
+      - 'openssh-server'
+    state: present
+    update_cache: true
+  become: true
+
+- name: Detect Debian SSH service name
+  ansible.builtin.stat:
+    path: '/etc/init.d/ssh'
+  register: config_ssh_debian_service
+  when: config_ssh_service_name is none
+
+- name: Select SSH service name
+  ansible.builtin.set_fact:
+    config_ssh_service_name: >-
+      {{ 'ssh' if config_ssh_debian_service.stat.exists else 'sshd' }}
+  when: config_ssh_service_name is none
+
+- name: Configure SSH client
+  ansible.builtin.include_tasks: 'client.yml'
+
+- name: Configure SSH server
+  ansible.builtin.include_tasks: 'server.yml'

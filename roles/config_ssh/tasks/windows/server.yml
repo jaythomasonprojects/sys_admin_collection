@@ -1,0 +1,49 @@
+---
+- name: Install OpenSSH Server capability
+  ansible.windows.win_shell: |
+    $p = 'OpenSSH.Server'
+    $sshCap = (Get-WindowsCapability -Online |
+        Where-Object { $_.Name -like "*$p*" })
+    if ($sshCap -and $sshCap.State -ne 'Installed') {
+      Add-WindowsCapability -Online -Name $sshCap.Name
+      Write-Output 'CAPABILITY_INSTALLED'
+    }
+  register: config_ssh_install
+  changed_when: >-
+    config_ssh_install.stdout is search('CAPABILITY_INSTALLED')
+  become: true
+
+- name: Create SSH server configuration directory
+  ansible.windows.win_file:
+    path: 'C:\ProgramData\ssh'
+    state: directory
+
+- name: Deploy Windows SSH server configuration
+  ansible.windows.win_template:
+    dest: 'C:\ProgramData\ssh\sshd_config'
+    src: 'sshd_config_win.j2'
+  notify: Restart Windows SSH service
+
+- name: Create firewall rule for SSH port
+  community.windows.win_firewall_rule:
+    action: allow
+    direction: in
+    enabled: true
+    localport: '{{ config_ssh_sshd_port }}'
+    name: 'OpenSSH Server (sshd)'
+    protocol: 'TCP'
+    state: present
+
+- name: Enable and start SSH service
+  ansible.windows.win_service:
+    name: 'sshd'
+    start_mode: auto
+    state: started
+
+- name: Set PowerShell as default SSH shell
+  ansible.windows.win_regedit:
+    data: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
+    name: 'DefaultShell'
+    path: 'HKLM:\SOFTWARE\OpenSSH'
+    state: present
+    type: string

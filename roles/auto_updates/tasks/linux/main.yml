@@ -1,0 +1,16 @@
+---
+- name: Validate Linux package manager
+  ansible.builtin.assert:
+    that:
+      - ansible_facts.pkg_mgr in ['apt', 'dnf', 'dnf5']
+    fail_msg: >-
+      Unsupported package manager. auto_updates supports apt, dnf, and dnf5 on
+      Linux hosts only.
+
+- name: Configure unattended-upgrades for APT systems
+  ansible.builtin.include_tasks: 'apt.yml'
+  when: ansible_facts.pkg_mgr == 'apt'
+
+- name: Configure dnf-automatic for DNF systems
+  ansible.builtin.include_tasks: 'dnf.yml'
+  when: ansible_facts.pkg_mgr in ['dnf', 'dnf5']

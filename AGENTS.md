@@ -71,6 +71,16 @@ Play key order: `hosts` → host options (alphabetical) → `pre_tasks` → `rol
 
 Task key order: `name` → module → parameters → `loop` → task options (alphabetical) → `tags`
 
+## Role design
+
+- `tasks/main.yml` validates the supported platform and dispatches to `tasks/linux/main.yml` or `tasks/windows/main.yml`.
+- Add focused task files only for substantial responsibilities, independently selectable capabilities, or multi-subsystem workflows.
+- Capability roles own required packages or features, configuration, validation, firewall access, and service state.
+- Booleans express desired policy or optional capabilities, never suppression of required implementation steps.
+- Structured variables represent repeated policy such as users, applications, shares, and role-owned custom services.
+- Unsupported platforms fail explicitly. Each managed artefact has one owning role.
+- Every role README records the role guarantee, ownership, supported platforms, implementation map, interface, invariants, and migration notes.
+
 ## Release and versioning
 
 `galaxy.yml` `version` is the source of truth for the collection version. `CHANGELOG.rst` is

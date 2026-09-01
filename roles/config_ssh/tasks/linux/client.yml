@@ -1,0 +1,14 @@
+---
+- name: Create SSH client drop-in directory
+  ansible.builtin.file:
+    path: '/etc/ssh/ssh_config.d'
+    state: directory
+    mode: '0755'
+  become: true
+
+- name: Deploy SSH client configuration
+  ansible.builtin.template:
+    src: 'ssh_custom.conf.j2'
+    dest: '/etc/ssh/ssh_config.d/99-custom.conf'
+    mode: '0644'
+  become: true

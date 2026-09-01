@@ -2,14 +2,11 @@
 galaxy_info:
   author: 'Jay Thomason'
   description: >-
-    Configure desktop display-manager autologin and environment entries
+    Configure detected Linux desktop display-manager and environment policy
   license: 'MIT'
   min_ansible_version: '2.18'
   platforms:
-    - name: 'Debian'
-      versions:
-        - 'all'
-    - name: 'Ubuntu'
+    - name: 'GenericLinux'
       versions:
         - 'all'
 dependencies: []
