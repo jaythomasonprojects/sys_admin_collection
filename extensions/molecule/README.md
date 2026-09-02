@@ -33,6 +33,10 @@ unsupported-platform rejection. Test runtime state rather than parsing the
 static task tree. Do not add test-only package or service opt-outs: scenarios
 must exercise the role's supported behaviour.
 
+Scenarios assert platform `fail_msg` strings verbatim. A role rename therefore changes the role
+and its scenario assertion in the same commit, along with the scenario directory name and
+`scenario.name`.
+
 ## Runtime assumptions for future scenarios
 
 Future scenarios should satisfy these assumptions before they copy the
