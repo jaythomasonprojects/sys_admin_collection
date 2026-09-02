@@ -1,5 +1,5 @@
 ---
-- name: Verify config_git results
+- name: Verify git results
   hosts: all
   become: true
   gather_facts: false
@@ -10,7 +10,7 @@
       ansible.builtin.package_facts:
         manager: 'auto'
 
-    - name: Read configured git user name
+    - name: Read configured Git user name
       ansible.builtin.command:
         argv:
           - 'git'
@@ -18,10 +18,10 @@
           - '--global'
           - '--get'
           - 'user.name'
-      register: config_git_user_name_result
+      register: git_user_name_result
       changed_when: false
 
-    - name: Read configured git user email
+    - name: Read configured Git user email
       ansible.builtin.command:
         argv:
           - 'git'
@@ -29,12 +29,12 @@
           - '--global'
           - '--get'
           - 'user.email'
-      register: config_git_user_email_result
+      register: git_user_email_result
       changed_when: false
 
     - name: Assert managed Git capability
       ansible.builtin.assert:
         that:
           - "'git' in ansible_facts.packages"
-          - "config_git_user_name_result.stdout == 'Molecule User'"
-          - "config_git_user_email_result.stdout == 'molecule@example.invalid'"
+          - "git_user_name_result.stdout == 'Molecule User'"
+          - "git_user_email_result.stdout == 'molecule@example.invalid'"

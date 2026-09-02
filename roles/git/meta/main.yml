@@ -1,8 +1,7 @@
 ---
 galaxy_info:
   author: 'Jay Thomason'
-  description: >-
-    Install Git and configure global Git identity settings on the target host
+  description: 'Install Git and configure global user identity'
   license: 'MIT'
   min_ansible_version: '2.18'
   platforms:

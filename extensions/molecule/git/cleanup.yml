@@ -1,5 +1,5 @@
 ---
-- name: Cleanup config_git scenario
+- name: Cleanup git scenario
   hosts: all
   become: true
   gather_facts: false

@@ -15,4 +15,4 @@ provisioner:
     ANSIBLE_REMOTE_USER: 'root'
 
 scenario:
-  name: 'config_git'
+  name: 'git'
