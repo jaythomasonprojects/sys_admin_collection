@@ -70,7 +70,7 @@ reason.
 | `time_sync` | `time_sync` | `vars/` structure, argument specification, enable flag |
 
 Every public variable is renamed to match its role prefix. `config_ssh_sshd_port` becomes
-`ssh_sshd_port`, `create_user_accounts` becomes `local_accounts_accounts`, and so on. There are no
+`ssh_server_port`, `create_user_accounts` becomes `local_accounts_users`, and so on. There are no
 aliases.
 
 ## Deletions
@@ -233,7 +233,7 @@ skip behaviour, which the old README apologised for.
 
 The role is deliberately not a firewall-subsystem role. Firewall access belongs to the capability it
 serves, as `ssh` demonstrates by owning `OpenSSH Server (sshd)` with a `localport` driven by
-`ssh_sshd_port`. Ping is the residual case: no service serves ICMP, so it gets its own policy role. A
+`ssh_server_port`. Ping is the residual case: no service serves ICMP, so it gets its own policy role. A
 future RDP opening would be `allow_rdp`, not a second flag here.
 
 ### `power_policy`
@@ -243,7 +243,7 @@ Windows only. Power plan, sleep and standby timeouts, and hibernation. Behaviour
 ### `ssh`
 
 Debian and Ubuntu, plus Windows. Retains complete server ownership: OpenSSH installation, client and
-server configuration, validation, the Windows firewall rule keyed to `ssh_sshd_port`, service state,
+server configuration, validation, the Windows firewall rule keyed to `ssh_server_port`, service state,
 and the Windows default shell. Authorised keys remain owned by `local_accounts`.
 
 Distribution data moves to `vars/`: the OpenSSH package names and the service name currently derived

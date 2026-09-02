@@ -1,0 +1,128 @@
+---
+argument_specs:
+  main:
+    short_description: Install and configure OpenSSH client and server policy
+    description:
+      - Installs OpenSSH and owns its client policy, server policy, Windows
+        firewall access, and service state.
+    options:
+      ssh_client_compression:
+        type: str
+        choices: ['yes', 'no']
+        default: 'no'
+      ssh_client_connect_timeout:
+        type: int
+        default: 0
+      ssh_client_forward_agent:
+        type: str
+        choices: ['yes', 'no']
+        default: 'no'
+      ssh_client_forward_x11:
+        type: str
+        choices: ['yes', 'no']
+        default: 'no'
+      ssh_client_host_overrides:
+        type: list
+        elements: dict
+        default: []
+        options:
+          host:
+            type: str
+            required: true
+          settings:
+            type: dict
+            required: true
+      ssh_client_password_authentication:
+        type: str
+        choices: ['yes', 'no']
+        default: 'yes'
+      ssh_client_port:
+        type: int
+        default: 22
+      ssh_client_pubkey_authentication:
+        type: str
+        choices: ['yes', 'no']
+        default: 'yes'
+      ssh_client_server_alive_count_max:
+        type: int
+        default: 3
+      ssh_client_server_alive_interval:
+        type: int
+        default: 0
+      ssh_client_strict_host_key_checking:
+        type: str
+        choices: ['yes', 'no', 'ask']
+        default: 'ask'
+      ssh_enabled:
+        description:
+          - Whether this host should have managed SSH policy.
+          - Setting this to false skips the role. It does not remove OpenSSH or
+            restore configuration from an earlier run.
+        type: bool
+        default: true
+      ssh_server_allow_agent_forwarding:
+        type: str
+        choices: ['yes', 'no']
+        default: 'yes'
+      ssh_server_allow_groups:
+        type: list
+        elements: str
+        default: null
+      ssh_server_allow_tcp_forwarding:
+        type: str
+        choices: ['yes', 'no']
+        default: 'yes'
+      ssh_server_allow_users:
+        type: list
+        elements: str
+        default: null
+      ssh_server_client_alive_count_max:
+        type: int
+        default: 3
+      ssh_server_client_alive_interval:
+        type: int
+        default: 0
+      ssh_server_deny_groups:
+        type: list
+        elements: str
+        default: null
+      ssh_server_deny_users:
+        type: list
+        elements: str
+        default: null
+      ssh_server_listen_address:
+        type: str
+        default: '0.0.0.0'
+      ssh_server_login_grace_time:
+        type: str
+        default: '1m'
+      ssh_server_max_auth_tries:
+        type: int
+        default: 3
+      ssh_server_password_authentication:
+        type: str
+        choices: ['yes', 'no']
+        default: 'yes'
+      ssh_server_permit_empty_passwords:
+        type: str
+        choices: ['yes', 'no']
+        default: 'no'
+      ssh_server_permit_root_login:
+        type: str
+        choices: ['yes', 'no', 'prohibit-password']
+        default: 'no'
+      ssh_server_port:
+        type: int
+        default: 22
+      ssh_server_pubkey_authentication:
+        type: str
+        choices: ['yes', 'no']
+        default: 'yes'
+      ssh_server_use_dns:
+        type: str
+        choices: ['yes', 'no']
+        default: 'no'
+      ssh_server_x11_forwarding:
+        type: str
+        choices: ['yes', 'no']
+        default: 'yes'

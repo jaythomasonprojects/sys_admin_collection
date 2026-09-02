@@ -73,13 +73,32 @@ Task key order: `name` → module → parameters → `loop` → task options (al
 
 ## Role design
 
-- `tasks/main.yml` validates the supported platform and dispatches to `tasks/linux/main.yml` or `tasks/windows/main.yml`.
-- Add focused task files only for substantial responsibilities, independently selectable capabilities, or multi-subsystem workflows.
-- Capability roles own required packages or features, configuration, validation, firewall access, and service state.
-- Booleans express desired policy or optional capabilities, never suppression of required implementation steps.
-- Structured variables represent repeated policy such as users, applications, shares, and role-owned custom services.
+- Name a role after the outcome it produces, never the module, subsystem, or technique it uses.
+  No prefixes. Subsystem nouns (`ssh`, `time_sync`, `power_policy`) where the role configures an
+  existing subsystem; verb phrases (`disable_usb_storage`, `allow_ping`) for one discrete policy.
+- The interface test: a variable must describe the environment, not the module call. A list of
+  packages is policy. A list of `systemd_service` parameters is a wrapper and does not belong here.
+- `tasks/main.yml` asserts the supported platform, then dispatches to `tasks/linux/main.yml` or
+  `tasks/windows/main.yml`. The `fail_msg` is a stable contract asserted verbatim by Molecule.
+- `meta/argument_specs.yml` owns option types, `required`, and `choices`. Keep `assert` only for
+  platform gates and cross-field rules a specification cannot express.
+- Distribution data (package names, paths, service names) lives in `vars/`, loaded with
+  `ansible.builtin.first_found` over `{{ ansible_facts.distribution }}.yml` then
+  `{{ ansible_facts.os_family }}.yml`. Only a genuine difference in procedure earns a task file.
+  A directory under `tasks/linux/` exists only when a family needs more than one file.
+- Every policy role exposes `<role>_enabled`, set in `group_vars`. It means "this host should have
+  this policy", never "skip an implementation step". Primary capabilities default to `true`;
+  anything increasing exposure or reducing security defaults to `false`.
+- `<role>_enabled: false` must converge (return the host to the unmanaged state) wherever the
+  revert is safe, unambiguous, and confined to artefacts the role owns. Where it cannot, `false`
+  skips and the role README states that disabling does not undo a previous run.
+- Capability roles own required packages or features, configuration, validation, firewall access,
+  and service state. Firewall access belongs to the capability that needs it.
 - Unsupported platforms fail explicitly. Each managed artefact has one owning role.
-- Every role README records the role guarantee, ownership, supported platforms, implementation map, interface, invariants, and migration notes.
+- The collection ships capabilities; the playbook repo ships the standard. No site-specific account
+  names, packages, or shares in this collection.
+- Every role README records the guarantee, ownership, supported platforms, implementation map,
+  interface, enable behaviour, invariants, and migration notes.
 
 ## Release and versioning
 

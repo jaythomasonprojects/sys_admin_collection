@@ -1,0 +1,67 @@
+---
+- name: Prepare disable_printer_discovery scenario
+  hosts: all
+  gather_facts: true
+  vars:
+    disable_printer_discovery_fixture_dir: '/etc/systemd/system'
+    disable_printer_discovery_printer_fixtures:
+      - description: 'Molecule avahi service fixture'
+        name: 'avahi-daemon.service'
+      - description: 'Molecule cups-browsed service fixture'
+        name: 'cups-browsed.service'
+  tasks:
+    - name: Seed printer service fixtures
+      ansible.builtin.copy:
+        content: |
+          [Unit]
+          Description={{ item.description }}
+
+          [Service]
+          ExecStart=/usr/bin/sleep infinity
+
+          [Install]
+          WantedBy=multi-user.target
+        dest: '{{ disable_printer_discovery_fixture_dir }}/{{ item.name }}'
+        group: 'root'
+        mode: '0644'
+        owner: 'root'
+      loop: '{{ disable_printer_discovery_printer_fixtures }}'
+      become: true
+
+    - name: Seed printer socket fixture
+      ansible.builtin.copy:
+        content: |
+          [Unit]
+          Description=Molecule avahi socket fixture
+
+          [Socket]
+          ListenStream=/run/molecule-avahi-daemon.sock
+
+          [Install]
+          WantedBy=sockets.target
+        dest: '{{ disable_printer_discovery_fixture_dir }}/avahi-daemon.socket'
+        group: 'root'
+        mode: '0644'
+        owner: 'root'
+      become: true
+
+    - name: Reload printer fixture unit files
+      ansible.builtin.systemd_service:
+        daemon_reload: true
+      become: true
+
+    - name: Enable and start printer service fixtures
+      ansible.builtin.systemd_service:
+        enabled: true
+        name: '{{ item }}'
+        state: 'started'
+      loop:
+        - 'avahi-daemon.service'
+        - 'cups-browsed.service'
+      become: true
+
+    - name: Enable printer socket fixture
+      ansible.builtin.systemd_service:
+        enabled: true
+        name: 'avahi-daemon.socket'
+      become: true

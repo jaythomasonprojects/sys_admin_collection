@@ -1,9 +1,0 @@
----
-- name: Assert supported platform
-  ansible.builtin.assert:
-    that:
-      - ansible_facts.system == 'Linux'
-    fail_msg: 'config_git supports Linux hosts only.'
-
-- name: Configure Git on Linux hosts
-  ansible.builtin.import_tasks: 'linux/main.yml'

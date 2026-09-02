@@ -1,0 +1,15 @@
+---
+argument_specs:
+  main:
+    short_description: Stop and disable printer discovery services
+    description:
+      - Stops and disables the Avahi and CUPS browsing services on Linux hosts.
+      - Services that are not present on the host are already compliant.
+    options:
+      disable_printer_discovery_enabled:
+        description:
+          - Whether this host should have printer discovery disabled.
+          - Setting this to false skips the policy. It does not restart services
+            that an earlier run stopped.
+        type: bool
+        default: true

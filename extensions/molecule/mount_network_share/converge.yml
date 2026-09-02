@@ -56,3 +56,15 @@
         state: present
   roles:
     - role: "jaythomasonprojects.sys_admin.mount_network_share"
+  tasks:
+    - name: Apply disabled network share management
+      block:
+        - name: Include disabled network share management
+          ansible.builtin.include_role:
+            name: 'jaythomasonprojects.sys_admin.mount_network_share'
+          vars:
+            mount_network_share_enabled: false
+            mount_network_share_shares:
+              - name: 'invalid_share'
+                server: 'files.example.invalid'
+                share: 'Invalid'

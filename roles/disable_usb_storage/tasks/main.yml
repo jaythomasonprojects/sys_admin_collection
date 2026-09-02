@@ -1,0 +1,9 @@
+---
+- name: Assert supported platform
+  ansible.builtin.assert:
+    that:
+      - ansible_facts.system == 'Linux'
+    fail_msg: 'disable_usb_storage supports Linux hosts only.'
+
+- name: Configure USB mass-storage policy on Linux hosts
+  ansible.builtin.import_tasks: 'linux/main.yml'

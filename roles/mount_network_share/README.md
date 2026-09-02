@@ -14,8 +14,8 @@ The role fails on other platforms.
 
 ## Implementation map
 
-- `tasks/main.yml`: validates the share schema and dispatches once to the
-  supported platform flow.
+- `tasks/main.yml`: asserts the supported platform, validates enabled share
+  credentials, and dispatches once to the supported platform flow.
 - `tasks/linux/main.yml`: installs `cifs-utils` and processes each Linux share.
 - `tasks/linux/share.yml`: manages mount points, credentials, and fstab.
 - `tasks/windows/main.yml`: processes each Windows share.
@@ -24,6 +24,7 @@ The role fails on other platforms.
 ## Variables
 
 ```yaml
+mount_network_share_enabled: true
 mount_network_share_reload_remote_fs: false
 mount_network_share_shares:
   - name: 'workstation_data'
@@ -44,9 +45,14 @@ mount_network_share_shares:
     password: '{{ vault_mount_network_share_password }}'
 ```
 
-`mount_network_share_shares` defaults to `[]`. Every entry must define
-`name`, `server`, `share`, and `mount_point`. Define `username` and `password`
-together as non-empty strings, or omit both.
+`mount_network_share_enabled` defaults to `true`. Set it to `false` to skip
+credential validation and share management. Disabling the role does not remove
+shares managed by an earlier run.
+
+`mount_network_share_shares` defaults to `[]`. When enabled, every entry must
+define `name`, `server`, `share`, and `mount_point`. The role argument
+specification validates supplied field types, defaults, and `state` choices.
+Define `username` and `password` together as non-empty strings, or omit both.
 
 On Linux, `mount_point` is a filesystem path. `state` is passed to
 `ansible.posix.mount` and defaults to `present`; `absent` and

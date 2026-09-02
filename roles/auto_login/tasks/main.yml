@@ -1,0 +1,9 @@
+---
+- name: Assert supported platform
+  ansible.builtin.assert:
+    that:
+      - ansible_facts.system == 'Linux'
+    fail_msg: 'auto_login supports Linux hosts only.'
+
+- name: Configure automatic login on Linux hosts
+  ansible.builtin.import_tasks: 'linux/main.yml'

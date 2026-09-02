@@ -6,9 +6,11 @@ available updates on Windows.
 ## Guarantee
 
 On Linux, the role owns the supported package manager's persistent automatic
-update configuration. On Windows, it immediately installs available updates
-with `ansible.windows.win_updates`; Windows has no scheduled configuration and
-does not use `auto_updates_enabled`.
+update configuration. `auto_updates_enabled` is the collection's reference
+converging flag: disabling it writes zeroed APT periodic counters and stops the
+`dnf-automatic` timer instead of skipping. On Windows, the role immediately
+installs available updates with `ansible.windows.win_updates`; Windows has no
+scheduled configuration and ignores `auto_updates_enabled`.
 
 ## Ownership
 
@@ -48,8 +50,9 @@ Installs `dnf-automatic` and writes `/etc/dnf/automatic.conf`. A systemd timer (
 
 ## Interface
 
-- `auto_updates_enabled`: enable or disable the Linux update schedule. It sets
-  APT's periodic entries and DNF's timer state; Windows ignores this setting.
+- `auto_updates_enabled`: the collection's reference converging flag. On Linux,
+  `false` writes zeroed APT periodic counters and stops the `dnf-automatic`
+  timer instead of skipping; Windows ignores this setting.
 - `auto_updates_apt_origins`: explicit APT origins pattern override.
 - `auto_updates_apt_package_blacklist`: packages to exclude from unattended
   upgrades.

@@ -1,0 +1,24 @@
+---
+- name: Check active template ownership references
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Find legacy ownership references in active templates
+      ansible.builtin.find:
+        contains: 'create_user'
+        paths: '{{ playbook_dir }}/../roles'
+        patterns: '*.j2'
+        read_whole_file: true
+        recurse: true
+      register: active_template_legacy_references
+
+    - name: Assert active templates use current ownership references
+      ansible.builtin.assert:
+        that:
+          - active_template_legacy_references.matched == 0
+        fail_msg: >-
+          Active templates reference the retired create_user role:
+          {{ active_template_legacy_references.files
+             | map(attribute='path')
+             | join(', ') }}

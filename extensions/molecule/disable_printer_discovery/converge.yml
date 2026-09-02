@@ -1,0 +1,6 @@
+---
+- name: Converge disable_printer_discovery scenario
+  hosts: all
+  gather_facts: true
+  roles:
+    - role: 'jaythomasonprojects.sys_admin.disable_printer_discovery'

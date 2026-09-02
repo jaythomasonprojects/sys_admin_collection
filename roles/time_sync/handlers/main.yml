@@ -1,6 +1,6 @@
 ---
 - name: Restart NTP service
   ansible.builtin.systemd_service:
-    name: 'ntpsec'
+    name: '{{ time_sync_service }}'
     state: restarted
   become: true

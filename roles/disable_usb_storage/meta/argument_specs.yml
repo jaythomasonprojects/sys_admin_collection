@@ -1,0 +1,16 @@
+---
+argument_specs:
+  main:
+    short_description: Blacklist the USB mass-storage kernel modules
+    description:
+      - Persistently blacklists the usb-storage and uas kernel modules and
+        unloads either when already loaded.
+      - USB input devices and the wider USB controller stack are unaffected.
+    options:
+      disable_usb_storage_enabled:
+        description:
+          - Whether this host should have USB mass storage disabled.
+          - Setting this to false removes the managed modprobe policy file.
+            Modules already unloaded are not reloaded until the next boot.
+        type: bool
+        default: true

@@ -1,0 +1,38 @@
+# Custom SSH client configuration managed by Ansible
+# This file is placed in /etc/ssh/ssh_config.d/99-custom.conf
+
+# Connection Settings
+Host *
+    Port {{ ssh_client_port }}
+
+# Connection Keep Alive
+    ServerAliveInterval {{ ssh_client_server_alive_interval }}
+    ServerAliveCountMax {{ ssh_client_server_alive_count_max }}
+
+# Authentication Settings
+    PubkeyAuthentication {{ ssh_client_pubkey_authentication }}
+    PasswordAuthentication {{ ssh_client_password_authentication }}
+
+# Host Key Verification
+    StrictHostKeyChecking {{ ssh_client_strict_host_key_checking }}
+
+# Forwarding Settings
+    ForwardAgent {{ ssh_client_forward_agent }}
+    ForwardX11 {{ ssh_client_forward_x11 }}
+
+# Connection Timeout
+    ConnectTimeout {{ ssh_client_connect_timeout }}
+
+# Compression
+    Compression {{ ssh_client_compression }}
+
+# Host-specific overrides can be added here
+{% if ssh_client_host_overrides | length > 0 %}
+{% for host_override in ssh_client_host_overrides %}
+
+Host {{ host_override.host }}
+{% for key, value in host_override.settings.items() %}
+    {{ key }} {{ value }}
+{% endfor %}
+{% endfor %}
+{% endif %}

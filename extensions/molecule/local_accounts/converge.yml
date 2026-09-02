@@ -1,0 +1,47 @@
+---
+- name: Converge local_accounts scenario
+  hosts: all
+  become: true
+  gather_facts: true
+  vars:
+    local_accounts_test_key: >-
+      ssh-ed25519
+      AAAAC3NzaC1lZDI1NTE5AAAAIKsIYhl725LLJoPLD114F8CbnMD4HzyBbs6k8ZZrVSu2
+      molecule@test
+    local_accounts_second_test_key: >-
+      ssh-ed25519
+      AAAAC3NzaC1lZDI1NTE5AAAAIKsIYhl725LLJoPLD114F8CbnMD4HzyBbs6k8ZZrVSu3
+      molecule-second@test
+    local_accounts_users:
+      - name: 'molecule'
+        comment: 'Molecule managed user'
+        create_home: true
+        shell: '/bin/bash'
+        ssh_authorized_keys:
+          - '{{ local_accounts_test_key }}'
+          - '{{ local_accounts_second_test_key }}'
+  roles:
+    - role: 'jaythomasonprojects.sys_admin.local_accounts'
+  tasks:
+    - name: Reject unsupported operating systems
+      block:
+        - name: Configure unsupported operating system
+          ansible.builtin.include_role:
+            name: 'jaythomasonprojects.sys_admin.local_accounts'
+          vars:
+            ansible_facts:
+              os_family: 'Darwin'
+              system: 'Darwin'
+            local_accounts_users: []
+      rescue:
+        - name: Record unsupported operating system rejection
+          ansible.builtin.set_fact:
+            local_accounts_unsupported_platform_failure: >-
+              {{ ansible_failed_result.msg | default('') }}
+
+    - name: Assert unsupported operating system was rejected
+      ansible.builtin.assert:
+        that:
+          - >-
+             local_accounts_unsupported_platform_failure ==
+             'local_accounts supports Linux and Windows hosts only.'

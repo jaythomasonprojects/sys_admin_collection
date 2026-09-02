@@ -1,0 +1,31 @@
+---
+- name: Converge auto_login scenario
+  hosts: all
+  become: true
+  gather_facts: true
+  vars:
+    auto_login_gdm_user: 'molecule'
+    auto_login_lightdm_user: 'molecule'
+  roles:
+    - role: 'jaythomasonprojects.sys_admin.auto_login'
+  tasks:
+    - name: Reject unsupported operating systems
+      block:
+        - name: Configure unsupported operating system
+          ansible.builtin.include_role:
+            name: 'jaythomasonprojects.sys_admin.auto_login'
+          vars:
+            ansible_facts:
+              system: 'Darwin'
+      rescue:
+        - name: Record unsupported operating system rejection
+          ansible.builtin.set_fact:
+            auto_login_unsupported_platform_failure: >-
+              {{ ansible_failed_result.msg | default('') }}
+
+    - name: Assert unsupported operating system was rejected
+      ansible.builtin.assert:
+        that:
+          - >-
+            auto_login_unsupported_platform_failure ==
+            'auto_login supports Linux hosts only.'

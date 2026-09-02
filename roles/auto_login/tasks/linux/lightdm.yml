@@ -1,0 +1,28 @@
+---
+- name: Ensure LightDM autologin configuration directory exists
+  ansible.builtin.file:
+    path: '/etc/lightdm/lightdm.conf.d'
+    state: directory
+    mode: '0755'
+
+- name: Configure LightDM autologin
+  ansible.builtin.blockinfile:
+    path: '/etc/lightdm/lightdm.conf.d/autologin.conf'
+    create: true
+    mode: '0644'
+    marker: '# {mark} ANSIBLE MANAGED BLOCK auto_login'
+    block: |
+      [SeatDefaults]
+      autologin-user={{ auto_login_lightdm_user }}
+      autologin-user-timeout=5
+    state: present
+  when: auto_login_lightdm_user | length > 0
+
+- name: Remove managed LightDM autologin block
+  ansible.builtin.blockinfile:
+    path: '/etc/lightdm/lightdm.conf.d/autologin.conf'
+    create: true
+    mode: '0644'
+    marker: '# {mark} ANSIBLE MANAGED BLOCK auto_login'
+    state: absent
+  when: auto_login_lightdm_user | length == 0

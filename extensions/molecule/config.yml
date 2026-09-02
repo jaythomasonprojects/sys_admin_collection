@@ -11,6 +11,8 @@ dependency:
 
 provisioner:
   name: "ansible"
+  env:
+    ANSIBLE_COLLECTIONS_PATH: '../../../.ansible/collections'
 
 scenario:
   test_sequence:

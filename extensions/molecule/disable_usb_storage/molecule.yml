@@ -1,0 +1,20 @@
+---
+driver:
+  name: 'docker'
+
+platforms:
+  - name: 'ubuntu-enabled'
+    command: 'sleep infinity'
+    image: 'docker.io/geerlingguy/docker-ubuntu2204-ansible:latest'
+    pre_build_image: true
+    volumes:
+      - '/lib/modules:/lib/modules:ro'
+  - name: 'ubuntu-disabled'
+    command: 'sleep infinity'
+    image: 'docker.io/geerlingguy/docker-ubuntu2204-ansible:latest'
+    pre_build_image: true
+    volumes:
+      - '/lib/modules:/lib/modules:ro'
+
+scenario:
+  name: 'disable_usb_storage'

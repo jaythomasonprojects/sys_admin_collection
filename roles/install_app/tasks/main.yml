@@ -1,17 +1,20 @@
 ---
-- name: Validate install_app operating system
+- name: Assert supported platform
   ansible.builtin.assert:
     that:
       - >-
         ansible_facts.system == 'Linux'
         or ansible_facts.os_family == 'Windows'
-    fail_msg: >-
-      install_app supports Linux and Windows hosts only.
+    fail_msg: 'install_app supports Linux and Windows hosts only.'
 
 - name: Install applications on Linux hosts
   ansible.builtin.include_tasks: 'linux/main.yml'
-  when: ansible_facts.system == 'Linux'
+  when:
+    - install_app_enabled | bool
+    - ansible_facts.system == 'Linux'
 
 - name: Install applications on Windows hosts
   ansible.builtin.include_tasks: 'windows/main.yml'
-  when: ansible_facts.os_family == 'Windows'
+  when:
+    - install_app_enabled | bool
+    - ansible_facts.os_family == 'Windows'

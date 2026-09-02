@@ -1,0 +1,11 @@
+---
+galaxy_info:
+  author: 'Jay Thomason'
+  description: 'Configure GDM and LightDM automatic login policy'
+  license: 'MIT'
+  min_ansible_version: '2.18'
+  platforms:
+    - name: 'GenericLinux'
+      versions:
+        - 'all'
+dependencies: []

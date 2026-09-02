@@ -1,0 +1,21 @@
+---
+# ICMP type 8 is IPv4 Echo Request; type 128 is the IPv6 equivalent.
+- name: Manage ICMPv4 ping rule
+  community.windows.win_firewall_rule:
+    action: allow
+    direction: in
+    enabled: true
+    icmp_type_code: '8:*'
+    name: 'Allow ICMPv4 ping'
+    protocol: 'icmpv4'
+    state: "{{ 'present' if allow_ping_enabled | bool else 'absent' }}"
+
+- name: Manage ICMPv6 ping rule
+  community.windows.win_firewall_rule:
+    action: allow
+    direction: in
+    enabled: true
+    icmp_type_code: '128:*'
+    name: 'Allow ICMPv6 ping'
+    protocol: 'icmpv6'
+    state: "{{ 'present' if allow_ping_enabled | bool else 'absent' }}"

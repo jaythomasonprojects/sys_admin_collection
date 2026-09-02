@@ -1,0 +1,15 @@
+---
+galaxy_info:
+  author: 'Jay Thomason'
+  description: >-
+    Configure Windows power plan, sleep timeouts, and hibernation policy
+  license: 'MIT'
+  min_ansible_version: '2.18'
+  platforms:
+    - name: 'Windows'
+      versions:
+        - 'all'
+collections:
+  - 'ansible.windows'
+  - 'community.windows'
+dependencies: []

@@ -1,6 +1,38 @@
 jaythomasonprojects.sys_admin changelog
 =======================================
 
+0.8.0
+-----
+
+- Renamed eight roles after the outcome they deliver rather than the mechanism
+  they use: ``config_systemd_units`` to ``disable_printer_discovery``,
+  ``blacklist_kernel_modules`` to ``disable_usb_storage``, ``config_desktop`` to
+  ``auto_login``, ``config_firewall`` to ``allow_ping``, ``config_power`` to
+  ``power_policy``, ``config_ssh`` to ``ssh``, ``config_git`` to ``git``, and
+  ``create_user`` to ``local_accounts``. Every public variable takes the new
+  role prefix. There are no compatibility aliases.
+- Removed ``config_systemd_units_custom_services``. The role managed arbitrary
+  unit files through an interface that only restated ``systemd_service``
+  parameters. A role that needs a unit now ships that unit itself.
+- Removed ``config_desktop_qt5ct``. The Qt platform theme is no longer managed.
+- ``allow_ping_enabled`` now converges: setting it to ``false`` removes both
+  managed ICMP rules instead of leaving them in place.
+- Renamed the ``config_ssh`` variables into ``ssh_server_*`` and ``ssh_client_*``
+  families matching the task files, and removed ``config_ssh_service_name`` from
+  the public interface. The service name comes from ``vars/`` instead of runtime
+  detection.
+- ``local_accounts`` no longer requires ``password`` on every account, so
+  key-only accounts need no placeholder value.
+- Added ``meta/argument_specs.yml`` to every role. Option types, required
+  fields, and choices are validated before the first task runs. Inline type
+  assertions are removed; platform gates and cross-field rules remain.
+- Added ``<role>_enabled`` to every policy role. It expresses whether a host
+  should have the policy, so a fleet-wide play can vary policy by group. Each
+  role README states whether disabling converges or skips.
+- Moved distribution data for ``git``, ``ssh``, and ``time_sync`` into ``vars/``
+  loaded by first-found lookup. Supported distributions are unchanged; the
+  structure prepares for future additions.
+
 0.7.1
 -----
 

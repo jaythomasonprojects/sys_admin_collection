@@ -1,0 +1,21 @@
+---
+argument_specs:
+  main:
+    short_description: Configure ntpsec time synchronisation
+    description:
+      - Installs ntpsec, points it at a single upstream pool, comments out
+        unmanaged pool entries, and runs the service.
+    options:
+      time_sync_enabled:
+        description:
+          - Whether this host should have managed time synchronisation.
+          - Setting this to false skips the role. It does not remove ntpsec or
+            restore pool entries an earlier run commented out.
+        type: bool
+        default: true
+      time_sync_server:
+        description:
+          - Upstream NTP pool hostname.
+          - Required when time_sync_enabled is true.
+        type: str
+        default: ''

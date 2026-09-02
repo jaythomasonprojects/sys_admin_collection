@@ -1,6 +1,6 @@
 # Molecule harness guide
 
-`extensions/molecule/create_user/` is the reference harness for this
+`extensions/molecule/local_accounts/` is the reference harness for this
 collection.
 
 ## Shared pattern
@@ -17,7 +17,7 @@ collection.
 
 ## What the reference harness proves
 
-The `create_user` scenario is the baseline example for roles that can be
+The `local_accounts` scenario is the baseline example for roles that can be
 validated in a lightweight Docker container:
 
 - repo-local tooling from `.venv`
@@ -33,10 +33,14 @@ unsupported-platform rejection. Test runtime state rather than parsing the
 static task tree. Do not add test-only package or service opt-outs: scenarios
 must exercise the role's supported behaviour.
 
+Scenarios assert platform `fail_msg` strings verbatim. A role rename therefore changes the role
+and its scenario assertion in the same commit, along with the scenario directory name and
+`scenario.name`.
+
 ## Runtime assumptions for future scenarios
 
 Future scenarios should satisfy these assumptions before they copy the
-`create_user` pattern:
+`local_accounts` pattern:
 
 1. The image is stable under Molecule's Docker driver and can stay alive with a
    long-running command such as `sleep infinity`.

@@ -1,3 +1,0 @@
----
-- name: Configure USB storage policy
-  ansible.builtin.import_tasks: 'usb_storage.yml'

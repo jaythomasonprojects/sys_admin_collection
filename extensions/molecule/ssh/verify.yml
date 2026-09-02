@@ -1,0 +1,75 @@
+---
+- name: Verify SSH results
+  hosts: all
+  become: true
+  gather_facts: false
+  vars:
+    expected_cloudinit_path: "/etc/ssh/sshd_config.d/50-cloud-init.conf"
+    expected_client_config_path: "/etc/ssh/ssh_config.d/99-custom.conf"
+    expected_server_config_path: "/etc/ssh/sshd_config.d/99-custom.conf"
+    expected_client_strict_host_key_checking: "StrictHostKeyChecking no"
+    expected_client_forward_agent: "ForwardAgent yes"
+    expected_client_host_override: "Host github.com"
+    expected_client_override_user: "User git"
+    expected_server_permit_root_login: "PermitRootLogin prohibit-password"
+    expected_server_allow_users: "AllowUsers molecule"
+  tasks:
+    - name: Check seeded cloud-init SSHD drop-in
+      ansible.builtin.stat:
+        path: "{{ expected_cloudinit_path }}"
+      register: ssh_cloudinit_stat
+
+    - name: Read rendered SSH client drop-in
+      ansible.builtin.slurp:
+        src: "{{ expected_client_config_path }}"
+      register: ssh_client_config
+
+    - name: Read rendered SSHD drop-in
+      ansible.builtin.slurp:
+        src: "{{ expected_server_config_path }}"
+      register: ssh_server_config
+
+    - name: Decode rendered SSH configs
+      ansible.builtin.set_fact:
+        ssh_client_content: >-
+          {{ ssh_client_config.content | b64decode }}
+        ssh_server_content: >-
+          {{ ssh_server_config.content | b64decode }}
+
+    - name: Gather service facts
+      ansible.builtin.service_facts:
+
+    - name: Query installed OpenSSH packages
+      ansible.builtin.package_facts:
+        manager: 'apt'
+
+    - name: Validate final sshd configuration
+      ansible.builtin.command:
+        argv:
+          - "sshd"
+          - "-t"
+      register: ssh_sshd_validation
+      changed_when: false
+
+    - name: Assert SSH configuration results
+      ansible.builtin.assert:
+        that:
+          - "not ssh_cloudinit_stat.stat.exists"
+          - "ssh_sshd_validation.rc == 0"
+          - "'openssh-client' in ansible_facts.packages"
+          - "'openssh-server' in ansible_facts.packages"
+          - "'ssh.service' in ansible_facts.services"
+          - "ansible_facts.services['ssh.service'].state == 'running'"
+          - "ansible_facts.services['ssh.service'].status == 'enabled'"
+          - >-
+            expected_client_strict_host_key_checking in
+            ssh_client_content
+          - "expected_client_forward_agent in ssh_client_content"
+          - "expected_client_host_override in ssh_client_content"
+          - "expected_client_override_user in ssh_client_content"
+          - "expected_server_permit_root_login in ssh_server_content"
+          - "expected_server_allow_users in ssh_server_content"
+        fail_msg: >-
+          ssh did not render the expected SSH state.
+          cloudinit_exists={{ ssh_cloudinit_stat.stat.exists }}
+          sshd_rc={{ ssh_sshd_validation.rc }}

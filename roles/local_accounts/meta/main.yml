@@ -1,0 +1,20 @@
+---
+galaxy_info:
+  author: 'Jay Thomason'
+  description: 'Manage local accounts, authorised keys, and password policy'
+  license: 'MIT'
+  min_ansible_version: '2.18'
+  platforms:
+    - name: 'Debian'
+      versions:
+        - 'all'
+    - name: 'Ubuntu'
+      versions:
+        - 'all'
+    - name: 'Windows'
+      versions:
+        - 'all'
+collections:
+  - 'ansible.posix'
+  - 'ansible.windows'
+dependencies: []

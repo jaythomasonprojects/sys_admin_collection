@@ -1,0 +1,46 @@
+---
+- name: Verify disable_printer_discovery results
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Gather printer active states  # noqa: command-instead-of-module
+      ansible.builtin.command:
+        cmd: 'systemctl is-active {{ item }}'
+      loop:
+        - 'avahi-daemon.service'
+        - 'avahi-daemon.socket'
+        - 'cups-browsed.service'
+      register: disable_printer_discovery_active_states
+      changed_when: false
+      failed_when: false
+
+    - name: Assert printer service active states
+      ansible.builtin.assert:
+        that:
+          - >-
+            disable_printer_discovery_active_states.results[0].stdout ==
+            'inactive'
+          - >-
+            disable_printer_discovery_active_states.results[1].stdout ==
+            'inactive'
+          - >-
+            disable_printer_discovery_active_states.results[2].stdout ==
+            'inactive'
+
+    - name: Gather printer enablement states  # noqa: command-instead-of-module
+      ansible.builtin.command:
+        cmd: 'systemctl is-enabled {{ item }}'
+      loop:
+        - 'avahi-daemon.service'
+        - 'avahi-daemon.socket'
+        - 'cups-browsed.service'
+      register: disable_printer_discovery_enablement
+      changed_when: false
+      failed_when: false
+
+    - name: Assert printer service enablement states
+      ansible.builtin.assert:
+        that:
+          - disable_printer_discovery_enablement.results[0].stdout == 'disabled'
+          - disable_printer_discovery_enablement.results[1].stdout == 'disabled'
+          - disable_printer_discovery_enablement.results[2].stdout == 'disabled'

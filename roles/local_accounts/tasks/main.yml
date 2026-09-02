@@ -1,0 +1,20 @@
+---
+- name: Assert supported platform
+  ansible.builtin.assert:
+    that:
+      - >-
+        ansible_facts.system == 'Linux'
+        or ansible_facts.os_family == 'Windows'
+    fail_msg: 'local_accounts supports Linux and Windows hosts only.'
+
+- name: Configure local accounts on Linux hosts
+  ansible.builtin.include_tasks: 'linux/main.yml'
+  when:
+    - local_accounts_enabled | bool
+    - ansible_facts.system == 'Linux'
+
+- name: Configure local accounts on Windows hosts
+  ansible.builtin.include_tasks: 'windows/main.yml'
+  when:
+    - local_accounts_enabled | bool
+    - ansible_facts.os_family == 'Windows'

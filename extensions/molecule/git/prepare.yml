@@ -1,0 +1,15 @@
+---
+- name: Prepare git scenario
+  hosts: all
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Gather minimal facts
+      ansible.builtin.setup:
+        gather_subset:
+          - '!all'
+          - 'min'
+
+    - name: Refresh APT package cache
+      ansible.builtin.apt:
+        update_cache: true

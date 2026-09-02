@@ -1,0 +1,24 @@
+---
+argument_specs:
+  main:
+    short_description: Configure display manager automatic login
+    description:
+      - Configures automatic login for GDM and LightDM where their configuration
+        is detected on the host.
+      - Setting a user to an empty string removes automatic login for that
+        display manager.
+    options:
+      auto_login_gdm_user:
+        description:
+          - Account that GDM logs in automatically.
+          - Setting this also disables Wayland, which automatic login requires
+            in this environment.
+          - An empty string disables GDM automatic login.
+        type: str
+        default: ''
+      auto_login_lightdm_user:
+        description:
+          - Account that LightDM logs in automatically.
+          - An empty string removes the managed LightDM autologin block.
+        type: str
+        default: ''

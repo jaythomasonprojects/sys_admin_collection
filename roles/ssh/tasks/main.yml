@@ -1,0 +1,20 @@
+---
+- name: Assert supported platform
+  ansible.builtin.assert:
+    that:
+      - >-
+        ansible_facts.os_family == 'Windows'
+        or ansible_facts.distribution | default('') in ['Debian', 'Ubuntu']
+    fail_msg: 'ssh supports Linux and Windows hosts only.'
+
+- name: Configure SSH on Debian and Ubuntu hosts
+  ansible.builtin.include_tasks: 'linux/main.yml'
+  when:
+    - ssh_enabled | bool
+    - ansible_facts.distribution | default('') in ['Debian', 'Ubuntu']
+
+- name: Configure SSH on Windows hosts
+  ansible.builtin.include_tasks: 'windows/main.yml'
+  when:
+    - ssh_enabled | bool
+    - ansible_facts.os_family == 'Windows'

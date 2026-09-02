@@ -1,0 +1,68 @@
+---
+argument_specs:
+  main:
+    short_description: >-
+      Manage local accounts, authorised keys, and password policy
+    description:
+      - Owns local account fields, authorised-key contents, Windows key-file
+        ACLs, and Windows password policy.
+      - Account names and passwords are site data. Supply them from group_vars
+        in the consuming playbook repository, not from this collection.
+    options:
+      local_accounts_enabled:
+        description:
+          - Whether this host should have managed local accounts.
+          - Setting this to false skips the role. It does not remove accounts an
+            earlier run created.
+        type: bool
+        default: true
+      local_accounts_users:
+        description: Local accounts to manage on this host.
+        type: list
+        elements: dict
+        default: []
+        options:
+          append:
+            description: Add the supplied groups instead of replacing them.
+            type: bool
+            default: false
+          comment:
+            description: Account description, or GECOS field on Linux.
+            type: str
+          create_home:
+            description: Whether to create a Linux home directory.
+            type: bool
+            default: true
+          groups:
+            description: Linux groups or Windows local groups for the account.
+            type: list
+            elements: str
+          name:
+            description: Account name.
+            type: str
+            required: true
+          password:
+            description:
+              - Hashed password on Linux, plain password on Windows.
+              - Omit for key-only accounts. The parameter is then not sent.
+            type: str
+          password_never_expires:
+            description: Windows password expiry policy.
+            type: bool
+          shell:
+            description: Linux login shell.
+            type: str
+          ssh_authorized_keys:
+            description:
+              - Public keys for the account.
+              - Linux keys are additive. Windows treats the list as the complete
+                content of the account's key file.
+            type: list
+            elements: str
+          update_password:
+            description: Windows final password policy.
+            type: str
+            choices:
+              - 'always'
+              - 'on_create'
+            default: 'always'

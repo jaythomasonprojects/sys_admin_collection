@@ -1,0 +1,43 @@
+# Managed by Ansible - jaythomasonprojects.sys_admin.ssh
+# Windows OpenSSH server configuration
+
+Port {{ ssh_server_port }}
+ListenAddress {{ ssh_server_listen_address }}
+
+LoginGraceTime {{ ssh_server_login_grace_time }}
+PermitRootLogin {{ ssh_server_permit_root_login }}
+MaxAuthTries {{ ssh_server_max_auth_tries }}
+
+PubkeyAuthentication {{ ssh_server_pubkey_authentication }}
+PasswordAuthentication {{ ssh_server_password_authentication }}
+PermitEmptyPasswords {{ ssh_server_permit_empty_passwords }}
+
+{% if ssh_server_allow_users is not none
+   and ssh_server_allow_users | length > 0 %}
+AllowUsers {{ ssh_server_allow_users | join(' ') }}
+{% endif %}
+{% if ssh_server_allow_groups is not none
+   and ssh_server_allow_groups | length > 0 %}
+AllowGroups {{ ssh_server_allow_groups | join(' ') }}
+{% endif %}
+{% if ssh_server_deny_users is not none
+   and ssh_server_deny_users | length > 0 %}
+DenyUsers {{ ssh_server_deny_users | join(' ') }}
+{% endif %}
+{% if ssh_server_deny_groups is not none
+   and ssh_server_deny_groups | length > 0 %}
+DenyGroups {{ ssh_server_deny_groups | join(' ') }}
+{% endif %}
+
+X11Forwarding {{ ssh_server_x11_forwarding }}
+AllowTcpForwarding {{ ssh_server_allow_tcp_forwarding }}
+AllowAgentForwarding {{ ssh_server_allow_agent_forwarding }}
+
+ClientAliveInterval {{ ssh_server_client_alive_interval }}
+ClientAliveCountMax {{ ssh_server_client_alive_count_max }}
+
+UseDNS {{ ssh_server_use_dns }}
+
+# Administrator keys are owned by the local_accounts role.
+Match Group administrators
+    AuthorizedKeysFile C:/ProgramData/ssh/administrators_authorized_keys
