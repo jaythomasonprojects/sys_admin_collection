@@ -33,16 +33,6 @@
         fail_msg: >-
           auto_login did not render the expected automatic login state.
 
-    - name: Seed legacy LightDM automatic login block
-      ansible.builtin.blockinfile:
-        path: '/etc/lightdm/lightdm.conf.d/autologin.conf'
-        marker: '# {mark} ANSIBLE MANAGED BLOCK config_desktop autologin'
-        block: |
-          [SeatDefaults]
-          autologin-user=legacy
-          autologin-user-timeout=5
-        state: present
-
     - name: Remove automatic login with empty users
       ansible.builtin.include_role:
         name: 'jaythomasonprojects.sys_admin.auto_login'
@@ -74,10 +64,7 @@
           - "'AutomaticLogin = ' not in auto_login_disabled_gdm_content"
           - "'autologin-user=' not in auto_login_disabled_lightdm_content"
           - >-
-            'BEGIN ANSIBLE MANAGED BLOCK auto_login' not in
-            auto_login_disabled_lightdm_content
-          - >-
-            'BEGIN ANSIBLE MANAGED BLOCK config_desktop autologin' not in
+           'BEGIN ANSIBLE MANAGED BLOCK auto_login' not in
             auto_login_disabled_lightdm_content
         fail_msg: >-
           auto_login did not remove the expected automatic login configuration.

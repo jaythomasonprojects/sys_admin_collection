@@ -6,8 +6,15 @@ configuration, validation, firewall access, and service state. Role-specific
 guarantees, supported platforms, interfaces, invariants, and migration notes
 live in the corresponding [`roles/<role>/README.md`](roles/README.md).
 
+> [!CAUTION]
+> **Do not use this collection in production or depend on its interfaces before
+> `1.0.0`.** It is under active design, and every pre-1.0 release may make
+> breaking role, variable, behaviour, or migration changes without compatibility
+> aliases.
+
 > [!WARNING]
-> Releases before `1.0.0` may contain breaking role and variable changes. Review `CHANGELOG.rst` before upgrading.
+> `0.8.0` is a breaking release. Review `CHANGELOG.rst` and complete the
+> required migration before upgrading from an earlier release.
 
 ## Setup
 
@@ -52,11 +59,11 @@ before and after each run:
 ssh root@proxmox02 'qm rollback 101 fresh --start 1'
 ```
 
-The fresh image accepts WinRM through the `Admin` bootstrap account with password
-`Yocker95`. Use it only to establish the initial connection and run the user
-configuration, which rotates the account to the password from Ansible Vault. A
-WinRM task following that rotation can fail because its connection still has the
-bootstrap password; reconnect with the vaulted credentials before continuing.
+Obtain the fresh-image bootstrap credential from the secured operator runbook.
+Use it only to establish the initial connection and run the user configuration,
+which rotates the account to the password from Ansible Vault. A WinRM task
+following that rotation can fail because its connection still has the bootstrap
+password; reconnect with the vaulted credentials before continuing.
 
 Install the local collection artefact in `AnsiblePlaybooks`, run the R&D
 Windows share tag against `scanner2-pc` with
