@@ -1,0 +1,90 @@
+---
+argument_specs:
+  main:
+    short_description: Manage SMB/CIFS network shares
+    description:
+      - Manages SMB/CIFS mounts on Linux and mapped drives on Windows.
+      - Required share fields are validated before the role manages enabled
+        shares.
+    options:
+      mount_network_share_enabled:
+        description:
+          - Whether this host should have its configured network shares managed.
+          - Setting this to false skips the role. It does not remove shares
+            managed by an earlier run.
+        type: bool
+        default: true
+      mount_network_share_reload_remote_fs:
+        description: Whether to restart remote-fs.target after Linux changes.
+        type: bool
+        default: false
+      mount_network_share_shares:
+        description: SMB/CIFS shares to manage.
+        type: list
+        elements: dict
+        default: []
+        options:
+          name:
+            description: Human-readable label used in task output.
+            type: str
+            required: true
+          server:
+            description: SMB server hostname or address.
+            type: str
+            required: true
+          share:
+            description: SMB share name.
+            type: str
+            required: true
+          mount_point:
+            description: Linux mount path or Windows drive letter.
+            type: str
+            required: true
+          username:
+            description: Username for SMB authentication.
+            type: str
+          password:
+            description: Password for SMB authentication.
+            type: str
+            no_log: true
+          credentials_path:
+            description: Linux path for the managed SMB credential file.
+            type: str
+          credentials_owner:
+            description: Owner of the Linux SMB credential file.
+            type: str
+            default: 'root'
+          credentials_group:
+            description: Group of the Linux SMB credential file.
+            type: str
+            default: 'root'
+          credentials_mode:
+            description: Mode of the Linux SMB credential file.
+            type: str
+            default: '0600'
+          fstab_options:
+            description: Linux fstab options for the share.
+            type: list
+            elements: str
+          owner:
+            description: Owner of the Linux mount point.
+            type: str
+            default: 'root'
+          group:
+            description: Group of the Linux mount point.
+            type: str
+            default: 'root'
+          mode:
+            description: Mode of the Linux mount point.
+            type: str
+            default: '0755'
+          state:
+            description: Desired Linux mount state.
+            type: str
+            choices:
+              - 'present'
+              - 'absent'
+              - 'mounted'
+              - 'unmounted'
+              - 'absent_from_fstab'
+            default: 'present'
