@@ -2,7 +2,7 @@
 - name: Verify auto_login results
   hosts: all
   become: true
-  gather_facts: false
+  gather_facts: true
   tasks:
     - name: Read GDM configuration
       ansible.builtin.slurp:
@@ -32,3 +32,52 @@
           - "'autologin-user-timeout=5' in auto_login_lightdm_content"
         fail_msg: >-
           auto_login did not render the expected automatic login state.
+
+    - name: Seed legacy LightDM automatic login block
+      ansible.builtin.blockinfile:
+        path: '/etc/lightdm/lightdm.conf.d/autologin.conf'
+        marker: '# {mark} ANSIBLE MANAGED BLOCK config_desktop autologin'
+        block: |
+          [SeatDefaults]
+          autologin-user=legacy
+          autologin-user-timeout=5
+        state: present
+
+    - name: Remove automatic login with empty users
+      ansible.builtin.include_role:
+        name: 'jaythomasonprojects.sys_admin.auto_login'
+      vars:
+        auto_login_gdm_user: ''
+        auto_login_lightdm_user: ''
+
+    - name: Read disabled GDM configuration
+      ansible.builtin.slurp:
+        src: '/etc/gdm3/custom.conf'
+      register: auto_login_disabled_gdm_config
+
+    - name: Read disabled LightDM configuration
+      ansible.builtin.slurp:
+        src: '/etc/lightdm/lightdm.conf.d/autologin.conf'
+      register: auto_login_disabled_lightdm_config
+
+    - name: Decode disabled automatic login configs
+      ansible.builtin.set_fact:
+        auto_login_disabled_gdm_content: >-
+          {{ auto_login_disabled_gdm_config.content | b64decode }}
+        auto_login_disabled_lightdm_content: >-
+          {{ auto_login_disabled_lightdm_config.content | b64decode }}
+
+    - name: Assert automatic login configuration was removed
+      ansible.builtin.assert:
+        that:
+          - "'AutomaticLoginEnable = false' in auto_login_disabled_gdm_content"
+          - "'AutomaticLogin = ' not in auto_login_disabled_gdm_content"
+          - "'autologin-user=' not in auto_login_disabled_lightdm_content"
+          - >-
+            'BEGIN ANSIBLE MANAGED BLOCK auto_login' not in
+            auto_login_disabled_lightdm_content
+          - >-
+            'BEGIN ANSIBLE MANAGED BLOCK config_desktop autologin' not in
+            auto_login_disabled_lightdm_content
+        fail_msg: >-
+          auto_login did not remove the expected automatic login configuration.
