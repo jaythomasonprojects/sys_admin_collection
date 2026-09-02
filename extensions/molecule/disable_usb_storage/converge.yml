@@ -1,0 +1,10 @@
+---
+- name: Converge disable_usb_storage scenario
+  hosts: all
+  become: true
+  gather_facts: true
+  vars:
+    disable_usb_storage_enabled: >-
+      {{ inventory_hostname == 'ubuntu-enabled' }}
+  roles:
+    - role: 'jaythomasonprojects.sys_admin.disable_usb_storage'

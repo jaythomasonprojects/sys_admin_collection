@@ -7,31 +7,31 @@
     path: '/etc/modprobe.d'
     state: 'directory'
   become: true
-  when: blacklist_kernel_modules_disable_usb_storage | bool
+  when: disable_usb_storage_enabled | bool
 
 - name: Install USB mass-storage policy
   ansible.builtin.copy:
-    src: 'blacklist-kernel-modules-usb-storage.conf'
-    dest: '/etc/modprobe.d/blacklist-kernel-modules-usb-storage.conf'
+    src: 'disable-usb-storage.conf'
+    dest: '/etc/modprobe.d/disable-usb-storage.conf'
     group: 'root'
     mode: '0644'
     owner: 'root'
   become: true
-  when: blacklist_kernel_modules_disable_usb_storage | bool
+  when: disable_usb_storage_enabled | bool
 
 - name: Remove USB mass-storage policy when disabled
   ansible.builtin.file:
-    path: '/etc/modprobe.d/blacklist-kernel-modules-usb-storage.conf'
+    path: '/etc/modprobe.d/disable-usb-storage.conf'
     state: 'absent'
   become: true
-  when: not (blacklist_kernel_modules_disable_usb_storage | bool)
+  when: not (disable_usb_storage_enabled | bool)
 
 - name: Unload USB mass-storage kernel modules
   community.general.modprobe:
     name: '{{ item }}'
     state: 'absent'
-  become: true
   loop:
     - 'uas'
     - 'usb_storage'
-  when: blacklist_kernel_modules_disable_usb_storage | bool
+  become: true
+  when: disable_usb_storage_enabled | bool

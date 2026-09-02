@@ -1,5 +1,5 @@
 ---
-- name: Prepare blacklist_kernel_modules scenario
+- name: Prepare disable_usb_storage scenario
   hosts: all
   become: true
   gather_facts: false
@@ -16,16 +16,16 @@
           - 'cat'
           - '/proc/modules'
       changed_when: false
-      register: blacklist_kernel_modules_loaded_modules
+      register: disable_usb_storage_loaded_modules
 
     - name: Assert USB mass-storage modules are not loaded
       ansible.builtin.assert:
         that:
           - >-
-            blacklist_kernel_modules_loaded_modules.stdout_lines |
+            disable_usb_storage_loaded_modules.stdout_lines |
             select('match', '^usb_storage\\s') | list | length == 0
           - >-
-            blacklist_kernel_modules_loaded_modules.stdout_lines |
+            disable_usb_storage_loaded_modules.stdout_lines |
             select('match', '^uas\\s') | list | length == 0
         fail_msg: >-
           The Docker host has USB mass-storage modules loaded, so this scenario
@@ -43,7 +43,7 @@
     - name: Seed obsolete USB mass-storage policy on disabled host
       ansible.builtin.copy:
         content: 'obsolete policy\n'
-        dest: '/etc/modprobe.d/blacklist-kernel-modules-usb-storage.conf'
+        dest: '/etc/modprobe.d/disable-usb-storage.conf'
         group: 'root'
         mode: '0644'
         owner: 'root'

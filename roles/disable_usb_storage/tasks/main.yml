@@ -3,7 +3,7 @@
   ansible.builtin.assert:
     that:
       - ansible_facts.system == 'Linux'
-    fail_msg: 'blacklist_kernel_modules supports Linux hosts only.'
+    fail_msg: 'disable_usb_storage supports Linux hosts only.'
 
-- name: Configure Linux kernel module policy
+- name: Configure USB mass-storage policy on Linux hosts
   ansible.builtin.import_tasks: 'linux/main.yml'

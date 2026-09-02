@@ -17,4 +17,4 @@ platforms:
       - '/lib/modules:/lib/modules:ro'
 
 scenario:
-  name: 'blacklist_kernel_modules'
+  name: 'disable_usb_storage'

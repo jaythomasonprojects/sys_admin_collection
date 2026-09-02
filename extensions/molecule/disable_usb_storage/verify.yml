@@ -1,13 +1,13 @@
 ---
-- name: Verify blacklist_kernel_modules results
+- name: Verify disable_usb_storage results
   hosts: all
   become: true
   gather_facts: false
   vars:
-    blacklist_kernel_modules_policy_file: >-
-      /etc/modprobe.d/blacklist-kernel-modules-usb-storage.conf
-    blacklist_kernel_modules_expected_policy: |
-      # Ansible managed: blacklist_kernel_modules USB mass-storage policy.
+    disable_usb_storage_policy_file: >-
+      /etc/modprobe.d/disable-usb-storage.conf
+    disable_usb_storage_expected_policy: |
+      # Ansible managed: disable_usb_storage USB mass-storage policy.
       install usb-storage /bin/false
       blacklist usb-storage
       install uas /bin/false
@@ -15,14 +15,14 @@
   tasks:
     - name: Read USB mass-storage policy on enabled host
       ansible.builtin.slurp:
-        src: '{{ blacklist_kernel_modules_policy_file }}'
-      register: blacklist_kernel_modules_policy
+        src: '{{ disable_usb_storage_policy_file }}'
+      register: disable_usb_storage_policy
       when: inventory_hostname == 'ubuntu-enabled'
 
     - name: Stat USB mass-storage policy on disabled host
       ansible.builtin.stat:
-        path: '{{ blacklist_kernel_modules_policy_file }}'
-      register: blacklist_kernel_modules_disabled_policy
+        path: '{{ disable_usb_storage_policy_file }}'
+      register: disable_usb_storage_disabled_policy
       when: inventory_hostname == 'ubuntu-disabled'
 
     - name: Resolve USB storage modprobe policy
@@ -33,16 +33,16 @@
           - '-v'
           - 'usb-storage'
       changed_when: false
-      register: blacklist_kernel_modules_modprobe
+      register: disable_usb_storage_modprobe
       when: inventory_hostname == 'ubuntu-enabled'
 
     - name: Assert USB mass-storage policy state
       ansible.builtin.assert:
         that:
           - >-
-            (blacklist_kernel_modules_policy.content | b64decode) ==
-            blacklist_kernel_modules_expected_policy
-          - "'/bin/false' in blacklist_kernel_modules_modprobe.stdout"
+            (disable_usb_storage_policy.content | b64decode) ==
+            disable_usb_storage_expected_policy
+          - "'/bin/false' in disable_usb_storage_modprobe.stdout"
         fail_msg: >-
           The enabled host does not enforce the expected USB mass-storage
           policy.
@@ -51,16 +51,16 @@
     - name: Assert obsolete USB mass-storage policy is removed
       ansible.builtin.assert:
         that:
-          - not blacklist_kernel_modules_disabled_policy.stat.exists
+          - not disable_usb_storage_disabled_policy.stat.exists
         fail_msg: >-
           The disabled host retained the managed USB mass-storage policy.
       when: inventory_hostname == 'ubuntu-disabled'
 
     - name: Reject Darwin hosts
       block:
-        - name: Run blacklist_kernel_modules with Darwin facts
+        - name: Run disable_usb_storage with Darwin facts
           ansible.builtin.include_role:
-            name: 'jaythomasonprojects.sys_admin.blacklist_kernel_modules'
+            name: 'jaythomasonprojects.sys_admin.disable_usb_storage'
           vars:
             ansible_facts:
               os_family: 'Darwin'
@@ -68,15 +68,15 @@
       rescue:
         - name: Record Darwin rejection
           ansible.builtin.set_fact:
-            blacklist_kernel_modules_darwin_error: >-
+            disable_usb_storage_darwin_error: >-
               {{ ansible_failed_result.msg }}
-            blacklist_kernel_modules_darwin_rejected: true
+            disable_usb_storage_darwin_rejected: true
 
     - name: Assert Darwin is rejected
       ansible.builtin.assert:
         that:
-          - blacklist_kernel_modules_darwin_rejected | default(false)
+          - disable_usb_storage_darwin_rejected | default(false)
           - >-
-            blacklist_kernel_modules_darwin_error ==
-            'blacklist_kernel_modules supports Linux hosts only.'
-        fail_msg: 'blacklist_kernel_modules accepted a Darwin host.'
+            disable_usb_storage_darwin_error ==
+            'disable_usb_storage supports Linux hosts only.'
+        fail_msg: 'disable_usb_storage accepted a Darwin host.'

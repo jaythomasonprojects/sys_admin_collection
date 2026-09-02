@@ -1,7 +1,7 @@
 ---
 galaxy_info:
   author: 'Jay Thomason'
-  description: 'Manage opinionated USB mass-storage kernel module policy'
+  description: 'Blacklist and unload the USB mass-storage kernel modules'
   license: 'MIT'
   min_ansible_version: '2.18'
   platforms:
