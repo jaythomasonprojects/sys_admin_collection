@@ -1,25 +1,26 @@
 ---
-- name: Converge config_ssh scenario
+- name: Converge SSH scenario
   hosts: all
   become: true
   gather_facts: true
   vars:
-    config_ssh_sshd_permit_root_login: 'prohibit-password'
-    config_ssh_sshd_allow_users: 'molecule'
-    config_ssh_ssh_strict_host_key_checking: 'no'
-    config_ssh_ssh_forward_agent: 'yes'
-    config_ssh_ssh_host_overrides:
+    ssh_server_permit_root_login: 'prohibit-password'
+    ssh_server_allow_users:
+      - 'molecule'
+    ssh_client_strict_host_key_checking: 'no'
+    ssh_client_forward_agent: 'yes'
+    ssh_client_host_overrides:
       - host: 'github.com'
         settings:
           User: 'git'
   roles:
-    - role: 'jaythomasonprojects.sys_admin.config_ssh'
+    - role: 'jaythomasonprojects.sys_admin.ssh'
   tasks:
     - name: Reject unsupported operating systems
       block:
         - name: Configure unsupported operating system
           ansible.builtin.include_role:
-            name: 'jaythomasonprojects.sys_admin.config_ssh'
+            name: 'jaythomasonprojects.sys_admin.ssh'
           vars:
             ansible_facts:
               os_family: 'Darwin'
@@ -27,12 +28,12 @@
       rescue:
         - name: Record unsupported operating system rejection
           ansible.builtin.set_fact:
-            config_ssh_unsupported_platform_failure: >-
+            ssh_unsupported_platform_failure: >-
               {{ ansible_failed_result.msg | default('') }}
 
     - name: Assert unsupported operating system was rejected
       ansible.builtin.assert:
         that:
           - >-
-            config_ssh_unsupported_platform_failure ==
-            'config_ssh supports Linux and Windows hosts only.'
+            ssh_unsupported_platform_failure ==
+            'ssh supports Linux and Windows hosts only.'

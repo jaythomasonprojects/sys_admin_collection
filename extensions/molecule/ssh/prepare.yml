@@ -1,5 +1,5 @@
 ---
-- name: Prepare config_ssh scenario
+- name: Prepare SSH scenario
   hosts: all
   gather_facts: false
   tasks:

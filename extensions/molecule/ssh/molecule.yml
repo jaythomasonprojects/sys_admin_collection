@@ -22,4 +22,4 @@ provisioner:
     ANSIBLE_REMOTE_USER: 'root'
 
 scenario:
-  name: 'config_ssh'
+  name: 'ssh'

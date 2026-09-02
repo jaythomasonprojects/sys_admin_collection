@@ -1,0 +1,42 @@
+# Custom SSHD configuration managed by Ansible
+# This file is placed in /etc/ssh/sshd_config.d/99-custom.conf
+
+# Network and Connection Settings
+Port {{ ssh_server_port }}
+ListenAddress {{ ssh_server_listen_address }}
+
+# Authentication Settings
+LoginGraceTime {{ ssh_server_login_grace_time }}
+PermitRootLogin {{ ssh_server_permit_root_login }}
+MaxAuthTries {{ ssh_server_max_auth_tries }}
+
+# Authentication Methods
+PubkeyAuthentication {{ ssh_server_pubkey_authentication }}
+PasswordAuthentication {{ ssh_server_password_authentication }}
+PermitEmptyPasswords {{ ssh_server_permit_empty_passwords }}
+
+# User and Group Access Control
+{% if ssh_server_allow_users is not none and ssh_server_allow_users | length > 0 %}
+AllowUsers {{ ssh_server_allow_users | join(' ') }}
+{% endif %}
+{% if ssh_server_allow_groups is not none and ssh_server_allow_groups | length > 0 %}
+AllowGroups {{ ssh_server_allow_groups | join(' ') }}
+{% endif %}
+{% if ssh_server_deny_users is not none and ssh_server_deny_users | length > 0 %}
+DenyUsers {{ ssh_server_deny_users | join(' ') }}
+{% endif %}
+{% if ssh_server_deny_groups is not none and ssh_server_deny_groups | length > 0 %}
+DenyGroups {{ ssh_server_deny_groups | join(' ') }}
+{% endif %}
+
+# Forwarding and Tunneling
+X11Forwarding {{ ssh_server_x11_forwarding }}
+AllowTcpForwarding {{ ssh_server_allow_tcp_forwarding }}
+AllowAgentForwarding {{ ssh_server_allow_agent_forwarding }}
+
+# Session Management
+ClientAliveInterval {{ ssh_server_client_alive_interval }}
+ClientAliveCountMax {{ ssh_server_client_alive_count_max }}
+
+# Miscellaneous
+UseDNS {{ ssh_server_use_dns }}

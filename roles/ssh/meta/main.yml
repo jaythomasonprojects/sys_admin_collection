@@ -6,7 +6,9 @@ collections:
 
 galaxy_info:
   author: 'Jay Thomason'
-  description: 'Manage complete SSH client and server reachability'
+  description: >-
+    Install OpenSSH and own client policy, server policy, firewall access, and
+    service state
   license: 'MIT'
   min_ansible_version: '2.18'
   platforms:

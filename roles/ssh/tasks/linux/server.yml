@@ -5,14 +5,14 @@
     patterns:
       - '*cloud-init*'
       - '*cloudimg*'
-  register: config_ssh_cloudinit_conf
+  register: ssh_cloudinit_conf
   become: true
 
 - name: Delete cloud-init SSH configuration files
   ansible.builtin.file:
     path: '{{ item.path }}'
     state: absent
-  loop: '{{ config_ssh_cloudinit_conf.files }}'
+  loop: '{{ ssh_cloudinit_conf.files }}'
   notify: Restart SSH service
   become: true
 
@@ -41,7 +41,7 @@
 
 - name: Enable and start SSH service
   ansible.builtin.systemd_service:
-    name: '{{ config_ssh_service_name }}'
+    name: '{{ ssh_service_name }}'
     enabled: true
     state: started
   become: true

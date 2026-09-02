@@ -8,9 +8,9 @@
       Add-WindowsCapability -Online -Name $sshCap.Name
       Write-Output 'CAPABILITY_INSTALLED'
     }
-  register: config_ssh_install
+  register: ssh_install
   changed_when: >-
-    config_ssh_install.stdout is search('CAPABILITY_INSTALLED')
+    ssh_install.stdout is search('CAPABILITY_INSTALLED')
   become: true
 
 - name: Create SSH server configuration directory
@@ -29,7 +29,7 @@
     action: allow
     direction: in
     enabled: true
-    localport: '{{ config_ssh_sshd_port }}'
+    localport: '{{ ssh_server_port }}'
     name: 'OpenSSH Server (sshd)'
     protocol: 'TCP'
     state: present

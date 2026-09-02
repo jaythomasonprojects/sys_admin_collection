@@ -1,5 +1,5 @@
 ---
-- name: Cleanup config_ssh scenario
+- name: Cleanup SSH scenario
   hosts: all
   become: true
   gather_facts: false

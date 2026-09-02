@@ -1,5 +1,5 @@
 ---
-- name: Verify config_ssh results
+- name: Verify SSH results
   hosts: all
   become: true
   gather_facts: false
@@ -17,24 +17,24 @@
     - name: Check seeded cloud-init SSHD drop-in
       ansible.builtin.stat:
         path: "{{ expected_cloudinit_path }}"
-      register: config_ssh_cloudinit_stat
+      register: ssh_cloudinit_stat
 
     - name: Read rendered SSH client drop-in
       ansible.builtin.slurp:
         src: "{{ expected_client_config_path }}"
-      register: config_ssh_client_config
+      register: ssh_client_config
 
     - name: Read rendered SSHD drop-in
       ansible.builtin.slurp:
         src: "{{ expected_server_config_path }}"
-      register: config_ssh_server_config
+      register: ssh_server_config
 
     - name: Decode rendered SSH configs
       ansible.builtin.set_fact:
-        config_ssh_client_content: >-
-          {{ config_ssh_client_config.content | b64decode }}
-        config_ssh_server_content: >-
-          {{ config_ssh_server_config.content | b64decode }}
+        ssh_client_content: >-
+          {{ ssh_client_config.content | b64decode }}
+        ssh_server_content: >-
+          {{ ssh_server_config.content | b64decode }}
 
     - name: Gather service facts
       ansible.builtin.service_facts:
@@ -48,14 +48,14 @@
         argv:
           - "sshd"
           - "-t"
-      register: config_ssh_sshd_validation
+      register: ssh_sshd_validation
       changed_when: false
 
     - name: Assert SSH configuration results
       ansible.builtin.assert:
         that:
-          - "not config_ssh_cloudinit_stat.stat.exists"
-          - "config_ssh_sshd_validation.rc == 0"
+          - "not ssh_cloudinit_stat.stat.exists"
+          - "ssh_sshd_validation.rc == 0"
           - "'openssh-client' in ansible_facts.packages"
           - "'openssh-server' in ansible_facts.packages"
           - "'ssh.service' in ansible_facts.services"
@@ -63,13 +63,13 @@
           - "ansible_facts.services['ssh.service'].status == 'enabled'"
           - >-
             expected_client_strict_host_key_checking in
-            config_ssh_client_content
-          - "expected_client_forward_agent in config_ssh_client_content"
-          - "expected_client_host_override in config_ssh_client_content"
-          - "expected_client_override_user in config_ssh_client_content"
-          - "expected_server_permit_root_login in config_ssh_server_content"
-          - "expected_server_allow_users in config_ssh_server_content"
+            ssh_client_content
+          - "expected_client_forward_agent in ssh_client_content"
+          - "expected_client_host_override in ssh_client_content"
+          - "expected_client_override_user in ssh_client_content"
+          - "expected_server_permit_root_login in ssh_server_content"
+          - "expected_server_allow_users in ssh_server_content"
         fail_msg: >-
-          config_ssh did not render the expected SSH state.
-          cloudinit_exists={{ config_ssh_cloudinit_stat.stat.exists }}
-          sshd_rc={{ config_ssh_sshd_validation.rc }}
+          ssh did not render the expected SSH state.
+          cloudinit_exists={{ ssh_cloudinit_stat.stat.exists }}
+          sshd_rc={{ ssh_sshd_validation.rc }}
