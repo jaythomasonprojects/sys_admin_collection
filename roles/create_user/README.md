@@ -48,5 +48,5 @@ and SYSTEM.
 - Windows creates accounts before key files, then applies final password policy.
   A bootstrap-password rotation requires reconnecting with the vaulted
   credentials before subsequent tasks.
-- Configure `config_ssh` separately to install OpenSSH, configure its service,
+- Configure `ssh` separately to install OpenSSH, configure its service,
   and open the Windows SSH firewall rule.
