@@ -1,7 +1,5 @@
 # Role Structure and Ownership Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** Refactor every role into a predictable platform layout with complete, opinionated capability ownership and release the clean breaking interface as collection version `0.7.0`.
 
 **Architecture:** Root task files validate and dispatch to Linux or Windows implementations. Capability roles own their required packages, configuration, firewall access, and services; focused task files exist only for substantial responsibilities or independently selectable policy. Role READMEs are local design records, while Molecule and the Windows VM verify observable contracts rather than task-file structure.

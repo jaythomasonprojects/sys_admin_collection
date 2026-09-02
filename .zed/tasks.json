@@ -51,8 +51,4 @@
     "label": "Clean: molecule artefacts",
     "command": "find . -type d -name .molecule -exec rm -rf {} +",
   },
-  {
-    "label": "Clean: agent artifacts",
-    "command": "find . -type d \\( -name .playwright-cli -o -name .mcp-cache \\) -exec rm -rf {} +",
-  },
 ]
