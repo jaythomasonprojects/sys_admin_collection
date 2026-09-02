@@ -1,5 +1,5 @@
 ---
-- name: Prepare config_desktop scenario
+- name: Prepare auto_login scenario
   hosts: all
   become: true
   gather_facts: false

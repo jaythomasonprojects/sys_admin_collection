@@ -3,7 +3,7 @@
   ansible.builtin.assert:
     that:
       - ansible_facts.system == 'Linux'
-    fail_msg: 'config_desktop supports Linux hosts only.'
+    fail_msg: 'auto_login supports Linux hosts only.'
 
-- name: Configure desktop on Linux hosts
+- name: Configure automatic login on Linux hosts
   ansible.builtin.import_tasks: 'linux/main.yml'
