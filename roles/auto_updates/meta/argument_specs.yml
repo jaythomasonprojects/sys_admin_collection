@@ -1,0 +1,73 @@
+---
+argument_specs:
+  main:
+    short_description: Configure native automatic operating system updates
+    description:
+      - Configures persistent automatic update schedules on Linux.
+      - Installs available updates immediately on Windows.
+    options:
+      auto_updates_apt_auto_reboot:
+        description: Allow unattended-upgrades to reboot when needed.
+        type: bool
+        default: false
+      auto_updates_apt_auto_reboot_time:
+        description: Reboot window for unattended-upgrades.
+        type: str
+        default: '02:00'
+      auto_updates_apt_origins:
+        description: Explicit APT origins pattern override.
+        type: list
+        elements: str
+        default: []
+      auto_updates_apt_package_blacklist:
+        description: Packages to exclude from unattended upgrades.
+        type: list
+        elements: str
+        default: []
+      auto_updates_dnf_apply_updates:
+        description: Install downloaded updates with dnf-automatic.
+        type: bool
+        default: true
+      auto_updates_dnf_download_updates:
+        description: Download package updates with dnf-automatic.
+        type: bool
+        default: true
+      auto_updates_dnf_emit_via:
+        description: DNF update notification transport.
+        type: str
+        default: 'stdio'
+      auto_updates_dnf_random_sleep:
+        description: Maximum random delay before DNF starts.
+        type: int
+        default: 0
+      auto_updates_dnf_reboot:
+        description: DNF reboot policy.
+        type: str
+        choices:
+          - 'never'
+          - 'when-changed'
+          - 'when-needed'
+        default: 'never'
+      auto_updates_dnf_upgrade_type:
+        description: DNF upgrade type.
+        type: str
+        choices:
+          - 'default'
+          - 'security'
+        default: 'default'
+      auto_updates_enabled:
+        description:
+          - Whether this host should have automatic updates configured.
+          - >-
+            Setting this to false converges Linux to a disabled schedule by
+            writing zeroed APT periodic counters and stopping the dnf-automatic
+            timer, rather than skipping the role.
+          - >-
+            Windows ignores this setting and installs available updates
+            immediately.
+        type: bool
+        default: true
+      auto_updates_win_reboot:
+        description: Allow the immediate Windows update installation to reboot.
+        type: bool
+        default: true
