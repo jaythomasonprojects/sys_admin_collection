@@ -6,10 +6,10 @@
     groups: '{{ item.groups | default(omit) }}'
     groups_action: >-
       {{ 'add' if item.append | default(false) else 'replace' }}
-    password: '{{ item.password }}'
+    password: '{{ item.password | default(omit) }}'
     password_never_expires: '{{ item.password_never_expires | default(omit) }}'
     state: present
     update_password: on_create
-  loop: '{{ create_user_accounts }}'
-  when: create_user_accounts | length > 0
+  loop: '{{ local_accounts_users }}'
+  when: local_accounts_users | length > 0
   no_log: true

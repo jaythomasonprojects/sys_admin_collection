@@ -12,4 +12,4 @@ provisioner:
   name: 'ansible'
 
 scenario:
-  name: 'create_user'
+  name: 'local_accounts'

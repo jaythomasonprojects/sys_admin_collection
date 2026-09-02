@@ -7,10 +7,11 @@
   loop: >-
     {{ query(
          'ansible.builtin.subelements',
-         create_user_accounts,
+         local_accounts_users,
          'ssh_authorized_keys',
          {'skip_missing': true}
        ) }}
   loop_control:
     label: '{{ item.0.name }}'
   become: true
+  no_log: true

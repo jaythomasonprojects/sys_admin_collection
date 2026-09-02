@@ -1,5 +1,5 @@
 ---
-- name: Cleanup create_user scenario
+- name: Cleanup local_accounts scenario
   hosts: all
   become: true
   gather_facts: false

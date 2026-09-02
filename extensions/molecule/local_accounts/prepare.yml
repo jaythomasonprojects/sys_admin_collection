@@ -1,5 +1,5 @@
 ---
-- name: Prepare create_user scenario
+- name: Prepare local_accounts scenario
   hosts: all
   become: true
   gather_facts: false

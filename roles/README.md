@@ -2,7 +2,7 @@
 
 Collection roles for `jaythomasonprojects.sys_admin`, consumed from the
 installed collection via FQCN such as
-`jaythomasonprojects.sys_admin.create_user`.
+`jaythomasonprojects.sys_admin.local_accounts`.
 
 Each role directory carries its own `README.md`, the local design record for
 that role's guarantee, ownership, supported platforms, implementation map,

@@ -8,11 +8,11 @@
     groups: >-
       {{ item.groups | join(',')
          if item.groups is defined else omit }}
-    password: '{{ item.password }}'
+    password: '{{ item.password | default(omit) }}'
     shell: '{{ item.shell | default(omit) }}'
     state: present
-    update_password: always
-  loop: '{{ create_user_accounts }}'
-  when: create_user_accounts | length > 0
+    update_password: 'always'
+  loop: '{{ local_accounts_users }}'
+  when: local_accounts_users | length > 0
   become: true
   no_log: true
