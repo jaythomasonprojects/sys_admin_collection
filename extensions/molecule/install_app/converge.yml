@@ -61,6 +61,14 @@
   roles:
     - role: 'jaythomasonprojects.sys_admin.install_app'
   tasks:
+    - name: Apply disabled application installation
+      ansible.builtin.include_role:
+        name: 'jaythomasonprojects.sys_admin.install_app'
+      vars:
+        install_app_enabled: false
+        install_app_packages:
+          - 'this-package-does-not-exist'
+
     - name: Reject unsupported operating systems
       block:
         - name: Configure unsupported operating system

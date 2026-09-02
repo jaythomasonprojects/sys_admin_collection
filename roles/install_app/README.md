@@ -19,6 +19,9 @@ Each managed application belongs to one requested channel. The role does not
 install Node.js versions, manage other Flatpak remotes, or apply Linux-only
 channels to Windows.
 
+Application package lists are site data supplied from `group_vars` in the
+consuming playbook repository, not from this collection.
+
 ## Implementation map
 
 - `tasks/main.yml`: validates the supported platform and dispatches to the
@@ -38,6 +41,9 @@ channels to Windows.
 
 ## Variables
 
+- `install_app_enabled`: whether this host should have its requested
+  applications installed. Defaults to `true`. Setting it to `false` skips the
+  role and does not remove applications installed by an earlier run.
 - `install_app_packages`: native Linux package names or Windows Chocolatey
   package names to install. Defaults to `[]`.
 - `install_app_debs`: Debian package installers to apply on APT hosts. Defaults

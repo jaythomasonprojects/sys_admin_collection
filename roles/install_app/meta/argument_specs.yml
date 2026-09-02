@@ -1,0 +1,82 @@
+---
+argument_specs:
+  main:
+    short_description: Install applications through supported package channels
+    description:
+      - Installs applications through native package, Debian installer, npm,
+        Flatpak, and Chocolatey channels.
+      - Application package lists are site data. Supply them from group_vars in
+        the consuming playbook repository, not from this collection.
+    options:
+      install_app_debs:
+        description: Debian package installers to apply on APT hosts.
+        type: list
+        elements: dict
+        default: []
+        options:
+          checksum:
+            description: Checksum for a downloaded Debian package.
+            type: str
+          creates:
+            description: >-
+              Managed-host path that skips the installer when present.
+            type: str
+          deb:
+            description: Managed-host package path or URL passed to APT.
+            type: str
+          dest:
+            description: >-
+              Managed-host destination for a copied or downloaded package.
+            type: str
+          enabled:
+            description: Whether to apply this Debian package installer.
+            type: bool
+            default: true
+          mode:
+            description: File mode for a copied or downloaded package.
+            type: str
+            default: '0644'
+          name:
+            description: Human-readable label used in task output.
+            type: str
+          src:
+            description: >-
+              Package file on the controller to copy to the managed host.
+            type: str
+          state:
+            description: Package state passed to APT.
+            type: str
+            choices:
+              - 'present'
+              - 'absent'
+            default: 'present'
+          url:
+            description: Package URL to download to the managed host.
+            type: str
+      install_app_enabled:
+        description:
+          - Whether this host should have requested applications installed.
+          - Setting this to false skips the role. It does not remove
+            applications installed by an earlier run.
+        type: bool
+        default: true
+      install_app_flatpaks:
+        description: Flatpak refs to install.
+        type: list
+        elements: str
+        default: []
+      install_app_manage_flatpak_remote:
+        description: >-
+          Whether to configure Flathub before installing Flatpak refs.
+        type: bool
+        default: true
+      install_app_npm_packages:
+        description: Bare npm package names to install globally on Linux hosts.
+        type: list
+        elements: str
+        default: []
+      install_app_packages:
+        description: Native Linux or Windows Chocolatey package names.
+        type: list
+        elements: str
+        default: []
