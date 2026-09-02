@@ -1,0 +1,10 @@
+---
+- name: Assert supported platform
+  ansible.builtin.assert:
+    that:
+      - ansible_facts.os_family == 'Windows'
+    fail_msg: 'power_policy supports Windows hosts only.'
+
+- name: Configure power policy on Windows hosts
+  ansible.builtin.include_tasks: 'windows/main.yml'
+  when: power_policy_enabled | bool

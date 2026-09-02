@@ -1,9 +1,0 @@
----
-- name: Assert Windows host support
-  ansible.builtin.assert:
-    that:
-      - ansible_facts.os_family == 'Windows'
-    fail_msg: 'config_power supports Windows hosts only.'
-
-- name: Configure Windows power policy
-  ansible.builtin.include_tasks: 'windows/main.yml'

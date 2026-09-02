@@ -1,0 +1,30 @@
+---
+argument_specs:
+  main:
+    short_description: Configure Windows power plan, timeouts, and hibernation
+    description:
+      - Applies the active power plan, clears sleep and monitor timeouts on both
+        AC and DC power, and disables hibernation.
+    options:
+      power_policy_disable_hibernate:
+        description: Whether to run powercfg /hibernate off.
+        type: bool
+        default: true
+      power_policy_disable_sleep:
+        description:
+          - Whether to set monitor and standby timeouts to never on AC and DC.
+        type: bool
+        default: true
+      power_policy_enabled:
+        description:
+          - Whether this host should have a managed power policy.
+          - Setting this to false skips the role. It does not restore the
+            timeouts or power plan an earlier run applied.
+        type: bool
+        default: true
+      power_policy_plan:
+        description:
+          - Name of the Windows power plan to activate.
+          - An empty string leaves the active plan unchanged.
+        type: str
+        default: 'high performance'

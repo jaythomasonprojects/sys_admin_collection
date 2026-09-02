@@ -9,4 +9,4 @@ platforms:
     pre_build_image: true
 
 scenario:
-  name: 'config_power'
+  name: 'power_policy'

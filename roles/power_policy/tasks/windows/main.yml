@@ -1,9 +1,9 @@
 ---
 - name: Set power plan
   community.windows.win_power_plan:
-    name: '{{ config_power_power_plan }}'
+    name: '{{ power_policy_plan }}'
   when:
-    - config_power_power_plan | length > 0
+    - power_policy_plan | length > 0
 
 # powercfg /change sets timeouts to 0 (never). The script uses
 # $Ansible.Result.changed to report idempotency: it checks current
@@ -59,15 +59,15 @@
               $Ansible.Result.changed = $true
           }
       }
-  register: config_power_sleep_result
+  register: power_policy_sleep_result
   when:
-    - config_power_disable_sleep | bool
+    - power_policy_disable_sleep | bool
   changed_when: >-
-    config_power_sleep_result.result.changed
+    power_policy_sleep_result.result.changed
     | default(false)
 
 - name: Disable hibernate
   ansible.windows.win_command: 'powercfg /hibernate off'
   when:
-    - config_power_disable_hibernate | bool
+    - power_policy_disable_hibernate | bool
   changed_when: false

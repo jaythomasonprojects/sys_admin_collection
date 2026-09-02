@@ -1,5 +1,5 @@
 ---
-- name: Converge config_power scenario
+- name: Converge power_policy scenario
   hosts: all
   gather_facts: true
   tasks:
@@ -7,16 +7,16 @@
       block:
         - name: Configure power policy on Ubuntu
           ansible.builtin.include_role:
-            name: 'jaythomasonprojects.sys_admin.config_power'
+            name: 'jaythomasonprojects.sys_admin.power_policy'
       rescue:
         - name: Record Ubuntu rejection
           ansible.builtin.set_fact:
-            config_power_ubuntu_error: >-
+            power_policy_ubuntu_error: >-
               {{ ansible_failed_result.msg | default('') }}
 
     - name: Assert Ubuntu is rejected
       ansible.builtin.assert:
         that:
           - >-
-            config_power_ubuntu_error | default('') ==
-            'config_power supports Windows hosts only.'
+            power_policy_ubuntu_error | default('') ==
+            'power_policy supports Windows hosts only.'
