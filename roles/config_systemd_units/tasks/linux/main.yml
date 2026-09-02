@@ -6,19 +6,32 @@
     fail_msg: >-
       config_systemd_units requires a host using systemd as its service manager.
 
-- name: Validate top-level configuration types
-  ansible.builtin.assert:
-    that:
-      - config_systemd_units_custom_services is sequence
-      - config_systemd_units_custom_services is not string
-      - config_systemd_units_disable_printer_services is boolean
-    fail_msg: >-
-      config_systemd_units custom services must be a list and printer service
-      suppression must be a boolean.
+- name: Inspect printer service load states
+  ansible.builtin.command:
+    argv:
+      - 'systemctl'
+      - 'show'
+      - '--property=LoadState'
+      - '--value'
+      - '{{ item }}'
+  loop: '{{ config_systemd_units_printer_services }}'
+  loop_control:
+    label: '{{ item }}'
+  register: config_systemd_units_load_states
+  changed_when: false
+  check_mode: false
+  failed_when: false
+  when: config_systemd_units_disable_printer_services | bool
 
-- name: Disable printer services
-  ansible.builtin.include_tasks: 'printer_services.yml'
-  when: config_systemd_units_disable_printer_services
-
-- name: Configure custom services
-  ansible.builtin.include_tasks: 'custom_services.yml'
+- name: Stop and disable loaded printer services
+  ansible.builtin.systemd_service:
+    enabled: false
+    name: '{{ item.item }}'
+    state: 'stopped'
+  loop: '{{ config_systemd_units_load_states.results | default([]) }}'
+  loop_control:
+    label: '{{ item.item }}'
+  become: true
+  when:
+    - not item.skipped | default(false)
+    - item.stdout == 'loaded'

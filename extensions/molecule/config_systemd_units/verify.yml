@@ -3,92 +3,38 @@
   hosts: all
   gather_facts: false
   tasks:
-    - name: Gather active unit states  # noqa: command-instead-of-module
+    - name: Gather printer active states  # noqa: command-instead-of-module
       ansible.builtin.command:
         cmd: 'systemctl is-active {{ item }}'
       loop:
         - 'avahi-daemon.service'
         - 'avahi-daemon.socket'
-        - 'molecule-external.service'
-        - 'molecule-created.service'
+        - 'cups-browsed.service'
       register: config_systemd_units_active_states
       changed_when: false
       failed_when: false
 
-    - name: Assert active unit states
+    - name: Assert printer service active states
       ansible.builtin.assert:
         that:
           - config_systemd_units_active_states.results[0].stdout == 'inactive'
           - config_systemd_units_active_states.results[1].stdout == 'inactive'
-          - config_systemd_units_active_states.results[2].stdout == 'active'
-          - config_systemd_units_active_states.results[3].stdout == 'active'
+          - config_systemd_units_active_states.results[2].stdout == 'inactive'
 
-    - name: Gather enablement states  # noqa: command-instead-of-module
+    - name: Gather printer enablement states  # noqa: command-instead-of-module
       ansible.builtin.command:
         cmd: 'systemctl is-enabled {{ item }}'
       loop:
         - 'avahi-daemon.service'
         - 'avahi-daemon.socket'
-        - 'molecule-external.service'
-        - 'molecule-created.service'
+        - 'cups-browsed.service'
       register: config_systemd_units_enablement
       changed_when: false
       failed_when: false
 
-    - name: Assert enablement states
+    - name: Assert printer service enablement states
       ansible.builtin.assert:
         that:
           - config_systemd_units_enablement.results[0].stdout == 'disabled'
           - config_systemd_units_enablement.results[1].stdout == 'disabled'
-          - config_systemd_units_enablement.results[2].stdout == 'enabled'
-          - config_systemd_units_enablement.results[3].stdout == 'enabled'
-
-    - name: Inspect printer load state  # noqa: command-instead-of-module
-      ansible.builtin.command:
-        cmd: 'systemctl show --property=LoadState --value cups-browsed.service'
-      register: config_systemd_units_missing_printer_state
-      changed_when: false
-
-    - name: Assert missing printer service is compliant
-      ansible.builtin.assert:
-        that:
-          - config_systemd_units_missing_printer_state.stdout == 'not-found'
-
-    - name: Inspect role-owned unit files
-      ansible.builtin.stat:
-        path: '/etc/systemd/system/{{ item }}'
-      loop:
-        - 'molecule-created.service'
-        - 'molecule-remove.service'
-      register: config_systemd_units_files
-
-    - name: Assert role-owned unit file lifecycle
-      ansible.builtin.assert:
-        that:
-          - config_systemd_units_files.results[0].stat.exists
-          - config_systemd_units_files.results[0].stat.pw_name == 'root'
-          - config_systemd_units_files.results[0].stat.gr_name == 'root'
-          - config_systemd_units_files.results[0].stat.mode == '0644'
-          - not config_systemd_units_files.results[1].stat.exists
-
-    - name: Read externally authored unit file
-      ansible.builtin.slurp:
-        src: '/etc/systemd/system/molecule-external.service'
-      register: config_systemd_units_external_file
-
-    - name: Assert externally authored unit file is unchanged
-      ansible.builtin.assert:
-        that:
-          - >-
-            config_systemd_units_external_file.content | b64decode ==
-            config_systemd_units_external_content
-      vars:
-        config_systemd_units_external_content: |
-          [Unit]
-          Description=Molecule external fixture
-
-          [Service]
-          ExecStart=/usr/bin/sleep infinity
-
-          [Install]
-          WantedBy=multi-user.target
+          - config_systemd_units_enablement.results[2].stdout == 'disabled'

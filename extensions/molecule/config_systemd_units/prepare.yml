@@ -4,15 +4,13 @@
   gather_facts: true
   vars:
     config_systemd_units_fixture_dir: '/etc/systemd/system'
-    config_systemd_units_active_fixtures:
-      - name: 'avahi-daemon.service'
-        description: 'Molecule avahi service fixture'
-      - name: 'avahi-daemon.socket'
-        description: 'Molecule avahi socket fixture'
-      - name: 'molecule-external.service'
-        description: 'Molecule external fixture'
+    config_systemd_units_printer_fixtures:
+      - description: 'Molecule avahi service fixture'
+        name: 'avahi-daemon.service'
+      - description: 'Molecule cups-browsed service fixture'
+        name: 'cups-browsed.service'
   tasks:
-    - name: Seed service fixtures
+    - name: Seed printer service fixtures
       ansible.builtin.copy:
         content: |
           [Unit]
@@ -27,12 +25,10 @@
         group: 'root'
         mode: '0644'
         owner: 'root'
-      loop: >-
-        {{ config_systemd_units_active_fixtures
-           | rejectattr('name', 'equalto', 'avahi-daemon.socket') }}
+      loop: '{{ config_systemd_units_printer_fixtures }}'
       become: true
 
-    - name: Seed socket fixture
+    - name: Seed printer socket fixture
       ansible.builtin.copy:
         content: |
           [Unit]
@@ -49,33 +45,23 @@
         owner: 'root'
       become: true
 
-    - name: Reload fixture unit files
+    - name: Reload printer fixture unit files
       ansible.builtin.systemd_service:
         daemon_reload: true
       become: true
 
-    - name: Enable and start service fixtures
+    - name: Enable and start printer service fixtures
       ansible.builtin.systemd_service:
         enabled: true
         name: '{{ item }}'
         state: 'started'
       loop:
         - 'avahi-daemon.service'
-        - 'molecule-external.service'
+        - 'cups-browsed.service'
       become: true
 
-    - name: Enable socket fixture
+    - name: Enable printer socket fixture
       ansible.builtin.systemd_service:
         enabled: true
         name: 'avahi-daemon.socket'
       become: true
-
-    - name: Create role-owned removal fixture
-      ansible.builtin.include_role:
-        name: 'jaythomasonprojects.sys_admin.config_systemd_units'
-      vars:
-        config_systemd_units_custom_services:
-          - name: 'molecule-remove.service'
-            unit_content: |
-              [Service]
-              ExecStart=/usr/bin/true

@@ -1,0 +1,7 @@
+---
+# Printer discovery services. Internal to the role: callers select the policy,
+# not the service list.
+config_systemd_units_printer_services:
+  - 'avahi-daemon.service'
+  - 'avahi-daemon.socket'
+  - 'cups-browsed.service'
