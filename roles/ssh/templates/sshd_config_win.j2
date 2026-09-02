@@ -38,6 +38,6 @@ ClientAliveCountMax {{ ssh_server_client_alive_count_max }}
 
 UseDNS {{ ssh_server_use_dns }}
 
-# Administrator keys are owned by the create_user role.
+# Administrator keys are owned by the local_accounts role.
 Match Group administrators
     AuthorizedKeysFile C:/ProgramData/ssh/administrators_authorized_keys
