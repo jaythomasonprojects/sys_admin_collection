@@ -1,0 +1,22 @@
+---
+- name: Converge allow_ping scenario
+  hosts: all
+  gather_facts: true
+  tasks:
+    - name: Reject Linux hosts
+      block:
+        - name: Configure ping access on Linux
+          ansible.builtin.include_role:
+            name: 'jaythomasonprojects.sys_admin.allow_ping'
+      rescue:
+        - name: Record Linux rejection
+          ansible.builtin.set_fact:
+            allow_ping_linux_error: >-
+              {{ ansible_failed_result.msg | default('') }}
+
+    - name: Assert Linux is rejected
+      ansible.builtin.assert:
+        that:
+          - >-
+            allow_ping_linux_error | default('') ==
+            'allow_ping supports Windows hosts only.'

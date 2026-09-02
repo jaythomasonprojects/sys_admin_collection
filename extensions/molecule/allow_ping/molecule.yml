@@ -7,4 +7,4 @@ platforms:
     image: 'docker.io/geerlingguy/docker-ubuntu2204-ansible:latest'
     pre_build_image: true
 scenario:
-  name: 'config_firewall'
+  name: 'allow_ping'

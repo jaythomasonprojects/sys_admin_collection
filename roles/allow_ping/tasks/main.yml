@@ -1,9 +1,9 @@
 ---
-- name: Assert Windows host support
+- name: Assert supported platform
   ansible.builtin.assert:
     that:
       - ansible_facts.os_family == 'Windows'
-    fail_msg: 'config_firewall supports Windows hosts only.'
+    fail_msg: 'allow_ping supports Windows hosts only.'
 
-- name: Configure Windows firewall
+- name: Manage ping access on Windows hosts
   ansible.builtin.include_tasks: 'windows/main.yml'

@@ -1,5 +1,0 @@
----
-- name: Configure ping access
-  ansible.builtin.include_tasks: 'ping.yml'
-  when:
-    - config_firewall_allow_ping | bool

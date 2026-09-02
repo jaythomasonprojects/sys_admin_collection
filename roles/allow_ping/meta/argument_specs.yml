@@ -1,0 +1,15 @@
+---
+argument_specs:
+  main:
+    short_description: Manage the Windows inbound ICMP echo request rules
+    description:
+      - Owns the Allow ICMPv4 ping and Allow ICMPv6 ping inbound firewall rules.
+      - Firewall access for a service belongs to that service's role. This role
+        covers ping only, because no service owns ICMP.
+    options:
+      allow_ping_enabled:
+        description:
+          - Whether this host should answer ping.
+          - Setting this to false removes both managed rules.
+        type: bool
+        default: true

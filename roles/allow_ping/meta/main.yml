@@ -2,7 +2,7 @@
 galaxy_info:
   author: 'Jay Thomason'
   description: >-
-    Manage Windows firewall rules for ICMP ping access
+    Manage the Windows inbound ICMP echo request firewall rules
   license: 'MIT'
   min_ansible_version: '2.18'
   platforms:
