@@ -1,5 +1,5 @@
 ---
-- name: Verify config_systemd_units results
+- name: Verify disable_printer_discovery results
   hosts: all
   gather_facts: false
   tasks:
@@ -10,16 +10,22 @@
         - 'avahi-daemon.service'
         - 'avahi-daemon.socket'
         - 'cups-browsed.service'
-      register: config_systemd_units_active_states
+      register: disable_printer_discovery_active_states
       changed_when: false
       failed_when: false
 
     - name: Assert printer service active states
       ansible.builtin.assert:
         that:
-          - config_systemd_units_active_states.results[0].stdout == 'inactive'
-          - config_systemd_units_active_states.results[1].stdout == 'inactive'
-          - config_systemd_units_active_states.results[2].stdout == 'inactive'
+          - >-
+            disable_printer_discovery_active_states.results[0].stdout ==
+            'inactive'
+          - >-
+            disable_printer_discovery_active_states.results[1].stdout ==
+            'inactive'
+          - >-
+            disable_printer_discovery_active_states.results[2].stdout ==
+            'inactive'
 
     - name: Gather printer enablement states  # noqa: command-instead-of-module
       ansible.builtin.command:
@@ -28,13 +34,13 @@
         - 'avahi-daemon.service'
         - 'avahi-daemon.socket'
         - 'cups-browsed.service'
-      register: config_systemd_units_enablement
+      register: disable_printer_discovery_enablement
       changed_when: false
       failed_when: false
 
     - name: Assert printer service enablement states
       ansible.builtin.assert:
         that:
-          - config_systemd_units_enablement.results[0].stdout == 'disabled'
-          - config_systemd_units_enablement.results[1].stdout == 'disabled'
-          - config_systemd_units_enablement.results[2].stdout == 'disabled'
+          - disable_printer_discovery_enablement.results[0].stdout == 'disabled'
+          - disable_printer_discovery_enablement.results[1].stdout == 'disabled'
+          - disable_printer_discovery_enablement.results[2].stdout == 'disabled'

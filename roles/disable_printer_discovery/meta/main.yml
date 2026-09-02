@@ -2,7 +2,7 @@
 galaxy_info:
   author: 'Jay Thomason'
   description: >-
-    Suppress printer services and manage role-owned systemd services
+    Stop and disable Avahi and CUPS printer discovery services
   license: 'MIT'
   min_ansible_version: '2.18'
   platforms:

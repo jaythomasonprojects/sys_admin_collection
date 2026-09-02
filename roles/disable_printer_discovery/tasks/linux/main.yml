@@ -4,7 +4,8 @@
     that:
       - ansible_facts.service_mgr == 'systemd'
     fail_msg: >-
-      config_systemd_units requires a host using systemd as its service manager.
+      disable_printer_discovery requires a host using systemd as its service
+      manager.
 
 - name: Inspect printer service load states
   ansible.builtin.command:
@@ -14,21 +15,21 @@
       - '--property=LoadState'
       - '--value'
       - '{{ item }}'
-  loop: '{{ config_systemd_units_printer_services }}'
+  loop: '{{ disable_printer_discovery_services }}'
   loop_control:
     label: '{{ item }}'
-  register: config_systemd_units_load_states
+  register: disable_printer_discovery_load_states
   changed_when: false
   check_mode: false
   failed_when: false
-  when: config_systemd_units_disable_printer_services | bool
+  when: disable_printer_discovery_enabled | bool
 
 - name: Stop and disable loaded printer services
   ansible.builtin.systemd_service:
     enabled: false
     name: '{{ item.item }}'
     state: 'stopped'
-  loop: '{{ config_systemd_units_load_states.results | default([]) }}'
+  loop: '{{ disable_printer_discovery_load_states.results | default([]) }}'
   loop_control:
     label: '{{ item.item }}'
   become: true

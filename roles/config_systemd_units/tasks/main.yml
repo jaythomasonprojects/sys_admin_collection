@@ -1,9 +1,0 @@
----
-- name: Require Linux host
-  ansible.builtin.assert:
-    that:
-      - ansible_facts.system == 'Linux'
-    fail_msg: 'config_systemd_units supports Linux hosts only.'
-
-- name: Configure Linux systemd units
-  ansible.builtin.include_tasks: 'linux/main.yml'

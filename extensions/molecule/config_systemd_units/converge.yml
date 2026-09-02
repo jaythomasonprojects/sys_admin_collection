@@ -1,6 +1,0 @@
----
-- name: Converge config_systemd_units scenario
-  hosts: all
-  gather_facts: true
-  roles:
-    - role: 'jaythomasonprojects.sys_admin.config_systemd_units'

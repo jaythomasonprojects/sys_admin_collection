@@ -1,10 +1,10 @@
 ---
-- name: Prepare config_systemd_units scenario
+- name: Prepare disable_printer_discovery scenario
   hosts: all
   gather_facts: true
   vars:
-    config_systemd_units_fixture_dir: '/etc/systemd/system'
-    config_systemd_units_printer_fixtures:
+    disable_printer_discovery_fixture_dir: '/etc/systemd/system'
+    disable_printer_discovery_printer_fixtures:
       - description: 'Molecule avahi service fixture'
         name: 'avahi-daemon.service'
       - description: 'Molecule cups-browsed service fixture'
@@ -21,11 +21,11 @@
 
           [Install]
           WantedBy=multi-user.target
-        dest: '{{ config_systemd_units_fixture_dir }}/{{ item.name }}'
+        dest: '{{ disable_printer_discovery_fixture_dir }}/{{ item.name }}'
         group: 'root'
         mode: '0644'
         owner: 'root'
-      loop: '{{ config_systemd_units_printer_fixtures }}'
+      loop: '{{ disable_printer_discovery_printer_fixtures }}'
       become: true
 
     - name: Seed printer socket fixture
@@ -39,7 +39,7 @@
 
           [Install]
           WantedBy=sockets.target
-        dest: '{{ config_systemd_units_fixture_dir }}/avahi-daemon.socket'
+        dest: '{{ disable_printer_discovery_fixture_dir }}/avahi-daemon.socket'
         group: 'root'
         mode: '0644'
         owner: 'root'
