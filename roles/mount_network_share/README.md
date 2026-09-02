@@ -49,10 +49,10 @@ mount_network_share_shares:
 credential validation and share management. Disabling the role does not remove
 shares managed by an earlier run.
 
-`mount_network_share_shares` defaults to `[]`. The role argument specification
-enforces `name`, `server`, `share`, and `mount_point` as strings on every share
-entry. Define `username` and `password` together as non-empty strings, or omit
-both.
+`mount_network_share_shares` defaults to `[]`. When enabled, every entry must
+define `name`, `server`, `share`, and `mount_point`. The role argument
+specification validates supplied field types, defaults, and `state` choices.
+Define `username` and `password` together as non-empty strings, or omit both.
 
 On Linux, `mount_point` is a filesystem path. `state` is passed to
 `ansible.posix.mount` and defaults to `present`; `absent` and

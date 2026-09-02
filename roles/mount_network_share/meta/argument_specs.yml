@@ -4,8 +4,8 @@ argument_specs:
     short_description: Manage SMB/CIFS network shares
     description:
       - Manages SMB/CIFS mounts on Linux and mapped drives on Windows.
-      - Required share fields are validated before the role manages enabled
-        shares.
+      - Share option types, defaults, and state choices are validated before
+        the role runs.
     options:
       mount_network_share_enabled:
         description:
@@ -27,19 +27,15 @@ argument_specs:
           name:
             description: Human-readable label used in task output.
             type: str
-            required: true
           server:
             description: SMB server hostname or address.
             type: str
-            required: true
           share:
             description: SMB share name.
             type: str
-            required: true
           mount_point:
             description: Linux mount path or Windows drive letter.
             type: str
-            required: true
           username:
             description: Username for SMB authentication.
             type: str
