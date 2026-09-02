@@ -5,6 +5,17 @@
       - ansible_facts.distribution in ['Debian', 'Ubuntu']
     fail_msg: 'time_sync supports Debian and Ubuntu hosts only.'
 
+- name: Load distribution variables
+  ansible.builtin.include_vars: >-
+    {{ lookup("ansible.builtin.first_found", time_sync_vars_params) }}
+  vars:
+    time_sync_vars_params:
+      files:
+        - '{{ ansible_facts.distribution }}.yml'
+        - '{{ ansible_facts.os_family }}.yml'
+      paths:
+        - 'vars'
+
 - name: Validate time_sync_server
   ansible.builtin.assert:
     that:
@@ -13,14 +24,14 @@
     fail_msg: 'time_sync_server must be a non-empty string.'
 
 - name: Install ntpsec
-  ansible.builtin.apt:
-    name: 'ntpsec'
+  ansible.builtin.package:
+    name: '{{ time_sync_package }}'
     state: present
   become: true
 
 - name: Ensure ntpsec configuration directory exists
   ansible.builtin.file:
-    path: '/etc/ntpsec'
+    path: '{{ time_sync_config_dir }}'
     state: directory
     owner: 'root'
     group: 'root'
@@ -29,7 +40,7 @@
 
 - name: Ensure ntpsec configuration file exists
   ansible.builtin.file:
-    path: '/etc/ntpsec/ntp.conf'
+    path: '{{ time_sync_config_file }}'
     state: touch
     owner: 'root'
     group: 'root'
@@ -40,7 +51,7 @@
 
 - name: Comment out unmanaged pool entries
   ansible.builtin.replace:
-    path: '/etc/ntpsec/ntp.conf'
+    path: '{{ time_sync_config_file }}'
     regexp: >-
       ^pool\s+(?!{{ time_sync_server | regex_escape }}(?:\s|$)).*$
     replace: '# \g<0>'
@@ -49,7 +60,7 @@
 
 - name: Configure upstream NTP server
   ansible.builtin.lineinfile:
-    path: '/etc/ntpsec/ntp.conf'
+    path: '{{ time_sync_config_file }}'
     regexp: '^pool\s+{{ time_sync_server | regex_escape }}(?:\s+.*)?$'
     line: 'pool {{ time_sync_server }}'
     state: present
@@ -58,7 +69,7 @@
 
 - name: Enable and start ntpsec service
   ansible.builtin.systemd_service:
-    name: 'ntpsec'
+    name: '{{ time_sync_service }}'
     enabled: true
     state: started
   become: true

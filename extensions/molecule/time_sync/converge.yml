@@ -9,6 +9,13 @@
     - role: 'jaythomasonprojects.sys_admin.time_sync'
 
   tasks:
+    - name: Apply disabled time synchronisation
+      ansible.builtin.include_role:
+        name: 'jaythomasonprojects.sys_admin.time_sync'
+      vars:
+        time_sync_enabled: false
+        time_sync_server: ''
+
     - name: Initialise unsupported-platform rejection result
       ansible.builtin.set_fact:
         time_sync_unsupported_platform_rejected: false

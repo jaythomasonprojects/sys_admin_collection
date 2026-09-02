@@ -19,17 +19,25 @@ Linux hosts running Debian or Ubuntu.
 
 ## Implementation
 
-`tasks/main.yml` validates Linux before dispatching to `tasks/linux/main.yml`.
-The Linux task file validates the Debian/Ubuntu APT contract before changing
-package, configuration, or service state.
+- `tasks/main.yml` validates Linux before conditionally dispatching to
+  `tasks/linux/main.yml`.
+- The Linux task file validates the Debian/Ubuntu contract, loads distribution
+  data with `first_found`, then changes package, configuration, and service
+  state.
+- `vars/Debian.yml` and `vars/Ubuntu.yml` define the package, configuration
+  path, and service data for their supported distributions.
 
 ## Interface
 
-- `time_sync_server`: required upstream NTP server.
+- `time_sync_enabled`: whether this host should have managed time
+  synchronisation. Defaults to `true`. `false` skips the role and does not
+  remove ntpsec or restore pool entries an earlier run commented out.
+- `time_sync_server`: upstream NTP server. Defaults to `''` and is required only
+  when `time_sync_enabled` is `true`.
 
 ## Invariants
 
-- `time_sync_server` must be a non-empty string.
+- When enabled, `time_sync_server` must be a non-empty string.
 - The configured upstream pool is the only active `pool` entry managed by the
   role.
 - Configuration changes restart `ntpsec`.

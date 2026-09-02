@@ -1,0 +1,5 @@
+---
+time_sync_config_dir: '/etc/ntpsec'
+time_sync_config_file: '/etc/ntpsec/ntp.conf'
+time_sync_package: 'ntpsec'
+time_sync_service: 'ntpsec'
