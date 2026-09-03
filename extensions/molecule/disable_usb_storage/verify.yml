@@ -17,13 +17,13 @@
       ansible.builtin.slurp:
         src: '{{ disable_usb_storage_policy_file }}'
       register: disable_usb_storage_policy
-      when: inventory_hostname == 'ubuntu-enabled'
+      when: inventory_hostname in groups['enabled']
 
     - name: Stat USB mass-storage policy on disabled host
       ansible.builtin.stat:
         path: '{{ disable_usb_storage_policy_file }}'
       register: disable_usb_storage_disabled_policy
-      when: inventory_hostname == 'ubuntu-disabled'
+      when: inventory_hostname in groups['disabled']
 
     - name: Resolve USB storage modprobe policy
       ansible.builtin.command:
@@ -34,7 +34,7 @@
           - 'usb-storage'
       changed_when: false
       register: disable_usb_storage_modprobe
-      when: inventory_hostname == 'ubuntu-enabled'
+      when: inventory_hostname in groups['enabled']
 
     - name: Assert USB mass-storage policy state
       ansible.builtin.assert:
@@ -46,7 +46,7 @@
         fail_msg: >-
           The enabled host does not enforce the expected USB mass-storage
           policy.
-      when: inventory_hostname == 'ubuntu-enabled'
+      when: inventory_hostname in groups['enabled']
 
     - name: Assert obsolete USB mass-storage policy is removed
       ansible.builtin.assert:
@@ -54,7 +54,7 @@
           - not disable_usb_storage_disabled_policy.stat.exists
         fail_msg: >-
           The disabled host retained the managed USB mass-storage policy.
-      when: inventory_hostname == 'ubuntu-disabled'
+      when: inventory_hostname in groups['disabled']
 
     - name: Reject Darwin hosts
       block:

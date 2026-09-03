@@ -4,7 +4,7 @@ driver:
 
 platforms:
   - name: 'fedora'
-    image: 'docker.io/geerlingguy/docker-fedora40-ansible:latest'
+    image: 'docker.io/geerlingguy/docker-fedora44-ansible:latest'
     pre_build_image: true
     privileged: true
     user: 'root'

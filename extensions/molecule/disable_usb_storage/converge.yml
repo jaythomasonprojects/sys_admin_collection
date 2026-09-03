@@ -5,6 +5,6 @@
   gather_facts: true
   vars:
     disable_usb_storage_enabled: >-
-      {{ inventory_hostname == 'ubuntu-enabled' }}
+      {{ inventory_hostname in groups['enabled'] }}
   roles:
     - role: 'jaythomasonprojects.sys_admin.disable_usb_storage'

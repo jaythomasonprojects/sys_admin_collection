@@ -4,11 +4,21 @@
   become: true
   gather_facts: false
   tasks:
-    - name: Install modprobe utility
+    - name: Gather package manager facts
+      ansible.builtin.setup:
+        gather_subset:
+          - '!all'
+          - 'min'
+
+    - name: Refresh APT package cache
       ansible.builtin.apt:
+        update_cache: true
+      when: ansible_facts.pkg_mgr == 'apt'
+
+    - name: Install modprobe utility
+      ansible.builtin.package:
         name: 'kmod'
         state: 'present'
-        update_cache: true
 
     - name: Read shared kernel modules before convergence
       ansible.builtin.command:
@@ -38,7 +48,7 @@
         owner: 'root'
         path: '/etc/modprobe.d'
         state: 'directory'
-      when: inventory_hostname == 'ubuntu-disabled'
+      when: inventory_hostname in groups['disabled']
 
     - name: Seed obsolete USB mass-storage policy on disabled host
       ansible.builtin.copy:
@@ -47,4 +57,4 @@
         group: 'root'
         mode: '0644'
         owner: 'root'
-      when: inventory_hostname == 'ubuntu-disabled'
+      when: inventory_hostname in groups['disabled']
