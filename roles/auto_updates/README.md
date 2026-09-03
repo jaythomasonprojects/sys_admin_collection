@@ -33,9 +33,9 @@ Unsupported operating systems and Linux package managers fail explicitly.
 
 ## Implementation
 
-`tasks/main.yml` validates the operating system, then dispatches Linux hosts to
+`tasks/main.yml` owns the complete support gate and dispatches Linux hosts to
 `tasks/linux/main.yml` and Windows hosts to `tasks/windows/main.yml`. The Linux
-dispatcher validates the package manager before selecting APT or DNF tasks.
+dispatcher selects APT or DNF tasks.
 
 ### APT (Debian/Ubuntu)
 

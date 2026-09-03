@@ -1,10 +1,4 @@
 ---
-- name: Validate Debian, Ubuntu, or Fedora platform
-  ansible.builtin.assert:
-    that:
-      - ansible_facts.distribution in ['Debian', 'Fedora', 'Ubuntu']
-    fail_msg: 'time_sync supports Debian, Ubuntu, and Fedora hosts only.'
-
 - name: Load distribution variables
   ansible.builtin.include_vars: >-
     {{ lookup("ansible.builtin.first_found", time_sync_vars_params) }}

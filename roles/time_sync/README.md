@@ -20,11 +20,10 @@ Linux hosts running Debian, Ubuntu, or Fedora.
 
 ## Implementation
 
-- `tasks/main.yml` validates Linux before conditionally dispatching to
-  `tasks/linux/main.yml`.
-- The Linux task file validates the Debian, Ubuntu, and Fedora contract, loads
-  distribution data with `first_found`, then changes package, configuration,
-  and service state.
+- `tasks/main.yml` owns the complete supported-platform gate and conditionally
+  dispatches to `tasks/linux/main.yml`.
+- The Linux task file loads distribution data with `first_found`, then changes
+  package, configuration, and service state.
 - `vars/Debian.yml`, `vars/Ubuntu.yml`, and `vars/Fedora.yml` define the
   package, configuration path, and service data for their supported
   distributions.

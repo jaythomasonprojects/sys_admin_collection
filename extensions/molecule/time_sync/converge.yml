@@ -26,7 +26,8 @@
               distribution: 'Rocky'
               os_family: 'RedHat'
               system: 'Linux'
-            time_sync_server: 'ntp1.example.invalid'
+            time_sync_enabled: false
+            time_sync_server: ''
       rescue:
         - name: Record unsupported-platform rejection message
           ansible.builtin.set_fact:

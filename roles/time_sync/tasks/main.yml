@@ -3,7 +3,8 @@
   ansible.builtin.assert:
     that:
       - ansible_facts.system == 'Linux'
-    fail_msg: 'time_sync supports Linux hosts only.'
+      - ansible_facts.distribution in ['Debian', 'Fedora', 'Ubuntu']
+    fail_msg: 'time_sync supports Debian, Ubuntu, and Fedora hosts only.'
 
 - name: Configure time synchronisation on Linux hosts
   ansible.builtin.include_tasks: 'linux/main.yml'

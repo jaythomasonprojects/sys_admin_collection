@@ -1,13 +1,14 @@
 ---
-- name: Validate auto_updates operating system
+- name: Assert supported platform
   ansible.builtin.assert:
     that:
       - >-
-        ansible_facts.system == 'Linux'
-        or ansible_facts.os_family == 'Windows'
+        ansible_facts.os_family == 'Windows' or
+        (ansible_facts.system == 'Linux' and
+        ansible_facts.pkg_mgr in ['apt', 'dnf', 'dnf5'])
     fail_msg: >-
-      Unsupported operating system. auto_updates supports Linux and Windows
-      hosts only.
+      auto_updates supports Windows and Linux hosts with apt, dnf, or dnf5
+      only.
 
 - name: Configure Linux automatic updates
   ansible.builtin.include_tasks: 'linux/main.yml'

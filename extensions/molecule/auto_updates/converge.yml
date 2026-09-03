@@ -39,7 +39,10 @@
         - name: Assert unsupported operating system failed
           ansible.builtin.assert:
             that:
-              - "'Unsupported operating system' in ansible_failed_result.msg"
+              - >-
+                ansible_failed_result.msg ==
+                'auto_updates supports Windows and Linux hosts with apt, '
+                ~ 'dnf, or dnf5 only.'
         - name: Record unsupported operating system rejection
           ansible.builtin.set_fact:
             auto_updates_unsupported_os_rejected: true
@@ -67,7 +70,10 @@
         - name: Assert unsupported package manager failed
           ansible.builtin.assert:
             that:
-              - "'Unsupported package manager' in ansible_failed_result.msg"
+              - >-
+                ansible_failed_result.msg ==
+                'auto_updates supports Windows and Linux hosts with apt, '
+                ~ 'dnf, or dnf5 only.'
         - name: Record unsupported package manager rejection
           ansible.builtin.set_fact:
             auto_updates_unsupported_package_manager_rejected: true
