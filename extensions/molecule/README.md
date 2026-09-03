@@ -52,9 +52,6 @@ Future scenarios should satisfy these assumptions before they copy the
    SSHD layout needs an image that makes those behaviors deterministic; if not,
    keep the scenario deferred and document the missing capability in shared
    docs.
-5. If a lightweight role only needs one missing package (for example `git` for
-   `community.general.git_config`), install it during `prepare` instead of
-   building a scenario-local image.
 
 ## Deferred coverage gaps
 
