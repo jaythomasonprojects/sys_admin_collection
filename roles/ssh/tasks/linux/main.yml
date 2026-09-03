@@ -1,4 +1,11 @@
 ---
+- name: Assert Fedora SSH port
+  ansible.builtin.assert:
+    that:
+      - ssh_server_port == 22
+    fail_msg: 'ssh_server_port must be 22 on Fedora hosts.'
+  when: ansible_facts.distribution == 'Fedora'
+
 - name: Load distribution variables
   ansible.builtin.include_vars: >-
     {{ lookup("ansible.builtin.first_found", ssh_vars_params) }}

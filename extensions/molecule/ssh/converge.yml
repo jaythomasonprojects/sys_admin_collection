@@ -37,3 +37,25 @@
           - >-
             ssh_unsupported_platform_failure ==
             'ssh supports Linux and Windows hosts only.'
+
+    - name: Reject custom SSH ports on Fedora
+      when: ansible_facts.distribution == 'Fedora'
+      block:
+        - name: Configure Fedora with a custom SSH port
+          ansible.builtin.include_role:
+            name: 'jaythomasonprojects.sys_admin.ssh'
+          vars:
+            ssh_server_port: 2222
+      rescue:
+        - name: Record Fedora custom-port rejection
+          ansible.builtin.set_fact:
+            ssh_fedora_custom_port_failure: >-
+              {{ ansible_failed_result.msg | default('') }}
+
+    - name: Assert Fedora custom SSH port was rejected
+      ansible.builtin.assert:
+        that:
+          - >-
+            ssh_fedora_custom_port_failure ==
+            'ssh_server_port must be 22 on Fedora hosts.'
+      when: ansible_facts.distribution == 'Fedora'

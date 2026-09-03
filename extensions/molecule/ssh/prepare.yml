@@ -16,6 +16,29 @@
           - 'openssh-server'
         state: absent
         update_cache: true
+      when: ansible_facts.distribution in ['Debian', 'Ubuntu']
+
+    - name: Install Fedora OpenSSH server for host-key fixture
+      ansible.builtin.dnf:
+        name: 'openssh-server'
+        state: present
+      when: ansible_facts.distribution == 'Fedora'
+
+    - name: Create Fedora SSH host-key fixture
+      ansible.builtin.command:
+        argv:
+          - 'ssh-keygen'
+          - '-A'
+      changed_when: false
+      when: ansible_facts.distribution == 'Fedora'
+
+    - name: Remove Fedora OpenSSH packages
+      ansible.builtin.dnf:
+        name:
+          - 'openssh-clients'
+          - 'openssh-server'
+        state: absent
+      when: ansible_facts.distribution == 'Fedora'
 
     - name: Create SSHD drop-in directory
       ansible.builtin.file:

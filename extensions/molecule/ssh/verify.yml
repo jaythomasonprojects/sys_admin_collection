@@ -14,6 +14,12 @@
     expected_server_permit_root_login: "PermitRootLogin prohibit-password"
     expected_server_allow_users: "AllowUsers molecule"
   tasks:
+    - name: Gather minimal facts
+      ansible.builtin.setup:
+        gather_subset:
+          - '!all'
+          - 'min'
+
     - name: Check seeded cloud-init SSHD drop-in
       ansible.builtin.stat:
         path: "{{ expected_cloudinit_path }}"
@@ -39,9 +45,19 @@
     - name: Gather service facts
       ansible.builtin.service_facts:
 
+    - name: Set distribution-specific SSH expectations
+      ansible.builtin.set_fact:
+        expected_ssh_client_package: >-
+          {{ 'openssh-clients' if ansible_facts.distribution == 'Fedora'
+             else 'openssh-client' }}
+        expected_ssh_server_package: 'openssh-server'
+        expected_ssh_service: >-
+          {{ 'sshd.service' if ansible_facts.distribution == 'Fedora'
+             else 'ssh.service' }}
+
     - name: Query installed OpenSSH packages
       ansible.builtin.package_facts:
-        manager: 'apt'
+        manager: 'auto'
 
     - name: Validate final sshd configuration
       ansible.builtin.command:
@@ -56,11 +72,11 @@
         that:
           - "not ssh_cloudinit_stat.stat.exists"
           - "ssh_sshd_validation.rc == 0"
-          - "'openssh-client' in ansible_facts.packages"
-          - "'openssh-server' in ansible_facts.packages"
-          - "'ssh.service' in ansible_facts.services"
-          - "ansible_facts.services['ssh.service'].state == 'running'"
-          - "ansible_facts.services['ssh.service'].status == 'enabled'"
+          - 'expected_ssh_client_package in ansible_facts.packages'
+          - 'expected_ssh_server_package in ansible_facts.packages'
+          - 'expected_ssh_service in ansible_facts.services'
+          - 'ansible_facts.services[expected_ssh_service].state == "running"'
+          - 'ansible_facts.services[expected_ssh_service].status == "enabled"'
           - >-
             expected_client_strict_host_key_checking in
             ssh_client_content

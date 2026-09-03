@@ -18,6 +18,9 @@ galaxy_info:
     - name: 'Ubuntu'
       versions:
         - 'all'
+    - name: 'Fedora'
+      versions:
+        - 'all'
     - name: 'Windows'
       versions:
         - 'all'

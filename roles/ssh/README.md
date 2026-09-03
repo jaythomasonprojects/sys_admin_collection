@@ -15,6 +15,9 @@ outside this role's ownership. Authorised keys belong to `local_accounts`.
 - Debian and Ubuntu: install `openssh-client` and `openssh-server`, remove
   conflicting cloud-init server drop-ins, validate `sshd -t`, and enable and
   start the service.
+- Fedora: install `openssh-clients` and `openssh-server`, remove conflicting
+  cloud-init server drop-ins, validate `sshd -t`, and enable and start `sshd`.
+  Fedora hosts only support `ssh_server_port: 22`.
 - Windows: install OpenSSH Server, configure `sshd`, manage the firewall rule
   and service, and set PowerShell as the default SSH shell.
 
@@ -30,7 +33,8 @@ Other platforms fail with `ssh supports Linux and Windows hosts only.`
   validates it, and manages the service.
 - `tasks/windows/server.yml`: manages the OpenSSH capability, server policy,
   firewall rule, service, and shell policy.
-- `vars/Debian.yml` and `vars/Ubuntu.yml`: provide package and service names.
+- `vars/Debian.yml`, `vars/Fedora.yml`, and `vars/Ubuntu.yml`: provide package
+  and service names.
 
 ## Interface
 
@@ -52,6 +56,8 @@ state. Restoring prior SSH policy is not safe or unambiguous.
 - Authorised keys and Windows authorised-key ACLs are owned by `local_accounts`.
 - The Linux service name comes from first-found `vars/` data, not runtime
   detection.
+- Fedora hosts require `ssh_server_port` to be `22` before the role loads
+  variables, installs packages, or configures OpenSSH.
 
 ## Migration
 
