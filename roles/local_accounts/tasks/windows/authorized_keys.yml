@@ -1,80 +1,31 @@
 ---
-- name: Collect Windows administrator accounts
-  ansible.builtin.set_fact:
+- name: Manage administrator authorised keys
+  when: local_accounts_windows_administrators | length > 0
+  no_log: true
+  vars:
     local_accounts_windows_administrators: >-
       {{ local_accounts_users
          | selectattr('groups', 'defined')
-          | selectattr('groups', 'contains', 'Administrators')
-          | list }}
-  no_log: true
-
-- name: Collect Windows administrator authorised keys
-  ansible.builtin.set_fact:
+         | selectattr('groups', 'contains', 'Administrators')
+         | list }}
     local_accounts_windows_administrator_keys: >-
-      {{ local_accounts_windows_administrators
-          | map(attribute='ssh_authorized_keys', default=[])
-          | flatten
-          | list }}
-  no_log: true
+      {{ local_accounts_users
+         | selectattr('groups', 'defined')
+         | selectattr('groups', 'contains', 'Administrators')
+         | map(attribute='ssh_authorized_keys', default=[])
+         | flatten
+         | list }}
+  block:
+    - name: Write administrator authorised keys
+      ansible.windows.win_copy:
+        content: '{{ local_accounts_windows_administrator_keys | join("\n") }}'
+        dest: 'C:\ProgramData\ssh\administrators_authorized_keys'
 
-- name: Write administrator authorised keys
-  ansible.windows.win_copy:
-    content: '{{ local_accounts_windows_administrator_keys | join("\n") }}'
-    dest: 'C:\ProgramData\ssh\administrators_authorized_keys'
-  when: local_accounts_windows_administrators | length > 0
-  no_log: true
-
-- name: Set administrator authorised-key ACL
-  ansible.windows.win_powershell:
-    script: |
-      $path = 'C:\ProgramData\ssh\administrators_authorized_keys'
-      $Ansible.Changed = $false
-      $administrators = New-Object `
-        -TypeName System.Security.Principal.SecurityIdentifier `
-        -ArgumentList 'S-1-5-32-544'
-      $system = New-Object `
-        -TypeName System.Security.Principal.SecurityIdentifier `
-        -ArgumentList 'S-1-5-18'
-      $acl = Get-Acl -LiteralPath $path
-      $expectedSids = @($administrators, $system)
-      $fullControl =
-        [System.Security.AccessControl.FileSystemRights]::FullControl
-      $rules = @($acl.GetAccessRules(
-        $true, $true,
-        [System.Security.Principal.SecurityIdentifier]))
-      $aclMatches = $acl.AreAccessRulesProtected -and
-        $acl.GetOwner([System.Security.Principal.SecurityIdentifier]).Value -eq
-        $administrators.Value -and
-        $rules.Count -eq $expectedSids.Count
-      foreach ($sid in $expectedSids) {
-        $matchingRules = @($rules | Where-Object {
-          $_.IdentityReference.Value -eq $sid.Value -and
-          -not $_.IsInherited -and
-          $_.AccessControlType -eq 'Allow' -and
-          [int] $_.FileSystemRights -eq
-          [int] $fullControl -and
-          $_.InheritanceFlags -eq 'None' -and
-          $_.PropagationFlags -eq 'None'
-        })
-        $aclMatches = $aclMatches -and ($matchingRules.Count -eq 1)
-      }
-      if (-not $aclMatches) {
-        $acl.SetOwner($administrators)
-        $acl.SetAccessRuleProtection($true, $false)
-        foreach ($rule in @($acl.Access)) {
-          [void] $acl.RemoveAccessRuleSpecific($rule)
-        }
-        foreach ($sid in $expectedSids) {
-          $rule = New-Object `
-            -TypeName System.Security.AccessControl.FileSystemAccessRule `
-            -ArgumentList $sid, 'FullControl', 'Allow'
-          [void] $acl.AddAccessRule($rule)
-        }
-        Set-Acl -LiteralPath $path -AclObject $acl
-        $Ansible.Changed = $true
-      }
-  when: local_accounts_windows_administrators | length > 0
-  no_log: true
+    - name: Set administrator authorised-key ACL
+      ansible.windows.win_powershell:
+        path: 'Set-AuthorizedKeyAcl.ps1'
+        parameters:
+          Administrator: true
 
 - name: Create standard-user SSH directories
   ansible.windows.win_file:
@@ -98,67 +49,7 @@
 
 - name: Set standard-user SSH ACLs
   ansible.windows.win_powershell:
-    script: |
-      [CmdletBinding()]
-      param (
-        [String] $UserName
-      )
-
-      $Ansible.Changed = $false
-      $account = New-Object System.Security.Principal.NTAccount(
-        $env:COMPUTERNAME, $UserName)
-      $owner = $account.Translate(
-        [System.Security.Principal.SecurityIdentifier])
-      $administrators = New-Object `
-        -TypeName System.Security.Principal.SecurityIdentifier `
-        -ArgumentList 'S-1-5-32-544'
-      $system = New-Object `
-        -TypeName System.Security.Principal.SecurityIdentifier `
-        -ArgumentList 'S-1-5-18'
-      foreach ($path in @(
-        "C:\Users\$UserName\.ssh",
-        "C:\Users\$UserName\.ssh\authorized_keys"
-      )) {
-        $acl = Get-Acl -LiteralPath $path
-        $expectedSids = @($owner, $administrators, $system)
-        $fullControl =
-          [System.Security.AccessControl.FileSystemRights]::FullControl
-        $rules = @($acl.GetAccessRules(
-          $true, $true,
-          [System.Security.Principal.SecurityIdentifier]))
-        $actualOwner = $acl.GetOwner(
-          [System.Security.Principal.SecurityIdentifier])
-        $aclMatches = $acl.AreAccessRulesProtected -and
-          $actualOwner.Value -eq $owner.Value -and
-          $rules.Count -eq $expectedSids.Count
-        foreach ($sid in $expectedSids) {
-          $matchingRules = @($rules | Where-Object {
-            $_.IdentityReference.Value -eq $sid.Value -and
-            -not $_.IsInherited -and
-            $_.AccessControlType -eq 'Allow' -and
-            [int] $_.FileSystemRights -eq
-            [int] $fullControl -and
-            $_.InheritanceFlags -eq 'None' -and
-            $_.PropagationFlags -eq 'None'
-          })
-          $aclMatches = $aclMatches -and ($matchingRules.Count -eq 1)
-        }
-        if (-not $aclMatches) {
-          $acl.SetOwner($owner)
-          $acl.SetAccessRuleProtection($true, $false)
-          foreach ($rule in @($acl.Access)) {
-            [void] $acl.RemoveAccessRuleSpecific($rule)
-          }
-          foreach ($sid in $expectedSids) {
-            $rule = New-Object `
-              -TypeName System.Security.AccessControl.FileSystemAccessRule `
-              -ArgumentList $sid, 'FullControl', 'Allow'
-            [void] $acl.AddAccessRule($rule)
-          }
-          Set-Acl -LiteralPath $path -AclObject $acl
-          $Ansible.Changed = $true
-        }
-      }
+    path: 'Set-AuthorizedKeyAcl.ps1'
     parameters:
       UserName: '{{ item.name }}'
   loop: '{{ local_accounts_users }}'

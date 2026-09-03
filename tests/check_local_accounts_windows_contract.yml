@@ -1,0 +1,49 @@
+---
+- name: Check local_accounts Windows authorised-key contract
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Read Windows authorised-key tasks
+      ansible.builtin.slurp:
+        src: >-
+          {{ [playbook_dir, '..', 'roles', 'local_accounts', 'tasks', 'windows',
+          'authorized_keys.yml'] | join('/') }}
+      register: local_accounts_windows_tasks
+
+    - name: Read Windows authorised-key ACL script
+      ansible.builtin.slurp:
+        src: >-
+          {{ [playbook_dir, '..', 'roles', 'local_accounts', 'files',
+          'Set-AuthorizedKeyAcl.ps1'] | join('/') }}
+      register: local_accounts_acl_script
+
+    - name: Assert static ACL policy contract
+      ansible.builtin.assert:
+        that:
+          - >-
+            local_accounts_windows_tasks.content | b64decode is search(
+            "path: 'Set-AuthorizedKeyAcl.ps1'")
+          - >-
+            local_accounts_windows_tasks.content | b64decode is search(
+            'Administrator: true')
+          - >-
+            local_accounts_windows_tasks.content | b64decode is search(
+            'UserName:')
+          - >-
+            local_accounts_windows_tasks.content | b64decode is search(
+            'item.name')
+          - >-
+            local_accounts_windows_tasks.content | b64decode is not search(
+            'script: \|')
+          - >-
+            local_accounts_acl_script.content | b64decode is search(
+            '\$Ansible.Changed = \$false')
+          - >-
+            local_accounts_acl_script.content | b64decode is search(
+            'S-1-5-32-544')
+          - >-
+            local_accounts_acl_script.content | b64decode is search('S-1-5-18')
+        fail_msg: >-
+          local_accounts must use one static script for both authorised-key ACL
+          policies.

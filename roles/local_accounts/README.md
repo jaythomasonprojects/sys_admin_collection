@@ -29,7 +29,8 @@ Linux and Windows hosts only.
 - `tasks/windows/accounts.yml`: Windows account creation with
   `update_password: on_create`.
 - `tasks/windows/authorized_keys.yml`: Windows authoritative key files and
-  ACLs.
+  ACLs through `files/Set-AuthorizedKeyAcl.ps1`, which supports only
+  administrator and standard-user modes.
 - `tasks/windows/passwords.yml`: final Windows password policy.
 
 ## Interface
