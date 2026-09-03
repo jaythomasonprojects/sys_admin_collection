@@ -1,6 +1,25 @@
 jaythomasonprojects.sys_admin changelog
 =======================================
 
+0.9.0
+-----
+
+- Added the Ubuntu GNOME ``desktop_layout`` role.
+- Added Ubuntu 22.04 and 24.04 support to ``power_policy``.
+- Removed ``power_policy_disable_sleep`` in favour of independent AC suspend
+  and screen-timeout controls, and intentionally stopped managing DC standby.
+- Removed the ``git`` role; dotfile management now owns Git configuration.
+- Added Fedora support where the Linux capability has a meaningful shared
+  implementation, with Fedora 44 Molecule coverage.
+- Added Ubuntu 26.04 Molecule coverage for the GNOME capabilities.
+- Replaced ``ntpsec`` with chrony for time synchronisation on Debian, Ubuntu,
+  and Fedora.
+- Added DNF5 automatic-update support using ``dnf5-plugin-automatic`` and
+  ``dnf5-automatic.timer``.
+- Renamed the collection-owned APT policy to
+  ``52sys-admin-auto-updates`` and remove the former
+  ``52jtprojects-unattended-upgrades`` path during convergence.
+
 0.8.0
 -----
 

@@ -52,8 +52,12 @@ Future scenarios should satisfy these assumptions before they copy the
    SSHD layout needs an image that makes those behaviors deterministic; if not,
    keep the scenario deferred and document the missing capability in shared
    docs.
-
 ## Deferred coverage gaps
+
+The `desktop_layout` GNOME scenario validates persisted dconf state and schema
+compatibility on Ubuntu 22.04, 24.04, and 26.04. `power_policy` validates the
+same Ubuntu releases and Fedora 44. Their containers do not run a live GNOME
+Shell, so no real-inventory GNOME test is required.
 
 ### `install_app` Flatpak coverage
 

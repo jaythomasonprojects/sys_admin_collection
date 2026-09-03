@@ -13,14 +13,15 @@ live in the corresponding [`roles/<role>/README.md`](roles/README.md).
 > aliases.
 
 > [!WARNING]
-> `0.8.0` is a breaking release. Review `CHANGELOG.rst` and complete the
-> required migration before upgrading from an earlier release.
+> `0.9.0` removes `power_policy_disable_sleep`, introduces separate AC suspend
+> and screen-timeout controls, and stops managing DC standby. Review
+> `CHANGELOG.rst` and complete the required migration before upgrading.
 
 ## Setup
 
 Local Molecule runs use the Docker driver, so make sure Docker is installed and running before you
-start. The Fedora `auto_updates` scenario also relies on a privileged systemd container, so local
-Docker needs to allow privileged containers and the `/sys/fs/cgroup` mount used by Molecule.
+start. Fedora 44 scenarios that validate systemd services rely on privileged systemd containers, so
+local Docker needs to allow privileged containers and the `/sys/fs/cgroup` mount used by Molecule.
 
 ```bash
 python3 -m venv .venv
