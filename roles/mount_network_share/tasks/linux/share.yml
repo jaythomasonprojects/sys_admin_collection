@@ -53,6 +53,7 @@
       {{ mount_network_share_item.group | default('root') }}
     mode: >-
       {{ mount_network_share_item.mode | default('0755') }}
+  become: true
   when: mount_network_share_present | bool
 
 - name: Ensure credential directory exists
@@ -71,6 +72,7 @@
       {{ omit
          if mount_network_share_credentials_dir.stat.exists | default(false)
          else '0700' }}
+  become: true
   when:
     - mount_network_share_present | bool
     - mount_network_share_has_credentials | bool
@@ -80,6 +82,7 @@
   ansible.builtin.file:
     path: "{{ mount_network_share_credentials_path }}"
     state: absent
+  become: true
   when:
     - not mount_network_share_present | bool
     - mount_network_share_has_credentials | bool
@@ -97,6 +100,7 @@
     content: |
       username={{ mount_network_share_item.username }}
       password={{ mount_network_share_item.password }}
+  become: true
   when:
     - mount_network_share_present | bool
     - mount_network_share_has_credentials | bool
@@ -119,4 +123,5 @@
         ) | join(',')
       }}
     state: "{{ mount_network_share_state }}"
+  become: true
   notify: Restart remote-fs.target

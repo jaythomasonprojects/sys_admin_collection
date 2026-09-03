@@ -7,6 +7,10 @@ platforms:
     command: 'sleep infinity'
     image: 'docker.io/geerlingguy/docker-ubuntu2204-ansible:latest'
     pre_build_image: true
+  - name: 'fedora'
+    command: 'sleep infinity'
+    image: 'docker.io/geerlingguy/docker-fedora44-ansible:latest'
+    pre_build_image: true
 
 scenario:
   name: 'mount_network_share'

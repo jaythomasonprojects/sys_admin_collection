@@ -13,7 +13,7 @@ platforms:
     command: 'sleep infinity'
     groups:
       - 'npm_success'
-    image: 'docker.io/geerlingguy/docker-fedora41-ansible:latest'
+    image: 'docker.io/geerlingguy/docker-fedora44-ansible:latest'
     pre_build_image: true
   - name: 'ubuntu-npm-missing'
     command: 'sleep infinity'

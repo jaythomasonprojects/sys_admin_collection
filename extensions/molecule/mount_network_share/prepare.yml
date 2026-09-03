@@ -4,6 +4,19 @@
   become: true
   gather_facts: false
   tasks:
+    - name: Gather minimal facts
+      ansible.builtin.setup:
+        gather_subset:
+          - '!all'
+          - 'min'
+
     - name: Refresh APT package metadata
       ansible.builtin.apt:
         update_cache: true
+      when: ansible_facts['pkg_mgr'] == 'apt'
+
+    - name: Install python3-rpm for package_facts on DNF hosts
+      ansible.builtin.dnf:
+        name: 'python3-rpm'
+        state: present
+      when: ansible_facts['pkg_mgr'] in ['dnf', 'dnf5']

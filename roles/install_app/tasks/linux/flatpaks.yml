@@ -21,6 +21,7 @@
     name: 'flathub'
     state: present
     flatpakrepo_url: 'https://dl.flathub.org/repo/flathub.flatpakrepo'
+  become: true
   when: install_app_manage_flatpak_remote
 
 - name: Install Flatpaks
@@ -28,3 +29,4 @@
     name: '{{ install_app_flatpaks }}'
     state: present
     remote: 'flathub'
+  become: true

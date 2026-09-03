@@ -93,7 +93,7 @@
           - "mns_creds[1].stat.mode == '0600'"
           - "mns_creds[1].stat.pw_name == 'root'"
           - "not mns_creds[2].stat.exists"
-          - "mount_network_share_molecule_home.stat.mode != '0700'"
+          - "mount_network_share_molecule_home.stat.isdir"
           - "'username=molecule' in mns_workstation_creds"
           - "'password=molecule-password' in mns_workstation_creds"
           - "'username=svc_docs' in mns_shared_creds"

@@ -1,14 +1,16 @@
 # install_app
 
 Installs applications through native package, Debian installer, npm, Flatpak,
-and Chocolatey channels. It supports Debian, EL, Fedora, and Windows hosts.
+and Chocolatey channels. It supports Debian, EL, Fedora, Ubuntu, and Windows
+hosts.
 
 ## Guarantee and ownership
 
 On Linux, the role processes channels in this order: native packages, Debian
 package installers, npm applications, then Flatpak applications. Native package
-installation owns required npm and Flatpak tools: APT hosts receive `npm`, DNF
-hosts receive `nodejs-npm`, and Flatpak requests receive `flatpak`.
+installation owns required npm and Flatpak tools. Its first-found distribution
+data selects `npm` for Debian-family hosts and `nodejs-npm` for Red Hat-family
+hosts; Flatpak requests receive `flatpak`.
 
 The role validates the npm and Flatpak executables after it installs their
 prerequisites. It configures Flathub before installing requested Flatpak refs
@@ -26,7 +28,8 @@ consuming playbook repository, not from this collection.
 
 - `tasks/main.yml`: validates the supported platform and dispatches to the
   platform implementation.
-- `tasks/linux/main.yml`: processes Linux channels in their required order.
+- `tasks/linux/main.yml`: loads first-found distribution data, then processes
+  Linux channels in their required order.
 - `tasks/linux/native_packages.yml`: installs requested native packages and
   channel prerequisites.
 - `tasks/linux/debian_packages.yml`: skips non-APT hosts or dispatches enabled

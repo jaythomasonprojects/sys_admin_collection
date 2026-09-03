@@ -3,12 +3,8 @@
   vars:
     install_app_channel_packages: >-
       {{
-        (['npm']
-        if install_app_npm_packages | length > 0
-        and ansible_facts.pkg_mgr == 'apt' else [])
-        + (['nodejs-npm']
-        if install_app_npm_packages | length > 0
-        and ansible_facts.pkg_mgr in ['dnf', 'dnf5'] else [])
+        ([install_app_npm_prerequisite]
+        if install_app_npm_packages | length > 0 else [])
         + (['flatpak'] if install_app_flatpaks | length > 0 else [])
       }}
   block:
@@ -30,3 +26,4 @@
       when: >-
         (install_app_packages + install_app_channel_packages) | unique
         | length > 0
+      become: true

@@ -1,4 +1,15 @@
 ---
+- name: Load distribution variables
+  ansible.builtin.include_vars: >-
+    {{ lookup('ansible.builtin.first_found', install_app_vars_params) }}
+  vars:
+    install_app_vars_params:
+      files:
+        - '{{ ansible_facts.distribution }}.yml'
+        - '{{ ansible_facts.os_family }}.yml'
+      paths:
+        - 'vars'
+
 - name: Install native packages
   ansible.builtin.include_tasks: 'native_packages.yml'
 

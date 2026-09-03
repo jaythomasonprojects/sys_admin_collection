@@ -26,6 +26,7 @@
         src: "{{ install_app_deb.src }}"
         dest: "{{ install_app_deb.dest }}"
         mode: "{{ install_app_deb.mode | default('0644') }}"
+      become: true
       when: install_app_deb.src is defined
 
     - name: Download Debian package
@@ -34,9 +35,11 @@
         dest: "{{ install_app_deb.dest }}"
         mode: "{{ install_app_deb.mode | default('0644') }}"
         checksum: "{{ install_app_deb.checksum | default(omit) }}"
+      become: true
       when: install_app_deb.url is defined
 
     - name: Install Debian package
       ansible.builtin.apt:
         deb: "{{ install_app_deb.deb | default(install_app_deb.dest) }}"
         state: "{{ install_app_deb.state | default('present') }}"
+      become: true

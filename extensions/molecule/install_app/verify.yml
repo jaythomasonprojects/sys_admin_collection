@@ -9,6 +9,23 @@
     - name: Gather package facts
       ansible.builtin.package_facts:
 
+    - name: Assert channel prerequisites and skips
+      ansible.builtin.assert:
+        that:
+          - "expected_package_name in ansible_facts.packages"
+          - >-
+            'npm' in ansible_facts.packages
+            if ansible_facts['pkg_mgr'] == 'apt'
+            else ansible_facts.packages.keys()
+            | select('match', '^nodejs.*-npm$') | list | length > 0
+          - "'flatpak' not in ansible_facts.packages"
+          - >-
+            ansible_facts['pkg_mgr'] == 'apt' or
+            'install-app-fixture' not in ansible_facts.packages
+        fail_msg: >-
+          install_app did not apply native and npm channels while skipping
+          unrequested Flatpak and unsupported Debian-installer channels.
+
     - name: Verify APT package installation
       ansible.builtin.include_tasks: "verify_apt.yml"
       when: ansible_facts["pkg_mgr"] == "apt"
