@@ -29,10 +29,7 @@
             'Administrator: true')
           - >-
             local_accounts_windows_tasks.content | b64decode is search(
-            'UserName:')
-          - >-
-            local_accounts_windows_tasks.content | b64decode is search(
-            'item.name')
+            "UserName: '[{][{] item[.]name [}][}]'")
           - >-
             local_accounts_windows_tasks.content | b64decode is not search(
             'script: \|')
