@@ -80,8 +80,17 @@ Task key order: `name` → module → parameters → `loop` → task options (al
   packages is policy. A list of `systemd_service` parameters is a wrapper and does not belong here.
 - `tasks/main.yml` asserts the supported platform, then dispatches to `tasks/linux/main.yml` or
   `tasks/windows/main.yml`. The `fail_msg` is a stable contract asserted verbatim by Molecule.
+- Keep the complete supported-platform gate in `tasks/main.yml`; OS task files own implementation
+  prerequisites, not narrower platform gates.
 - `meta/argument_specs.yml` owns option types, `required`, and `choices`. Keep `assert` only for
   platform gates and cross-field rules a specification cannot express.
+- Put cohesive shell or PowerShell algorithms in static files under the owning role and pass values
+  as parameters. Keep short commands and small Ansible glue inline; use a template only when script
+  source must vary.
+- Do not use `set_fact` for temporary aliases when task, block, or include variables give the value
+  the required scope. Keep a named calculated value when it is clearer than repeated expressions.
+- Support one public input shape unless a real consumer requires another. Do not retain compatibility
+  forms only for hypothetical consumers.
 - Distribution data (package names, paths, service names) lives in `vars/`, loaded with
   `ansible.builtin.first_found` over `{{ ansible_facts.distribution }}.yml` then
   `{{ ansible_facts.os_family }}.yml`. Only a genuine difference in procedure earns a task file.

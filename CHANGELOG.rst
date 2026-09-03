@@ -19,6 +19,12 @@ jaythomasonprojects.sys_admin changelog
 - Renamed the collection-owned APT policy to
   ``52sys-admin-auto-updates`` and removes the former
   ``52jtprojects-unattended-upgrades`` path during convergence.
+- ``mount_network_share`` now requires list-valued ``fstab_options`` and
+  structurally valid share entries.
+- Replaced temporary per-share facts with scoped include variables.
+- Moved substantial Windows power and authorised-key ACL algorithms to
+  role-owned static PowerShell files.
+- Moved complete platform gates into each role's root task file.
 
 0.8.0
 -----
