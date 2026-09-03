@@ -1,7 +1,7 @@
 ---
 argument_specs:
   main:
-    short_description: Configure Windows and Ubuntu GNOME power policy
+    short_description: Configure Windows, Ubuntu, and Fedora GNOME power policy
     description:
       - Configures independent AC suspend and screen timeout policies.
     options:
@@ -17,6 +17,11 @@ argument_specs:
         description: Whether to disable screen timeout.
         type: bool
         default: false
+      power_policy_disable_sleep:
+        description:
+          - Whether to set monitor and standby timeouts to never on AC and DC.
+        type: bool
+        default: true
       power_policy_enabled:
         description:
           - Whether this host should have a managed power policy.

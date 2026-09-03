@@ -1,0 +1,46 @@
+---
+- name: Check power_policy Windows compatibility contract
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Load power policy defaults
+      ansible.builtin.include_vars:
+        file: '{{ playbook_dir }}/../roles/power_policy/defaults/main.yml'
+        name: power_policy_defaults
+
+    - name: Load power policy argument specification
+      ansible.builtin.include_vars:
+        file: '{{ playbook_dir }}/../roles/power_policy/meta/argument_specs.yml'
+        name: power_policy_argument_specs
+
+    - name: Read Windows power policy tasks
+      ansible.builtin.slurp:
+        src: '{{ playbook_dir }}/../roles/power_policy/tasks/windows/main.yml'
+      register: power_policy_windows_tasks
+
+    - name: Assert existing Windows interface and timeout coverage
+      ansible.builtin.assert:
+        that:
+          - power_policy_defaults.power_policy_disable_sleep is sameas true
+          - >-
+            power_policy_argument_specs.argument_specs.main.options
+            .power_policy_disable_sleep.default is sameas true
+          - >-
+            power_policy_windows_tasks.content | b64decode is search(
+            'power_policy_disable_sleep \| bool')
+          - >-
+            power_policy_windows_tasks.content | b64decode is search(
+            'monitor-timeout-ac')
+          - >-
+            power_policy_windows_tasks.content | b64decode is search(
+            'standby-timeout-ac')
+          - >-
+            power_policy_windows_tasks.content | b64decode is search(
+            'monitor-timeout-dc')
+          - >-
+            power_policy_windows_tasks.content | b64decode is search(
+            'standby-timeout-dc')
+        fail_msg: >-
+          power_policy must retain power_policy_disable_sleep and manage monitor
+          and standby timeouts for both AC and DC power on Windows.

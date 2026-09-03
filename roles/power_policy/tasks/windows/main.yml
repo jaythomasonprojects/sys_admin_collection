@@ -9,7 +9,7 @@
 # $Ansible.Result.changed to report idempotency: it checks current
 # values first and only runs powercfg /change when a value is
 # non-zero.
-- name: Disable AC standby timeout
+- name: Disable sleep and standby timeouts
   ansible.windows.win_powershell:
     script: |
       if ($null -eq $Ansible.Result) {
@@ -17,8 +17,30 @@
       }
       $Ansible.Result.changed = $false
       $settings = @(
-        @{ Change = 'standby-timeout-ac'; PowerSource = 'AC'
-          Setting = 'STANDBYIDLE'; Subgroup = 'SUB_SLEEP' }
+          @{
+            Change = 'monitor-timeout-ac'
+            PowerSource = 'AC'
+            Setting = 'VIDEOIDLE'
+            Subgroup = 'SUB_VIDEO'
+          },
+          @{
+            Change = 'standby-timeout-ac'
+            PowerSource = 'AC'
+            Setting = 'STANDBYIDLE'
+            Subgroup = 'SUB_SLEEP'
+          },
+          @{
+            Change = 'monitor-timeout-dc'
+            PowerSource = 'DC'
+            Setting = 'VIDEOIDLE'
+            Subgroup = 'SUB_VIDEO'
+          },
+          @{
+            Change = 'standby-timeout-dc'
+            PowerSource = 'DC'
+            Setting = 'STANDBYIDLE'
+            Subgroup = 'SUB_SLEEP'
+          }
       )
       foreach ($setting in $settings) {
           $pattern = 'Current ' + $setting.PowerSource +
@@ -37,44 +59,11 @@
               $Ansible.Result.changed = $true
           }
       }
-  register: power_policy_ac_suspend_result
+  register: power_policy_sleep_result
   when:
-    - power_policy_disable_ac_suspend | bool
+    - power_policy_disable_sleep | bool
   changed_when: >-
-    power_policy_ac_suspend_result.result.changed
-    | default(false)
-
-- name: Disable monitor timeouts
-  ansible.windows.win_powershell:
-    script: |
-      if ($null -eq $Ansible.Result) {
-        $Ansible.Result = @{}
-      }
-      $Ansible.Result.changed = $false
-      $settings = @(
-        @{ Change = 'monitor-timeout-ac'; PowerSource = 'AC' },
-        @{ Change = 'monitor-timeout-dc'; PowerSource = 'DC' }
-      )
-      foreach ($setting in $settings) {
-        $pattern = 'Current ' + $setting.PowerSource +
-          ' Power Setting Index: 0x([0-9a-f]+)'
-        $matches = @(powercfg /query SCHEME_CURRENT SUB_VIDEO VIDEOIDLE |
-          Select-String $pattern)
-        if ($matches.Count -ne 1) {
-          throw "Could not query $($setting.PowerSource) monitor timeout."
-        }
-        $value = [Convert]::ToInt32(
-          $matches[0].Matches[0].Groups[1].Value, 16)
-        if ($value -ne 0) {
-          powercfg /change $setting.Change 0
-          $Ansible.Result.changed = $true
-        }
-      }
-  register: power_policy_screen_timeout_result
-  when:
-    - power_policy_disable_screen_timeout | bool
-  changed_when: >-
-    power_policy_screen_timeout_result.result.changed
+    power_policy_sleep_result.result.changed
     | default(false)
 
 - name: Disable hibernate
