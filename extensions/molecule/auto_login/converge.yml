@@ -29,3 +29,15 @@
           - >-
             auto_login_unsupported_platform_failure ==
             'auto_login supports Linux hosts only.'
+
+    - name: Configure LightDM without GDM distribution data
+      ansible.builtin.include_role:
+        name: 'jaythomasonprojects.sys_admin.auto_login'
+      vars:
+        ansible_facts:
+          distribution: 'Archlinux'
+          os_family: 'Archlinux'
+          system: 'Linux'
+        auto_login_gdm_config_path: ''
+        auto_login_gdm_user: ''
+        auto_login_lightdm_user: 'molecule'

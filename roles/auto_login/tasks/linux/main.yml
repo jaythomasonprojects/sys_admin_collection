@@ -1,7 +1,9 @@
 ---
-- name: Load distribution variables
-  ansible.builtin.include_vars: >-
-    {{ lookup('ansible.builtin.first_found', auto_login_vars_params) }}
+- name: Locate GDM distribution variables
+  ansible.builtin.set_fact:
+    auto_login_gdm_vars_file: >-
+      {{ lookup('ansible.builtin.first_found',
+      auto_login_vars_params, errors='ignore') | default('', true) }}
   vars:
     auto_login_vars_params:
       files:
@@ -10,14 +12,22 @@
       paths:
         - 'vars'
 
+- name: Load GDM distribution variables
+  ansible.builtin.include_vars: >-
+    {{ auto_login_gdm_vars_file }}
+  when: auto_login_gdm_vars_file | default('', true) | length > 0
+
 - name: Check if GDM configuration is present
   ansible.builtin.stat:
     path: '{{ auto_login_gdm_config_path }}'
   register: auto_login_gdm_config
+  when: auto_login_gdm_config_path | default('') | length > 0
 
 - name: Configure GDM automatic login
   ansible.builtin.include_tasks: 'gdm.yml'
-  when: auto_login_gdm_config.stat.exists
+  when: >-
+    auto_login_gdm_config_path | default('') | length > 0 and
+    auto_login_gdm_config.stat.exists
 
 - name: Check if LightDM configuration directory is present
   ansible.builtin.stat:
