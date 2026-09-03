@@ -19,6 +19,13 @@
         src: '{{ playbook_dir }}/../roles/power_policy/tasks/windows/main.yml'
       register: power_policy_windows_tasks
 
+    - name: Read Windows power timeout script
+      ansible.builtin.slurp:
+        src: >-
+          {{ [playbook_dir, '..', 'roles', 'power_policy', 'files',
+          'Disable-PowerPolicySleep.ps1'] | join('/') }}
+      register: power_policy_sleep_script
+
     - name: Assert existing Windows interface and timeout coverage
       ansible.builtin.assert:
         that:
@@ -31,15 +38,21 @@
             'power_policy_disable_sleep \| bool')
           - >-
             power_policy_windows_tasks.content | b64decode is search(
+            "path: 'Disable-PowerPolicySleep.ps1'")
+          - >-
+            power_policy_sleep_script.content | b64decode is search(
+            '\$Ansible.Changed = \$false')
+          - >-
+            power_policy_sleep_script.content | b64decode is search(
             'monitor-timeout-ac')
           - >-
-            power_policy_windows_tasks.content | b64decode is search(
+            power_policy_sleep_script.content | b64decode is search(
             'standby-timeout-ac')
           - >-
-            power_policy_windows_tasks.content | b64decode is search(
+            power_policy_sleep_script.content | b64decode is search(
             'monitor-timeout-dc')
           - >-
-            power_policy_windows_tasks.content | b64decode is search(
+            power_policy_sleep_script.content | b64decode is search(
             'standby-timeout-dc')
         fail_msg: >-
           power_policy must retain power_policy_disable_sleep and manage monitor

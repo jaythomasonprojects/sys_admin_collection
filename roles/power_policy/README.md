@@ -21,7 +21,8 @@ False values are unmanaged: they do not reset a value from an earlier run.
 
 On Windows, the role selects the configured power plan, disables hibernation,
 and sets monitor and standby timeouts to never for both AC and DC power when
-`power_policy_disable_sleep` is true.
+`power_policy_disable_sleep` is true. `files/Disable-PowerPolicySleep.ps1`
+owns the fixed timeout algorithm and reports whether it changed a timeout.
 
 On Ubuntu 22.04, 24.04, and 26.04, and Fedora, the role writes the named user's
 GNOME AC suspend action and display idle delay. It owns dconf runtime packages,
