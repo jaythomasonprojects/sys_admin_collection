@@ -28,7 +28,10 @@
         server: "nas.example.invalid"
         share: "Docs"
         mount_point: "/srv/shared-docs"
-        fstab_options: "_netdev,nofail,vers=3.0"
+        fstab_options:
+          - '_netdev'
+          - 'nofail'
+          - 'vers=3.0'
         credentials_path: "/etc/samba/credentials/shared_docs"
         username: "svc_docs"
         password: "svc-docs-password"
@@ -57,9 +60,9 @@
   roles:
     - role: "jaythomasonprojects.sys_admin.mount_network_share"
   tasks:
-    - name: Apply disabled network share management
+    - name: Reject incomplete disabled share definitions
       block:
-        - name: Include disabled network share management
+        - name: Include disabled role with an incomplete share
           ansible.builtin.include_role:
             name: 'jaythomasonprojects.sys_admin.mount_network_share'
           vars:
@@ -68,3 +71,42 @@
               - name: 'invalid_share'
                 server: 'files.example.invalid'
                 share: 'Invalid'
+
+        - name: Fail when incomplete disabled share is accepted
+          ansible.builtin.fail:
+            msg: 'mount_network_share accepted an incomplete disabled share.'
+      rescue:
+        - name: Assert required mount point rejection
+          ansible.builtin.assert:
+            that:
+              - "'missing required arguments' in ansible_failed_result.msg"
+              - "'mount_point' in ansible_failed_result.msg"
+
+    - name: Reject comma-separated mount options
+      block:
+        - name: Include role with comma-separated mount options
+          ansible.builtin.include_role:
+            name: 'jaythomasonprojects.sys_admin.mount_network_share'
+          vars:
+            mount_network_share_shares:
+              - name: 'invalid_options'
+                server: 'files.example.invalid'
+                share: 'Invalid'
+                mount_point: '/mnt/invalid-options'
+                fstab_options: '_netdev,nofail'
+
+        - name: Fail when comma-separated mount options are accepted
+          ansible.builtin.fail:
+            msg: 'mount_network_share accepted comma-separated fstab_options.'
+      rescue:
+        - name: Assert mount option rejection
+          ansible.builtin.assert:
+            that:
+              - >-
+                ansible_failed_result.results
+                | map(attribute='msg')
+                | list
+                == [
+                  'mount_network_share fstab_options must be a YAML list '
+                  ~ 'of strings.'
+                ]

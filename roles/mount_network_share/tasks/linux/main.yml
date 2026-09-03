@@ -11,3 +11,23 @@
   loop_control:
     loop_var: mount_network_share_item
     label: '{{ mount_network_share_item.name }}'
+  vars:
+    mount_network_share_credentials_path: >-
+      {{ mount_network_share_item.credentials_path | default(
+           '/etc/samba/credentials/' ~ mount_network_share_item.name
+         ) }}
+    mount_network_share_has_credentials: >-
+      {{ mount_network_share_item.username is defined
+         and mount_network_share_item.password is defined }}
+    mount_network_share_option_list: >-
+      {{ mount_network_share_item.fstab_options | default(
+           ['_netdev', 'nofail', 'iocharset=utf8']
+         ) }}
+    mount_network_share_present: >-
+      {{ mount_network_share_item.state | default('present')
+         not in ['absent', 'absent_from_fstab'] }}
+    mount_network_share_source: >-
+      {{ '//' ~ mount_network_share_item.server ~ '/'
+         ~ mount_network_share_item.share }}
+    mount_network_share_state: >-
+      {{ mount_network_share_item.state | default('present') }}

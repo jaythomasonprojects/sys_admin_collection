@@ -10,21 +10,21 @@
 - name: Manage network shares
   when: mount_network_share_enabled | bool
   block:
-    - name: Validate required share fields
+    - name: Validate Linux mount options
       ansible.builtin.assert:
         that:
-          - mount_network_share_item.name is defined
-          - mount_network_share_item.server is defined
-          - mount_network_share_item.share is defined
-          - mount_network_share_item.mount_point is defined
+          - >-
+            mount_network_share_item.fstab_options is not defined or
+            (mount_network_share_item.fstab_options is sequence and
+            mount_network_share_item.fstab_options is not string)
         fail_msg: >-
-          Each mount_network_share_shares entry must define name, server,
-          share, and mount_point.
+          mount_network_share fstab_options must be a YAML list of strings.
       loop: '{{ mount_network_share_shares }}'
       loop_control:
         loop_var: mount_network_share_item
-        label: '{{ mount_network_share_item.name | default("unnamed") }}'
-      no_log: true
+        label: '{{ mount_network_share_item.name }}'
+      no_log: '{{ mount_network_share_item.password is defined }}'
+      when: ansible_facts.system == 'Linux'
 
     - name: Validate share credential pairing
       ansible.builtin.assert:

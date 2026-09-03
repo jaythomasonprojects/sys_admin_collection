@@ -15,8 +15,9 @@ The role fails on other platforms.
 ## Implementation map
 
 - `tasks/main.yml`: asserts the supported platform, validates enabled share
-  credentials, and dispatches once to the supported platform flow.
-- `tasks/linux/main.yml`: installs `cifs-utils` and processes each Linux share.
+  invariants and credentials, and dispatches once to the supported platform flow.
+- `tasks/linux/main.yml`: installs `cifs-utils`, calculates scoped values, and
+  passes them to each Linux share include.
 - `tasks/linux/share.yml`: manages mount points, credentials, and fstab.
 - `tasks/windows/main.yml`: processes each Windows share.
 - `tasks/windows/share.yml`: persists SMB credentials and maps drive letters.
@@ -49,24 +50,24 @@ mount_network_share_shares:
 credential validation and share management. Disabling the role does not remove
 shares managed by an earlier run.
 
-`mount_network_share_shares` defaults to `[]`. When enabled, every entry must
-define `name`, `server`, `share`, and `mount_point`. The role argument
-specification validates supplied field types, defaults, and `state` choices.
+`mount_network_share_shares` defaults to `[]`. Every entry, including an entry
+provided while the role is disabled, must define `name`, `server`, `share`, and
+`mount_point`. The role argument specification validates supplied field types,
+defaults, and `state` choices.
 Define `username` and `password` together as non-empty strings, or omit both.
 
 On Linux, `mount_point` is a filesystem path. `state` is passed to
 `ansible.posix.mount` and defaults to `present`; `absent` and
 `absent_from_fstab` remove the managed credential file when credentials were
-declared. `owner`, `group`, and `mode` configure present mount points. Set
-`fstab_options` as a list or comma-separated string; it defaults to
-`_netdev,nofail,iocharset=utf8`.
+declared. `owner`, `group`, and `mode` configure present mount points.
 
 With credentials, Linux writes a file at `credentials_path`, defaulting to
 `/etc/samba/credentials/<name>`. `credentials_owner`, `credentials_group`, and
 `credentials_mode` default to `root`, `root`, and `0600`. Keep passwords in
 Ansible Vault or another secret source. A credential path must be suitable for
 the configured account and should not be shared by shares requiring different
-credentials.
+credentials. Set `fstab_options` as a YAML list only; it defaults to
+`['_netdev', 'nofail', 'iocharset=utf8']`.
 
 On Windows, `mount_point` must be a bare mapped-drive letter. The role maps
 `\\server\share`; Linux-only fstab and credential-path settings do not apply.

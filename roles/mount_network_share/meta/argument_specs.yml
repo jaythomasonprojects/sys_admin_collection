@@ -27,15 +27,19 @@ argument_specs:
           name:
             description: Human-readable label used in task output.
             type: str
+            required: true
           server:
             description: SMB server hostname or address.
             type: str
+            required: true
           share:
             description: SMB share name.
             type: str
+            required: true
           mount_point:
             description: Linux mount path or Windows drive letter.
             type: str
+            required: true
           username:
             description: Username for SMB authentication.
             type: str
