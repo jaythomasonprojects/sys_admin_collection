@@ -17,7 +17,7 @@ jaythomasonprojects.sys_admin changelog
 - Added DNF5 automatic-update support using ``dnf5-plugin-automatic`` and
   ``dnf5-automatic.timer``.
 - Renamed the collection-owned APT policy to
-  ``52sys-admin-auto-updates`` and remove the former
+  ``52sys-admin-auto-updates`` and removes the former
   ``52jtprojects-unattended-upgrades`` path during convergence.
 
 0.8.0

@@ -36,7 +36,7 @@
         that:
           - >-
             ssh_unsupported_platform_failure ==
-            'ssh supports Linux and Windows hosts only.'
+            'ssh supports Debian, Ubuntu, Fedora, and Windows hosts only.'
 
     - name: Reject custom SSH ports on Fedora
       when: ansible_facts.distribution == 'Fedora'
