@@ -1,0 +1,5 @@
+---
+time_sync_config_dir: '/etc'
+time_sync_config_file: '/etc/chrony.conf'
+time_sync_package: 'chrony'
+time_sync_service: 'chronyd'

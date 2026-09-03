@@ -1,9 +1,9 @@
 ---
-- name: Validate Debian or Ubuntu platform
+- name: Validate Debian, Ubuntu, or Fedora platform
   ansible.builtin.assert:
     that:
-      - ansible_facts.distribution in ['Debian', 'Ubuntu']
-    fail_msg: 'time_sync supports Debian and Ubuntu hosts only.'
+      - ansible_facts.distribution in ['Debian', 'Fedora', 'Ubuntu']
+    fail_msg: 'time_sync supports Debian, Ubuntu, and Fedora hosts only.'
 
 - name: Load distribution variables
   ansible.builtin.include_vars: >-
@@ -23,13 +23,13 @@
       - time_sync_server | length > 0
     fail_msg: 'time_sync_server must be a non-empty string.'
 
-- name: Install ntpsec
+- name: Install chrony
   ansible.builtin.package:
     name: '{{ time_sync_package }}'
     state: present
   become: true
 
-- name: Ensure ntpsec configuration directory exists
+- name: Ensure chrony configuration directory exists
   ansible.builtin.file:
     path: '{{ time_sync_config_dir }}'
     state: directory
@@ -38,7 +38,7 @@
     mode: '0755'
   become: true
 
-- name: Ensure ntpsec configuration file exists
+- name: Ensure chrony configuration file exists
   ansible.builtin.file:
     path: '{{ time_sync_config_file }}'
     state: touch
@@ -56,7 +56,7 @@
       ^pool\s+(?!{{ time_sync_server | regex_escape }}(?:\s|$)).*$
     replace: '# \g<0>'
   become: true
-  notify: Restart NTP service
+  notify: Restart chrony service
 
 - name: Configure upstream NTP server
   ansible.builtin.lineinfile:
@@ -65,9 +65,9 @@
     line: 'pool {{ time_sync_server }}'
     state: present
   become: true
-  notify: Restart NTP service
+  notify: Restart chrony service
 
-- name: Enable and start ntpsec service
+- name: Enable and start chrony service
   ansible.builtin.systemd_service:
     name: '{{ time_sync_service }}'
     enabled: true

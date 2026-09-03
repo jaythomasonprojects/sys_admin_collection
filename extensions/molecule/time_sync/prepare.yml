@@ -2,8 +2,14 @@
 - name: Prepare time_sync scenario
   hosts: all
   become: true
-  gather_facts: false
+  gather_facts: true
   tasks:
     - name: Refresh APT package metadata
       ansible.builtin.apt:
         update_cache: true
+      when: ansible_facts.os_family == 'Debian'
+
+    - name: Remove chrony
+      ansible.builtin.package:
+        name: 'chrony'
+        state: absent

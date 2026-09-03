@@ -16,10 +16,6 @@
         time_sync_enabled: false
         time_sync_server: ''
 
-    - name: Initialise unsupported-platform rejection result
-      ansible.builtin.set_fact:
-        time_sync_unsupported_platform_rejected: false
-
     - name: Exercise unsupported Linux distribution failure
       block:
         - name: Configure time synchronisation on unsupported Linux distribution
@@ -27,16 +23,19 @@
             name: 'jaythomasonprojects.sys_admin.time_sync'
           vars:
             ansible_facts:
-              distribution: 'Fedora'
-              os_family: 'Debian'
+              distribution: 'Rocky'
+              os_family: 'RedHat'
               system: 'Linux'
             time_sync_server: 'ntp1.example.invalid'
       rescue:
-        - name: Record unsupported-platform rejection
+        - name: Record unsupported-platform rejection message
           ansible.builtin.set_fact:
-            time_sync_unsupported_platform_rejected: true
+            time_sync_unsupported_platform_failure: >-
+              {{ ansible_failed_result.msg | default('') }}
 
     - name: Assert unsupported platform is rejected
       ansible.builtin.assert:
         that:
-          - time_sync_unsupported_platform_rejected
+          - >-
+            time_sync_unsupported_platform_failure ==
+            'time_sync supports Debian, Ubuntu, and Fedora hosts only.'

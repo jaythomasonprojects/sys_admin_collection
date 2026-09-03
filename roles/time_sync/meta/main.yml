@@ -1,7 +1,8 @@
 ---
 galaxy_info:
   author: 'Jay Thomason'
-  description: 'Manage ntpsec time synchronisation policy on Debian and Ubuntu'
+  description: >-
+    Manage chrony time synchronisation policy on Debian, Ubuntu, and Fedora
   license: 'MIT'
   min_ansible_version: '2.18'
   platforms:
@@ -9,6 +10,9 @@ galaxy_info:
       versions:
         - 'all'
     - name: 'Ubuntu'
+      versions:
+        - 'all'
+    - name: 'Fedora'
       versions:
         - 'all'
 dependencies: []

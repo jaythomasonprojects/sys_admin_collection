@@ -2,44 +2,48 @@
 - name: Verify time_sync results
   hosts: all
   become: true
-  gather_facts: false
+  gather_facts: true
+  vars:
+    time_sync_expected_config: >-
+      {{ '/etc/chrony.conf' if ansible_facts.distribution == 'Fedora'
+         else '/etc/chrony/chrony.conf' }}
+    time_sync_expected_service: >-
+      {{ 'chronyd' if ansible_facts.distribution == 'Fedora' else 'chrony' }}
   tasks:
-    - name: Inspect ntpsec package status  # noqa: command-instead-of-module
-      ansible.builtin.command:
-        cmd: 'dpkg-query --show --showformat=${db:Status-Status} ntpsec'
-      register: time_sync_package_state
-      changed_when: false
+    - name: Gather installed package facts
+      ansible.builtin.package_facts:
+        manager: auto
 
-    - name: Inspect ntpsec service activity  # noqa: command-instead-of-module
+    - name: Inspect chrony service activity  # noqa: command-instead-of-module
       ansible.builtin.command:
-        cmd: 'systemctl is-active ntpsec'
+        cmd: 'systemctl is-active {{ time_sync_expected_service }}'
       register: time_sync_service_activity
       changed_when: false
 
-    - name: Inspect ntpsec service enablement  # noqa: command-instead-of-module
+    - name: Inspect chrony service enablement  # noqa: command-instead-of-module
       ansible.builtin.command:
-        cmd: 'systemctl is-enabled ntpsec'
+        cmd: 'systemctl is-enabled {{ time_sync_expected_service }}'
       register: time_sync_service_enablement
       changed_when: false
 
-    - name: Gather rendered ntp config state
+    - name: Gather rendered chrony configuration state
       ansible.builtin.stat:
-        path: '/etc/ntpsec/ntp.conf'
+        path: '{{ time_sync_expected_config }}'
       register: time_sync_config_state
 
-    - name: Read rendered ntp config
+    - name: Read rendered chrony configuration
       ansible.builtin.slurp:
-        src: '/etc/ntpsec/ntp.conf'
+        src: '{{ time_sync_expected_config }}'
       register: time_sync_config
 
-    - name: Decode rendered ntp config
+    - name: Decode rendered chrony configuration
       ansible.builtin.set_fact:
         time_sync_config_content: '{{ time_sync_config.content | b64decode }}'
 
-    - name: Assert ntp configuration content
+    - name: Assert chrony configuration content
       ansible.builtin.assert:
         that:
-          - time_sync_package_state.stdout == 'installed'
+          - "'chrony' in ansible_facts.packages"
           - time_sync_service_activity.stdout == 'active'
           - time_sync_service_enablement.stdout == 'enabled'
           - time_sync_config_state.stat.exists
@@ -50,11 +54,8 @@
           - >-
             (
               time_sync_config_content
-              | regex_search(
-                  '^pool\\s+.*ubuntu\\.pool\\.ntp\\.org',
-                  multiline=True
-                )
-            ) == none
-          - "'192.168.' not in time_sync_config_content"
+              | regex_findall('^(?!#)pool\\s+.*$', multiline=True)
+              | length
+            ) == 1
         fail_msg: >-
-          time_sync did not render the expected ntp configuration.
+          time_sync did not render the expected chrony configuration.
