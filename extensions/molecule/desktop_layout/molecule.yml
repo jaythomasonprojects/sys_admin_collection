@@ -3,26 +3,22 @@ driver:
   name: 'docker'
 
 platforms:
-  - name: 'power-policy-ubuntu2204'
+  - name: 'desktop-layout-ubuntu2204'
     command: 'sleep infinity'
     image: 'docker.io/geerlingguy/docker-ubuntu2204-ansible:latest'
     pre_build_image: true
-  - name: 'power-policy-ubuntu2404'
+  - name: 'desktop-layout-ubuntu2404'
     command: 'sleep infinity'
     image: 'docker.io/geerlingguy/docker-ubuntu2404-ansible:latest'
     pre_build_image: true
-  - name: 'power-policy-ubuntu2604'
+  - name: 'desktop-layout-ubuntu2604'
     command: 'sleep infinity'
     image: 'docker.io/geerlingguy/docker-ubuntu2604-ansible:latest'
     pre_build_image: true
-  - name: 'power-policy-fedora44'
-    command: 'sleep infinity'
-    image: 'docker.io/geerlingguy/docker-fedora44-ansible:latest'
-    pre_build_image: true
-  - name: 'power-policy-missing-schemas'
+  - name: 'desktop-layout-missing-schemas'
     command: 'sleep infinity'
     image: 'docker.io/geerlingguy/docker-ubuntu2204-ansible:latest'
     pre_build_image: true
 
 scenario:
-  name: 'power_policy'
+  name: 'desktop_layout'

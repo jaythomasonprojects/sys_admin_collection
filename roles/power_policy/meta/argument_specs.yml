@@ -1,20 +1,22 @@
 ---
 argument_specs:
   main:
-    short_description: Configure Windows power plan, timeouts, and hibernation
+    short_description: Configure Windows and Ubuntu GNOME power policy
     description:
-      - Applies the active power plan, clears sleep and monitor timeouts on both
-        AC and DC power, and disables hibernation.
+      - Configures independent AC suspend and screen timeout policies.
     options:
+      power_policy_disable_ac_suspend:
+        description: Whether to disable AC suspend.
+        type: bool
+        default: true
       power_policy_disable_hibernate:
         description: Whether to run powercfg /hibernate off.
         type: bool
         default: true
-      power_policy_disable_sleep:
-        description:
-          - Whether to set monitor and standby timeouts to never on AC and DC.
+      power_policy_disable_screen_timeout:
+        description: Whether to disable screen timeout.
         type: bool
-        default: true
+        default: false
       power_policy_enabled:
         description:
           - Whether this host should have a managed power policy.
@@ -28,3 +30,8 @@ argument_specs:
           - An empty string leaves the active plan unchanged.
         type: str
         default: 'high performance'
+      power_policy_user:
+        description: >-
+          Existing local user whose Ubuntu GNOME settings are configured.
+        type: str
+        default: ''

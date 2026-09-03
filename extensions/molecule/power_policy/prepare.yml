@@ -1,0 +1,38 @@
+---
+- name: Prepare power_policy scenario
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Refresh APT metadata
+      ansible.builtin.apt:
+        update_cache: true
+      become: true
+      when: inventory_hostname != 'power-policy-fedora44'
+    - name: Create power policy users
+      ansible.builtin.user:
+        name: '{{ item }}'
+        state: present
+      become: true
+      loop:
+        - 'molecule_bootstrap'
+        - 'molecule_power'
+        - 'molecule_screen'
+    - name: Install GNOME schema fixtures
+      ansible.builtin.apt:
+        name:
+          - 'gnome-settings-daemon-common'
+          - 'gsettings-desktop-schemas'
+        state: present
+      become: true
+      when:
+        - inventory_hostname != 'power-policy-fedora44'
+        - inventory_hostname != 'power-policy-missing-schemas'
+
+    - name: Install Fedora GNOME schema fixtures
+      ansible.builtin.dnf:
+        name:
+          - 'gnome-settings-daemon'
+          - 'gsettings-desktop-schemas'
+        state: present
+      become: true
+      when: inventory_hostname == 'power-policy-fedora44'

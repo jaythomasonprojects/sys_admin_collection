@@ -1,24 +1,15 @@
 ---
 galaxy_info:
   author: 'Jay Thomason'
-  description: >-
-    Configure Windows, Ubuntu, and Fedora GNOME power policy
+  description: 'Configure Ubuntu GNOME dock layout policy'
   license: 'MIT'
   min_ansible_version: '2.18'
   platforms:
-    - name: 'Windows'
-      versions:
-        - 'all'
     - name: 'Ubuntu'
       versions:
         - 'jammy'
         - 'noble'
         - 'resolute'
-    - name: 'Fedora'
-      versions:
-        - 'all'
 collections:
-  - 'ansible.windows'
   - 'community.general'
-  - 'community.windows'
 dependencies: []

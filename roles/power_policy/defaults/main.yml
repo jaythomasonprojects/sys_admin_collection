@@ -1,5 +1,7 @@
 ---
+power_policy_disable_ac_suspend: true
 power_policy_disable_hibernate: true
-power_policy_disable_sleep: true
+power_policy_disable_screen_timeout: false
 power_policy_enabled: true
 power_policy_plan: 'high performance'
+power_policy_user: ''

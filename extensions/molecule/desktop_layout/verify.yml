@@ -1,0 +1,64 @@
+---
+- name: Verify desktop_layout results
+  hosts: all
+  gather_facts: false
+  vars:
+    desktop_layout_expected_favourites:
+      - 'org.gnome.Nautilus.desktop'
+      - 'google-chrome.desktop'
+    desktop_layout_expected_favourites_value: >-
+      ['org.gnome.Nautilus.desktop', 'google-chrome.desktop']
+    desktop_layout_expected_icon_size: '48'
+    desktop_layout_expected_position: "'LEFT'"
+  tasks:
+    - name: Read desktop user GNOME dock position
+      ansible.builtin.command:
+        argv:
+          - 'dconf'
+          - 'read'
+          - '/org/gnome/shell/extensions/dash-to-dock/dock-position'
+      become: true
+      become_user: 'molecule_desktop'
+      changed_when: false
+      environment:
+        HOME: '/home/molecule_desktop'
+      register: desktop_layout_position
+      when: inventory_hostname != 'desktop-layout-missing-schemas'
+
+    - name: Read desktop user GNOME dock icon size
+      ansible.builtin.command:
+        argv:
+          - 'dconf'
+          - 'read'
+          - '/org/gnome/shell/extensions/dash-to-dock/dash-max-icon-size'
+      become: true
+      become_user: 'molecule_desktop'
+      changed_when: false
+      environment:
+        HOME: '/home/molecule_desktop'
+      register: desktop_layout_icon_size
+      when: inventory_hostname != 'desktop-layout-missing-schemas'
+
+    - name: Read desktop user GNOME dock favourites
+      ansible.builtin.command:
+        argv:
+          - 'dconf'
+          - 'read'
+          - '/org/gnome/shell/favorite-apps'
+      become: true
+      become_user: 'molecule_desktop'
+      changed_when: false
+      environment:
+        HOME: '/home/molecule_desktop'
+      register: desktop_layout_favourites
+      when: inventory_hostname != 'desktop-layout-missing-schemas'
+
+    - name: Assert desktop layout values belong to desktop user
+      ansible.builtin.assert:
+        that:
+          - desktop_layout_position.stdout == desktop_layout_expected_position
+          - desktop_layout_icon_size.stdout == desktop_layout_expected_icon_size
+          - >-
+            desktop_layout_favourites.stdout ==
+            desktop_layout_expected_favourites_value
+      when: inventory_hostname != 'desktop-layout-missing-schemas'

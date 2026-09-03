@@ -1,0 +1,33 @@
+---
+argument_specs:
+  main:
+    short_description: Configure a GNOME desktop dock layout
+    description:
+      - Configures the Ubuntu Dock layout for one named local desktop user.
+    options:
+      desktop_layout_enabled:
+        description: Whether this host should have the desktop layout policy.
+        type: bool
+        default: true
+      desktop_layout_gnome_dock_favourites:
+        description: Ordered GNOME launcher identifiers for dock favourites.
+        type: list
+        elements: str
+        default: []
+      desktop_layout_gnome_dock_icon_size:
+        description: GNOME dock icon size in pixels.
+        type: int
+        default: 32
+      desktop_layout_gnome_dock_position:
+        description: GNOME dock position.
+        type: str
+        choices:
+          - 'BOTTOM'
+          - 'LEFT'
+          - 'RIGHT'
+          - 'TOP'
+        default: 'BOTTOM'
+      desktop_layout_user:
+        description: Existing local user whose GNOME settings are configured.
+        type: str
+        default: ''

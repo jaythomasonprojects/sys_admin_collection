@@ -1,0 +1,12 @@
+---
+- name: Assert supported platform
+  ansible.builtin.assert:
+    that:
+      - ansible_facts.distribution == 'Ubuntu'
+      - ansible_facts.distribution_version in ['22.04', '24.04', '26.04']
+    fail_msg: >-
+      desktop_layout supports Ubuntu 22.04, 24.04, and 26.04 hosts only.
+
+- name: Configure desktop layout on Linux hosts
+  ansible.builtin.include_tasks: 'linux/main.yml'
+  when: desktop_layout_enabled | bool

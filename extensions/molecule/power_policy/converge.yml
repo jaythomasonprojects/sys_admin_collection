@@ -3,20 +3,86 @@
   hosts: all
   gather_facts: true
   tasks:
-    - name: Reject Ubuntu hosts
+    - name: Install power policy runtime packages without GNOME policies
+      ansible.builtin.include_role:
+        name: 'jaythomasonprojects.sys_admin.power_policy'
+      vars:
+        power_policy_disable_ac_suspend: false
+        power_policy_disable_screen_timeout: false
+        power_policy_user: 'molecule_bootstrap'
+
+    - name: Configure AC suspend policy
+      ansible.builtin.include_role:
+        name: 'jaythomasonprojects.sys_admin.power_policy'
+      vars:
+        power_policy_disable_ac_suspend: true
+        power_policy_disable_screen_timeout: false
+        power_policy_plan: ''
+        power_policy_user: 'molecule_power'
+      when: inventory_hostname != 'power-policy-missing-schemas'
+
+    - name: Configure screen timeout policy
+      ansible.builtin.include_role:
+        name: 'jaythomasonprojects.sys_admin.power_policy'
+      vars:
+        power_policy_disable_ac_suspend: false
+        power_policy_disable_screen_timeout: true
+        power_policy_plan: ''
+        power_policy_user: 'molecule_screen'
+      when: inventory_hostname != 'power-policy-missing-schemas'
+
+    - name: Reject unsupported platforms
       block:
-        - name: Configure power policy on Ubuntu
+        - name: Configure unsupported platform
           ansible.builtin.include_role:
             name: 'jaythomasonprojects.sys_admin.power_policy'
+          vars:
+            ansible_facts:
+              distribution: 'macOS'
+              distribution_version: '15'
+              os_family: 'Darwin'
+              system: 'Darwin'
+        - name: Fail when unsupported platform is accepted
+          ansible.builtin.fail:
+            msg: 'power_policy accepted an unsupported platform.'
       rescue:
-        - name: Record Ubuntu rejection
+        - name: Record unsupported platform rejection
           ansible.builtin.set_fact:
-            power_policy_ubuntu_error: >-
+            power_policy_unsupported_platform_failure: >-
               {{ ansible_failed_result.msg | default('') }}
 
-    - name: Assert Ubuntu is rejected
+    - name: Assert unsupported platform rejection
       ansible.builtin.assert:
         that:
           - >-
-            power_policy_ubuntu_error | default('') ==
-            'power_policy supports Windows hosts only.'
+            power_policy_unsupported_platform_failure ==
+            'power_policy supports Windows, Ubuntu 22.04, 24.04, and 26.04, and
+            Fedora hosts only.'
+
+    - name: Reject missing GNOME power schemas
+      when: inventory_hostname == 'power-policy-missing-schemas'
+      block:
+        - name: Configure AC suspend without GNOME schema
+          ansible.builtin.include_role:
+            name: 'jaythomasonprojects.sys_admin.power_policy'
+          vars:
+            power_policy_disable_ac_suspend: true
+            power_policy_disable_screen_timeout: false
+            power_policy_user: 'molecule_power'
+        - name: Fail when missing GNOME power schema is accepted
+          ansible.builtin.fail:
+            msg: 'power_policy accepted a missing GNOME power schema.'
+      rescue:
+        - name: Record missing GNOME power schema rejection
+          ansible.builtin.set_fact:
+            power_policy_missing_schema_failure: >-
+              {{ ansible_failed_result.msg | default('') }}
+
+    - name: Assert missing GNOME power schema rejection
+      ansible.builtin.assert:
+        that:
+          - >-
+            power_policy_missing_schema_failure ==
+            'power_policy requires the GNOME power schema when AC suspend
+            policy is enabled.'
+      when: inventory_hostname == 'power-policy-missing-schemas'

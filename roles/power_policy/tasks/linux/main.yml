@@ -1,0 +1,106 @@
+---
+- name: Resolve power policy user
+  ansible.builtin.getent:
+    database: 'passwd'
+    fail_key: false
+    key: '{{ power_policy_user }}'
+
+- name: Assert power policy user exists
+  ansible.builtin.assert:
+    that:
+      - power_policy_user | length > 0
+      - ansible_facts.getent_passwd[power_policy_user] is defined
+      - ansible_facts.getent_passwd[power_policy_user] is not none
+    fail_msg: >-
+      power_policy_user must name an existing local user when power_policy is
+      enabled on Linux.
+
+- name: Set power policy user home
+  ansible.builtin.set_fact:
+    power_policy_user_home: >-
+      {{ ansible_facts.getent_passwd[power_policy_user][4] }}
+
+- name: Check power policy user home
+  ansible.builtin.stat:
+    path: '{{ power_policy_user_home }}'
+  register: power_policy_user_home_stat
+
+- name: Assert power policy user home exists
+  ansible.builtin.assert:
+    that:
+      - power_policy_user_home_stat.stat.exists
+      - power_policy_user_home_stat.stat.isdir
+    fail_msg: >-
+      power_policy requires power_policy_user to have an existing home
+      directory.
+
+- name: Load distribution variables
+  ansible.builtin.include_vars: >-
+    {{ lookup('ansible.builtin.first_found', power_policy_vars_params) }}
+  vars:
+    power_policy_vars_params:
+      files:
+        - '{{ ansible_facts.distribution }}.yml'
+        - '{{ ansible_facts.os_family }}.yml'
+      paths:
+        - 'vars'
+
+- name: Install power policy packages
+  ansible.builtin.package:
+    name: '{{ power_policy_packages }}'
+    state: present
+  become: true
+
+- name: List GNOME schemas
+  ansible.builtin.command:
+    argv:
+      - 'gsettings'
+      - 'list-schemas'
+  changed_when: false
+  failed_when: false
+  register: power_policy_gnome_schemas
+  when: >-
+    power_policy_disable_ac_suspend | bool or
+    power_policy_disable_screen_timeout | bool
+
+- name: Assert GNOME power schema exists
+  ansible.builtin.assert:
+    that:
+      - >-
+        'org.gnome.settings-daemon.plugins.power' in
+        power_policy_gnome_schemas.stdout_lines
+    fail_msg: >-
+      power_policy requires the GNOME power schema when AC suspend policy is
+      enabled.
+  when: power_policy_disable_ac_suspend | bool
+
+- name: Assert GNOME session schema exists
+  ansible.builtin.assert:
+    that:
+      - "'org.gnome.desktop.session' in power_policy_gnome_schemas.stdout_lines"
+    fail_msg: >-
+      power_policy requires the GNOME session schema when screen timeout policy
+      is enabled.
+  when: power_policy_disable_screen_timeout | bool
+
+- name: Disable GNOME AC inactivity suspend
+  community.general.dconf:
+    key: '/org/gnome/settings-daemon/plugins/power/sleep-inactive-ac-type'
+    state: present
+    value: "'nothing'"
+  become: true
+  become_user: '{{ power_policy_user }}'
+  environment:
+    HOME: '{{ power_policy_user_home }}'
+  when: power_policy_disable_ac_suspend | bool
+
+- name: Disable GNOME screen timeout
+  community.general.dconf:
+    key: '/org/gnome/desktop/session/idle-delay'
+    state: present
+    value: 'uint32 0'
+  become: true
+  become_user: '{{ power_policy_user }}'
+  environment:
+    HOME: '{{ power_policy_user_home }}'
+  when: power_policy_disable_screen_timeout | bool

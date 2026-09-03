@@ -1,0 +1,5 @@
+---
+- name: Clean up power_policy scenario
+  hosts: all
+  gather_facts: false
+  tasks: []

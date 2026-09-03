@@ -1,0 +1,35 @@
+---
+- name: Prepare desktop_layout scenario
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Refresh APT metadata
+      ansible.builtin.apt:
+        update_cache: true
+      become: true
+
+    - name: Create desktop fixture user
+      ansible.builtin.user:
+        name: 'molecule_desktop'
+        home: '/home/molecule_desktop'
+        shell: '/bin/bash'
+        state: present
+      become: true
+
+    - name: Create missing-home fixture user
+      ansible.builtin.user:
+        create_home: false
+        name: 'molecule_no_home'
+        home: '/home/molecule_no_home'
+        shell: '/bin/bash'
+        state: present
+      become: true
+
+    - name: Install GNOME schema fixtures
+      ansible.builtin.apt:
+        name:
+          - 'gnome-shell-common'
+          - 'gnome-shell-extension-ubuntu-dock'
+        state: present
+      become: true
+      when: inventory_hostname != 'desktop-layout-missing-schemas'

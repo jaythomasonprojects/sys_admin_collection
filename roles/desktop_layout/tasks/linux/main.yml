@@ -1,0 +1,109 @@
+---
+- name: Assert GNOME dock icon size is supported
+  ansible.builtin.assert:
+    that:
+      - desktop_layout_gnome_dock_icon_size >= 16
+      - desktop_layout_gnome_dock_icon_size <= 64
+    fail_msg: 'desktop_layout_gnome_dock_icon_size must be between 16 and 64.'
+
+- name: Resolve desktop layout user
+  ansible.builtin.getent:
+    database: 'passwd'
+    fail_key: false
+    key: '{{ desktop_layout_user }}'
+
+- name: Assert desktop layout user exists
+  ansible.builtin.assert:
+    that:
+      - desktop_layout_user | length > 0
+      - ansible_facts.getent_passwd[desktop_layout_user] is defined
+      - ansible_facts.getent_passwd[desktop_layout_user] is not none
+    fail_msg: >-
+      desktop_layout_user must name an existing local user when desktop_layout
+      is enabled.
+
+- name: Set desktop layout user home
+  ansible.builtin.set_fact:
+    desktop_layout_user_home: >-
+      {{ ansible_facts.getent_passwd[desktop_layout_user][4] }}
+
+- name: Check desktop layout user home
+  ansible.builtin.stat:
+    path: '{{ desktop_layout_user_home }}'
+  register: desktop_layout_user_home_stat
+
+- name: Assert desktop layout user home exists
+  ansible.builtin.assert:
+    that:
+      - desktop_layout_user_home_stat.stat.exists
+      - desktop_layout_user_home_stat.stat.isdir
+    fail_msg: >-
+      desktop_layout requires desktop_layout_user to have an existing home
+      directory.
+
+- name: Load distribution variables
+  ansible.builtin.include_vars: >-
+    {{ lookup('ansible.builtin.first_found', desktop_layout_vars_params) }}
+  vars:
+    desktop_layout_vars_params:
+      files:
+        - '{{ ansible_facts.distribution }}.yml'
+        - '{{ ansible_facts.os_family }}.yml'
+      paths:
+        - 'vars'
+
+- name: Install desktop layout packages
+  ansible.builtin.package:
+    name: '{{ desktop_layout_packages }}'
+    state: present
+  become: true
+
+- name: List GNOME schemas
+  ansible.builtin.command:
+    argv:
+      - 'gsettings'
+      - 'list-schemas'
+  changed_when: false
+  failed_when: false
+  register: desktop_layout_gnome_schemas
+
+- name: Assert GNOME Shell and Ubuntu Dock schemas exist
+  ansible.builtin.assert:
+    that:
+      - "'org.gnome.shell' in desktop_layout_gnome_schemas.stdout_lines"
+      - >-
+        'org.gnome.shell.extensions.dash-to-dock' in
+        desktop_layout_gnome_schemas.stdout_lines
+    fail_msg: 'desktop_layout requires the GNOME Shell and Ubuntu Dock schemas.'
+
+- name: Configure GNOME dock position
+  community.general.dconf:
+    key: '/org/gnome/shell/extensions/dash-to-dock/dock-position'
+    state: present
+    value: "'{{ desktop_layout_gnome_dock_position }}'"
+  become: true
+  become_user: '{{ desktop_layout_user }}'
+  environment:
+    HOME: '{{ desktop_layout_user_home }}'
+
+- name: Configure GNOME dock icon size
+  community.general.dconf:
+    key: >-
+      /org/gnome/shell/extensions/dash-to-dock/dash-max-icon-size
+    state: present
+    value: '{{ desktop_layout_gnome_dock_icon_size | string }}'
+  become: true
+  become_user: '{{ desktop_layout_user }}'
+  environment:
+    HOME: '{{ desktop_layout_user_home }}'
+
+- name: Configure GNOME dock favourites
+  community.general.dconf:
+    key: '/org/gnome/shell/favorite-apps'
+    state: present
+    value: '{{ desktop_layout_gnome_dock_favourites | to_json }}'
+  become: true
+  become_user: '{{ desktop_layout_user }}'
+  environment:
+    HOME: '{{ desktop_layout_user_home }}'
+  when: desktop_layout_gnome_dock_favourites | length > 0

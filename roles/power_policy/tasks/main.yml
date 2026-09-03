@@ -2,9 +2,23 @@
 - name: Assert supported platform
   ansible.builtin.assert:
     that:
-      - ansible_facts.os_family == 'Windows'
-    fail_msg: 'power_policy supports Windows hosts only.'
+      - >-
+        ansible_facts.os_family == 'Windows' or
+        (ansible_facts.distribution == 'Ubuntu' and
+        ansible_facts.distribution_version in ['22.04', '24.04', '26.04']) or
+        ansible_facts.distribution == 'Fedora'
+    fail_msg: >-
+      power_policy supports Windows, Ubuntu 22.04, 24.04, and 26.04, and Fedora
+      hosts only.
 
 - name: Configure power policy on Windows hosts
   ansible.builtin.include_tasks: 'windows/main.yml'
-  when: power_policy_enabled | bool
+  when:
+    - ansible_facts.os_family == 'Windows'
+    - power_policy_enabled | bool
+
+- name: Configure power policy on Linux hosts
+  ansible.builtin.include_tasks: 'linux/main.yml'
+  when:
+    - ansible_facts.system == 'Linux'
+    - power_policy_enabled | bool

@@ -1,0 +1,37 @@
+---
+- name: Verify power_policy results
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Read managed AC suspend action
+      ansible.builtin.command:
+        argv:
+          - 'dconf'
+          - 'read'
+          - '/org/gnome/settings-daemon/plugins/power/sleep-inactive-ac-type'
+      become: true
+      become_user: 'molecule_power'
+      changed_when: false
+      environment:
+        HOME: '/home/molecule_power'
+      register: power_policy_ac_suspend
+      when: inventory_hostname != 'power-policy-missing-schemas'
+    - name: Read managed screen timeout
+      ansible.builtin.command:
+        argv:
+          - 'dconf'
+          - 'read'
+          - '/org/gnome/desktop/session/idle-delay'
+      become: true
+      become_user: 'molecule_screen'
+      changed_when: false
+      environment:
+        HOME: '/home/molecule_screen'
+      register: power_policy_screen_timeout
+      when: inventory_hostname != 'power-policy-missing-schemas'
+    - name: Assert independent Ubuntu power policies
+      ansible.builtin.assert:
+        that:
+          - power_policy_ac_suspend.stdout == "'nothing'"
+          - power_policy_screen_timeout.stdout == 'uint32 0'
+      when: inventory_hostname != 'power-policy-missing-schemas'

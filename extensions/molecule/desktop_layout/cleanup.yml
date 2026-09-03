@@ -1,0 +1,5 @@
+---
+- name: Clean up desktop_layout scenario
+  hosts: all
+  gather_facts: false
+  tasks: []

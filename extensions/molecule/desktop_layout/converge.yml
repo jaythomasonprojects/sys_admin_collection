@@ -1,0 +1,159 @@
+---
+- name: Converge desktop_layout scenario
+  hosts: all
+  gather_facts: true
+  vars:
+    desktop_layout_expected_favourites:
+      - 'org.gnome.Nautilus.desktop'
+      - 'google-chrome.desktop'
+  tasks:
+    - name: Configure desktop layout on supported Ubuntu hosts
+      ansible.builtin.include_role:
+        name: 'jaythomasonprojects.sys_admin.desktop_layout'
+      vars:
+        desktop_layout_gnome_dock_favourites: >-
+          {{ desktop_layout_expected_favourites }}
+        desktop_layout_gnome_dock_icon_size: 48
+        desktop_layout_gnome_dock_position: 'LEFT'
+        desktop_layout_user: 'molecule_desktop'
+      when: inventory_hostname != 'desktop-layout-missing-schemas'
+
+    - name: Reject Fedora hosts
+      block:
+        - name: Configure Fedora host
+          ansible.builtin.include_role:
+            name: 'jaythomasonprojects.sys_admin.desktop_layout'
+          vars:
+            ansible_facts:
+              distribution: 'Fedora'
+              distribution_version: '44'
+              os_family: 'RedHat'
+              system: 'Linux'
+        - name: Fail when Fedora host is accepted
+          ansible.builtin.fail:
+            msg: 'desktop_layout accepted a Fedora host.'
+      rescue:
+        - name: Record Fedora host rejection
+          ansible.builtin.set_fact:
+            desktop_layout_fedora_failure: >-
+              {{ ansible_failed_result.msg | default('') }}
+
+    - name: Reject unsupported Ubuntu releases
+      block:
+        - name: Configure unsupported Ubuntu release
+          ansible.builtin.include_role:
+            name: 'jaythomasonprojects.sys_admin.desktop_layout'
+          vars:
+            ansible_facts:
+              distribution: 'Ubuntu'
+              distribution_version: '20.04'
+              os_family: 'Debian'
+              system: 'Linux'
+            desktop_layout_user: 'molecule_desktop'
+        - name: Fail when unsupported Ubuntu release is accepted
+          ansible.builtin.fail:
+            msg: 'desktop_layout accepted an unsupported Ubuntu release.'
+      rescue:
+        - name: Record unsupported Ubuntu release rejection
+          ansible.builtin.set_fact:
+            desktop_layout_unsupported_release_failure: >-
+              {{ ansible_failed_result.msg | default('') }}
+
+    - name: Reject missing desktop users
+      when: inventory_hostname != 'desktop-layout-missing-schemas'
+      block:
+        - name: Configure missing desktop user
+          ansible.builtin.include_role:
+            name: 'jaythomasonprojects.sys_admin.desktop_layout'
+          vars:
+            desktop_layout_user: 'missing_molecule_user'
+        - name: Fail when missing desktop user is accepted
+          ansible.builtin.fail:
+            msg: 'desktop_layout accepted a missing desktop user.'
+      rescue:
+        - name: Record missing desktop user rejection
+          ansible.builtin.set_fact:
+            desktop_layout_missing_user_failure: >-
+              {{ ansible_failed_result.msg | default('') }}
+
+    - name: Reject desktop users without homes
+      when: inventory_hostname != 'desktop-layout-missing-schemas'
+      block:
+        - name: Configure desktop user without a home
+          ansible.builtin.include_role:
+            name: 'jaythomasonprojects.sys_admin.desktop_layout'
+          vars:
+            desktop_layout_user: 'molecule_no_home'
+        - name: Fail when desktop user without a home is accepted
+          ansible.builtin.fail:
+            msg: 'desktop_layout accepted a desktop user without a home.'
+      rescue:
+        - name: Record missing desktop home rejection
+          ansible.builtin.set_fact:
+            desktop_layout_missing_home_failure: >-
+              {{ ansible_failed_result.msg | default('') }}
+
+    - name: Reject missing GNOME schemas
+      when: inventory_hostname == 'desktop-layout-missing-schemas'
+      block:
+        - name: Configure desktop layout without GNOME schemas
+          ansible.builtin.include_role:
+            name: 'jaythomasonprojects.sys_admin.desktop_layout'
+          vars:
+            desktop_layout_user: 'molecule_desktop'
+        - name: Fail when missing GNOME schemas are accepted
+          ansible.builtin.fail:
+            msg: 'desktop_layout accepted missing GNOME schemas.'
+      rescue:
+        - name: Record missing GNOME schema rejection
+          ansible.builtin.set_fact:
+            desktop_layout_missing_schema_failure: >-
+              {{ ansible_failed_result.msg | default('') }}
+
+    - name: Reject invalid GNOME dock icon sizes
+      when: inventory_hostname != 'desktop-layout-missing-schemas'
+      block:
+        - name: Configure invalid GNOME dock icon size
+          ansible.builtin.include_role:
+            name: 'jaythomasonprojects.sys_admin.desktop_layout'
+          vars:
+            desktop_layout_gnome_dock_icon_size: 15
+            desktop_layout_user: 'molecule_desktop'
+        - name: Fail when invalid GNOME dock icon size is accepted
+          ansible.builtin.fail:
+            msg: 'desktop_layout accepted an invalid GNOME dock icon size.'
+      rescue:
+        - name: Record invalid GNOME dock icon size rejection
+          ansible.builtin.set_fact:
+            desktop_layout_invalid_icon_size_failure: >-
+              {{ ansible_failed_result.msg | default('') }}
+
+    - name: Assert desktop layout rejection contracts
+      ansible.builtin.assert:
+        that:
+          - >-
+            desktop_layout_fedora_failure ==
+            'desktop_layout supports Ubuntu 22.04, 24.04, and 26.04 hosts only.'
+          - >-
+            desktop_layout_unsupported_release_failure ==
+            'desktop_layout supports Ubuntu 22.04, 24.04, and 26.04 hosts only.'
+          - >-
+            desktop_layout_missing_user_failure ==
+            'desktop_layout_user must name an existing local user when
+            desktop_layout is enabled.'
+          - >-
+            desktop_layout_missing_home_failure ==
+            'desktop_layout requires desktop_layout_user to have an existing
+            home directory.'
+          - >-
+            desktop_layout_invalid_icon_size_failure ==
+            'desktop_layout_gnome_dock_icon_size must be between 16 and 64.'
+      when: inventory_hostname != 'desktop-layout-missing-schemas'
+
+    - name: Assert missing GNOME schema rejection contract
+      ansible.builtin.assert:
+        that:
+          - >-
+            desktop_layout_missing_schema_failure ==
+            'desktop_layout requires the GNOME Shell and Ubuntu Dock schemas.'
+      when: inventory_hostname == 'desktop-layout-missing-schemas'

@@ -1,0 +1,7 @@
+---
+power_policy_packages:
+  - 'dbus-daemon'
+  - 'dconf'
+  - 'glib2'
+  - 'python3-gobject'
+  - 'python3-psutil'

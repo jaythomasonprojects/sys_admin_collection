@@ -1,0 +1,7 @@
+---
+desktop_layout_packages:
+  - 'dbus'
+  - 'dconf-cli'
+  - 'libglib2.0-bin'
+  - 'python3-gi'
+  - 'python3-psutil'
