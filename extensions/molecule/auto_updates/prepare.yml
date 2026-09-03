@@ -9,3 +9,12 @@
         gather_subset:
           - "!all"
           - "min"
+
+    - name: Create legacy APT policy fixture
+      ansible.builtin.copy:
+        content: |
+          Unattended-Upgrade::Origins-Pattern {};
+        dest: '/etc/apt/apt.conf.d/52jtprojects-unattended-upgrades'
+        mode: '0644'
+      become: true
+      when: ansible_facts.pkg_mgr == 'apt'

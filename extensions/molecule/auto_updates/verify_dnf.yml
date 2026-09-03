@@ -4,21 +4,30 @@
     src: "/etc/dnf/automatic.conf"
   register: auto_updates_dnf_config
 
-- name: Check whether dnf-automatic.timer is enabled
+- name: Set expected DNF automatic package and timer
+  ansible.builtin.set_fact:
+    expected_dnf_package: >-
+      {{ 'dnf5-plugin-automatic' if ansible_facts.pkg_mgr == 'dnf5'
+         else 'dnf-automatic' }}
+    expected_dnf_timer: >-
+      {{ 'dnf5-automatic.timer' if ansible_facts.pkg_mgr == 'dnf5'
+         else 'dnf-automatic.timer' }}
+
+- name: Check whether DNF automatic timer is enabled
   ansible.builtin.command:
     argv:
       - "systemctl"
       - "is-enabled"
-      - "dnf-automatic.timer"
+      - "{{ expected_dnf_timer }}"
   register: auto_updates_timer_enabled
   changed_when: false
 
-- name: Check whether dnf-automatic.timer is active
+- name: Check whether DNF automatic timer is active
   ansible.builtin.command:
     argv:
       - "systemctl"
       - "is-active"
-      - "dnf-automatic.timer"
+      - "{{ expected_dnf_timer }}"
   register: auto_updates_timer_active
   changed_when: false
 
@@ -26,16 +35,16 @@
   ansible.builtin.set_fact:
     actual_dnf_automatic: "{{ auto_updates_dnf_config.content | b64decode }}"
 
-- name: Assert dnf-automatic configuration and timer state
+- name: Assert DNF automatic configuration and timer state
   ansible.builtin.assert:
     that:
-      - "'dnf-automatic' in ansible_facts.packages"
+      - expected_dnf_package in ansible_facts.packages
       - "actual_dnf_automatic.strip() == expected_dnf_automatic.strip()"
       - "auto_updates_timer_enabled.stdout == 'enabled'"
       - "auto_updates_timer_active.stdout == 'active'"
     fail_msg: >-
-      auto_updates did not configure dnf-automatic as expected.
-      package_facts={{ ansible_facts.packages.get('dnf-automatic', []) }}
+      auto_updates did not configure DNF automatic updates as expected.
+      package_facts={{ ansible_facts.packages.get(expected_dnf_package, []) }}
       enabled={{ auto_updates_timer_enabled.stdout | default('missing') }}
       active={{ auto_updates_timer_active.stdout | default('missing') }}
       config={{ actual_dnf_automatic | default('missing') }}

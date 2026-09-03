@@ -4,8 +4,13 @@
     src: "{{ item }}"
   loop:
     - "/etc/apt/apt.conf.d/20auto-upgrades"
-    - "/etc/apt/apt.conf.d/52jtprojects-unattended-upgrades"
+    - "/etc/apt/apt.conf.d/52sys-admin-auto-updates"
   register: auto_updates_configs
+
+- name: Check legacy APT policy is absent
+  ansible.builtin.stat:
+    path: '/etc/apt/apt.conf.d/52jtprojects-unattended-upgrades'
+  register: auto_updates_legacy_policy
 
 - name: Assert unattended-upgrades is installed
   ansible.builtin.assert:
@@ -29,7 +34,8 @@
 - name: Assert policy config matches expected content
   ansible.builtin.assert:
     that:
-      - "actual_policy.strip() == expected_policy.strip()"
+      - not auto_updates_legacy_policy.stat.exists
+      - actual_policy.strip() == expected_policy.strip()
     fail_msg: >-
-      52jtprojects-unattended-upgrades does not match expected content.
+      52sys-admin-auto-updates does not match expected content.
       Expected:\n{{ expected_policy }}\nActual:\n{{ actual_policy }}

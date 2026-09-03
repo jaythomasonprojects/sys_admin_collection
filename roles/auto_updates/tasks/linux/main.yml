@@ -12,5 +12,15 @@
   when: ansible_facts.pkg_mgr == 'apt'
 
 - name: Configure dnf-automatic for DNF systems
+  ansible.builtin.set_fact:
+    auto_updates_dnf_package: >-
+      {{ 'dnf5-plugin-automatic' if ansible_facts.pkg_mgr == 'dnf5'
+         else 'dnf-automatic' }}
+    auto_updates_dnf_timer: >-
+      {{ 'dnf5-automatic.timer' if ansible_facts.pkg_mgr == 'dnf5'
+         else 'dnf-automatic.timer' }}
+  when: ansible_facts.pkg_mgr in ['dnf', 'dnf5']
+
+- name: Configure automatic updates for DNF systems
   ansible.builtin.include_tasks: 'dnf.yml'
   when: ansible_facts.pkg_mgr in ['dnf', 'dnf5']

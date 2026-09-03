@@ -8,7 +8,7 @@ available updates on Windows.
 On Linux, the role owns the supported package manager's persistent automatic
 update configuration. `auto_updates_enabled` is the collection's reference
 converging flag: disabling it writes zeroed APT periodic counters and stops the
-`dnf-automatic` timer instead of skipping. On Windows, the role immediately
+DNF automatic-update timer instead of skipping. On Windows, the role immediately
 installs available updates with `ansible.windows.win_updates`; Windows has no
 scheduled configuration and ignores `auto_updates_enabled`.
 
@@ -16,9 +16,11 @@ scheduled configuration and ignores `auto_updates_enabled`.
 
 - APT: the `unattended-upgrades` package plus
   `/etc/apt/apt.conf.d/20auto-upgrades` and
-  `/etc/apt/apt.conf.d/52jtprojects-unattended-upgrades`.
-- DNF: the `dnf-automatic` package, `/etc/dnf/automatic.conf`, and
+  `/etc/apt/apt.conf.d/52sys-admin-auto-updates`.
+- DNF4: the `dnf-automatic` package, `/etc/dnf/automatic.conf`, and
   `dnf-automatic.timer` state.
+- DNF5: the `dnf5-plugin-automatic` package, `/etc/dnf/automatic.conf`, and
+  `dnf5-automatic.timer` state.
 - Windows: the immediate update installation requested through
   `ansible.windows.win_updates`.
 
@@ -40,19 +42,23 @@ dispatcher validates the package manager before selecting APT or DNF tasks.
 Installs `unattended-upgrades` and manages two files in `/etc/apt/apt.conf.d/`:
 
 - **`20auto-upgrades`** is the schedule. It tells APT's periodic daemon to refresh package lists, download, and install upgrades daily. This is the canonical filename the `unattended-upgrades` package ships; we overwrite it with our own values.
-- **`52jtprojects-unattended-upgrades`** is the policy. It controls which repos are trusted for upgrades, which packages are excluded, and whether the system may reboot. The `52` prefix ensures it loads after the package's own default policy file (`50unattended-upgrades`), so our settings win.
+- **`52sys-admin-auto-updates`** is the policy. It controls which repos are trusted for upgrades, which packages are excluded, and whether the system may reboot. The `52` prefix ensures it loads after the package's own default policy file (`50unattended-upgrades`), so our settings win. Convergence deletes the former `52jtprojects-unattended-upgrades` path.
 
 APT reads `/etc/apt/apt.conf.d/` in filename order. The numbering convention: packages own the low range (≤ 50), admins own the high range (≥ 50). Later files override earlier ones.
 
 ### DNF (RHEL/Fedora/CentOS)
 
-Installs `dnf-automatic` and writes `/etc/dnf/automatic.conf`. A systemd timer (`dnf-automatic.timer`) triggers it on schedule. The config controls whether updates are downloaded only or also applied, and how results are reported.
+Installs `dnf-automatic` on DNF4 or `dnf5-plugin-automatic` on DNF5, then
+writes `/etc/dnf/automatic.conf`. The corresponding systemd timer
+(`dnf-automatic.timer` or `dnf5-automatic.timer`) triggers it on schedule. The
+config controls whether updates are downloaded only or also applied, and how
+results are reported.
 
 ## Interface
 
 - `auto_updates_enabled`: the collection's reference converging flag. On Linux,
-  `false` writes zeroed APT periodic counters and stops the `dnf-automatic`
-  timer instead of skipping; Windows ignores this setting.
+  `false` writes zeroed APT periodic counters and stops the appropriate DNF
+  automatic-update timer instead of skipping; Windows ignores this setting.
 - `auto_updates_apt_origins`: explicit APT origins pattern override.
 - `auto_updates_apt_package_blacklist`: packages to exclude from unattended
   upgrades.

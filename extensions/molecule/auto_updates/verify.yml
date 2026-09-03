@@ -27,12 +27,10 @@
       download_updates = yes
       apply_updates = yes
       reboot = never
+      random_sleep = 0
 
       [emitters]
       emit_via = stdio
-
-      [base]
-      random_sleep = 0
   tasks:
     - name: Gather package facts
       ansible.builtin.package_facts:

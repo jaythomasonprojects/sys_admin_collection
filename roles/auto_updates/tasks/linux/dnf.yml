@@ -1,8 +1,9 @@
 ---
-- name: Install dnf-automatic
-  ansible.builtin.dnf:
-    name: dnf-automatic
+- name: Install DNF automatic updates plugin
+  ansible.builtin.package:
+    name: '{{ auto_updates_dnf_package }}'
     state: present
+  become: true
 
 - name: Configure dnf-automatic
   ansible.builtin.template:
@@ -10,10 +11,12 @@
     dest: /etc/dnf/automatic.conf
     owner: root
     group: root
-    mode: "0644"
+    mode: '0644'
+  become: true
 
-- name: Ensure dnf-automatic timer state
+- name: Ensure DNF automatic timer state
   ansible.builtin.systemd_service:
-    name: dnf-automatic.timer
-    enabled: "{{ auto_updates_enabled }}"
-    state: "{{ 'started' if auto_updates_enabled else 'stopped' }}"
+    name: '{{ auto_updates_dnf_timer }}'
+    enabled: '{{ auto_updates_enabled }}'
+    state: '{{ "started" if auto_updates_enabled else "stopped" }}'
+  become: true
