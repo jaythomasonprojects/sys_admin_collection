@@ -8,11 +8,12 @@ Linux hosts.
 This role supports Linux hosts only. It fails explicitly with
 `auto_login supports Linux hosts only.` on every other platform.
 
-It configures GDM only when `/etc/gdm3/custom.conf` exists and LightDM only
-when `/etc/lightdm/lightdm.conf.d` exists. It owns the exact GDM automatic
-login and Wayland entries it manages, and its marked LightDM automatic login
-block. It does not install, select, or otherwise manage display-manager or
-desktop software.
+It configures GDM only when `/etc/gdm3/custom.conf` exists on Debian-family
+hosts or `/etc/gdm/custom.conf` exists on Fedora hosts, and LightDM only when
+`/etc/lightdm/lightdm.conf.d` exists. It owns the exact GDM automatic login and
+Wayland entries it manages, and its marked LightDM automatic login block. It
+does not install, select, or otherwise manage display-manager or desktop
+software. Installing a display manager remains a precondition.
 
 Setting `auto_login_gdm_user` also disables Wayland by setting
 `WaylandEnable = false`. GDM automatic login requires Wayland to be disabled in
@@ -22,14 +23,15 @@ this environment.
 
 - `tasks/main.yml` validates the platform and dispatches to Linux tasks.
 - `tasks/linux/main.yml` detects GDM and LightDM before applying their
-  automatic-login configuration.
+  automatic-login configuration, using distribution data for the GDM path.
 - `gdm.yml` configures GDM automatic login and its required Wayland setting.
 - `lightdm.yml` manages the LightDM automatic-login block.
 
 ## Interface
 
 - `auto_login_gdm_user`: configure GDM automatic login for this user when
-  `/etc/gdm3/custom.conf` exists. The default is `''`.
+  `/etc/gdm3/custom.conf` exists on Debian-family hosts or
+  `/etc/gdm/custom.conf` exists on Fedora hosts. The default is `''`.
 - `auto_login_lightdm_user`: configure LightDM automatic login for this user
   when `/etc/lightdm/lightdm.conf.d` exists. The default is `''`.
 

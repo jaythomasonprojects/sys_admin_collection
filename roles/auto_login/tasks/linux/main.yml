@@ -1,7 +1,18 @@
 ---
+- name: Load distribution variables
+  ansible.builtin.include_vars: >-
+    {{ lookup('ansible.builtin.first_found', auto_login_vars_params) }}
+  vars:
+    auto_login_vars_params:
+      files:
+        - '{{ ansible_facts.distribution }}.yml'
+        - '{{ ansible_facts.os_family }}.yml'
+      paths:
+        - 'vars'
+
 - name: Check if GDM configuration is present
   ansible.builtin.stat:
-    path: '/etc/gdm3/custom.conf'
+    path: '{{ auto_login_gdm_config_path }}'
   register: auto_login_gdm_config
 
 - name: Configure GDM automatic login

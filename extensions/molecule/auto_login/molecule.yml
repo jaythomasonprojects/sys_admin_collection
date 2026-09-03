@@ -3,6 +3,10 @@ driver:
   name: 'docker'
 
 platforms:
+  - name: 'auto-login-fedora44'
+    command: 'sleep infinity'
+    image: 'docker.io/geerlingguy/docker-fedora44-ansible:latest'
+    pre_build_image: true
   - name: 'ubuntu'
     command: 'sleep infinity'
     image: 'docker.io/geerlingguy/docker-ubuntu2204-ansible:latest'

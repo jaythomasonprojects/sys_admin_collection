@@ -1,0 +1,2 @@
+---
+auto_login_gdm_config_path: '/etc/gdm/custom.conf'

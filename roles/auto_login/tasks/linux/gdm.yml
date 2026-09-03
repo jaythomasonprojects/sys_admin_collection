@@ -1,39 +1,59 @@
 ---
 - name: Enable GDM automatic login
-  ansible.builtin.lineinfile:
-    path: '/etc/gdm3/custom.conf'
-    regexp: '^#?\s*AutomaticLoginEnable\s*='
-    line: 'AutomaticLoginEnable = true'
+  community.general.ini_file:
+    path: '{{ auto_login_gdm_config_path }}'
+    section: 'daemon'
+    option: 'AutomaticLoginEnable'
+    value: 'true'
+    mode: '0644'
+    no_extra_spaces: false
     state: present
+  become: true
   when: auto_login_gdm_user | length > 0
 
 - name: Set GDM automatic login user
-  ansible.builtin.lineinfile:
-    path: '/etc/gdm3/custom.conf'
-    regexp: '^#?\s*AutomaticLogin\s*='
-    line: 'AutomaticLogin = {{ auto_login_gdm_user }}'
+  community.general.ini_file:
+    path: '{{ auto_login_gdm_config_path }}'
+    section: 'daemon'
+    option: 'AutomaticLogin'
+    value: '{{ auto_login_gdm_user }}'
+    mode: '0644'
+    no_extra_spaces: false
     state: present
+  become: true
   when: auto_login_gdm_user | length > 0
 
 - name: Disable GDM automatic login
-  ansible.builtin.lineinfile:
-    path: '/etc/gdm3/custom.conf'
-    regexp: '^#?\s*AutomaticLoginEnable\s*='
-    line: 'AutomaticLoginEnable = false'
+  community.general.ini_file:
+    path: '{{ auto_login_gdm_config_path }}'
+    section: 'daemon'
+    option: 'AutomaticLoginEnable'
+    value: 'false'
+    mode: '0644'
+    no_extra_spaces: false
     state: present
+  become: true
   when: auto_login_gdm_user | length == 0
 
 - name: Remove GDM automatic login user
-  ansible.builtin.lineinfile:
-    path: '/etc/gdm3/custom.conf'
-    regexp: '^#?\s*AutomaticLogin\s*='
+  community.general.ini_file:
+    path: '{{ auto_login_gdm_config_path }}'
+    section: 'daemon'
+    option: 'AutomaticLogin'
+    mode: '0644'
+    no_extra_spaces: false
     state: absent
+  become: true
   when: auto_login_gdm_user | length == 0
 
 - name: Disable Wayland for GDM
-  ansible.builtin.lineinfile:
-    path: '/etc/gdm3/custom.conf'
-    regexp: '^#?\s*WaylandEnable\s*='
-    line: 'WaylandEnable = false'
+  community.general.ini_file:
+    path: '{{ auto_login_gdm_config_path }}'
+    section: 'daemon'
+    option: 'WaylandEnable'
+    value: 'false'
+    mode: '0644'
+    no_extra_spaces: false
     state: present
+  become: true
   when: auto_login_gdm_user | length > 0

@@ -5,7 +5,15 @@ galaxy_info:
   license: 'MIT'
   min_ansible_version: '2.18'
   platforms:
-    - name: 'GenericLinux'
+    - name: 'Debian'
       versions:
         - 'all'
+    - name: 'Fedora'
+      versions:
+        - 'all'
+    - name: 'Ubuntu'
+      versions:
+        - 'all'
+collections:
+  - 'community.general'
 dependencies: []

@@ -2,17 +2,23 @@
 - name: Prepare auto_login scenario
   hosts: all
   become: true
-  gather_facts: false
+  gather_facts: true
   tasks:
+    - name: Set GDM configuration path
+      ansible.builtin.set_fact:
+        auto_login_gdm_config_path: >-
+          {{ '/etc/gdm/custom.conf' if ansible_facts.distribution == 'Fedora'
+          else '/etc/gdm3/custom.conf' }}
+
     - name: Ensure GDM configuration directory exists
       ansible.builtin.file:
-        path: '/etc/gdm3'
+        path: '{{ auto_login_gdm_config_path | dirname }}'
         state: directory
         mode: '0755'
 
     - name: Ensure GDM configuration file exists
       ansible.builtin.copy:
-        dest: '/etc/gdm3/custom.conf'
+        dest: '{{ auto_login_gdm_config_path }}'
         mode: '0644'
         content: |
           [daemon]

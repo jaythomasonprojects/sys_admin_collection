@@ -4,9 +4,15 @@
   become: true
   gather_facts: true
   tasks:
+    - name: Set GDM configuration path
+      ansible.builtin.set_fact:
+        auto_login_gdm_config_path: >-
+          {{ '/etc/gdm/custom.conf' if ansible_facts.distribution == 'Fedora'
+          else '/etc/gdm3/custom.conf' }}
+
     - name: Read GDM configuration
       ansible.builtin.slurp:
-        src: '/etc/gdm3/custom.conf'
+        src: '{{ auto_login_gdm_config_path }}'
       register: auto_login_gdm_config
 
     - name: Read LightDM configuration
@@ -27,6 +33,21 @@
           - "'AutomaticLoginEnable = true' in auto_login_gdm_content"
           - "'AutomaticLogin = molecule' in auto_login_gdm_content"
           - "'WaylandEnable = false' in auto_login_gdm_content"
+          - >-
+            auto_login_gdm_content is regex(
+            '(?ms)^\\[daemon\\]' ~
+            '(?:(?!^\\[).)*^AutomaticLoginEnable = true$'
+            )
+          - >-
+            auto_login_gdm_content is regex(
+            '(?ms)^\\[daemon\\]' ~
+            '(?:(?!^\\[).)*^AutomaticLogin = molecule$'
+            )
+          - >-
+            auto_login_gdm_content is regex(
+            '(?ms)^\\[daemon\\]' ~
+            '(?:(?!^\\[).)*^WaylandEnable = false$'
+            )
           - "'[SeatDefaults]' in auto_login_lightdm_content"
           - "'autologin-user=molecule' in auto_login_lightdm_content"
           - "'autologin-user-timeout=5' in auto_login_lightdm_content"
@@ -42,7 +63,7 @@
 
     - name: Read disabled GDM configuration
       ansible.builtin.slurp:
-        src: '/etc/gdm3/custom.conf'
+        src: '{{ auto_login_gdm_config_path }}'
       register: auto_login_disabled_gdm_config
 
     - name: Read disabled LightDM configuration
