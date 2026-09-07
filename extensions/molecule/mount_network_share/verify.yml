@@ -6,12 +6,14 @@
   vars:
     expected_workstation_mount: '/mnt/workstation-data'
     expected_shared_mount: '/srv/shared-docs'
+    expected_explicit_ids_mount: '/mnt/explicit-local-ids'
     expected_absent_mount: '/mnt/old-share'
     expected_workstation_credentials: '/home/molecule/.smbcredentials'
     expected_shared_credentials: '/etc/samba/credentials/shared_docs'
     expected_absent_credentials: '/home/molecule/.smbcredentials-old-share'
     expected_workstation_share: '//files.example.invalid/Data'
     expected_shared_share: '//nas.example.invalid/Docs'
+    expected_explicit_ids_share: '//nas.example.invalid/ExplicitIds'
     expected_absent_share: '//legacy.example.invalid/OldShare'
     expected_workstation_credentials_option: >-
       credentials=/home/molecule/.smbcredentials
@@ -69,6 +71,9 @@
         mns_creds: "{{ mount_network_share_credentials.results }}"
         mns_fstab: >-
           {{ mount_network_share_fstab.content | b64decode }}
+        mns_explicit_ids_fstab_entry: >-
+          {{ (mount_network_share_fstab.content | b64decode).splitlines()
+             | select('search', expected_explicit_ids_mount) | first }}
         mns_workstation_creds: >-
           {{ mount_network_share_workstation_credentials.content | b64decode }}
         mns_shared_creds: >-
@@ -87,6 +92,18 @@
           - "mns_mounts[1].stat.pw_name == 'root'"
           - "mns_mounts[1].stat.gr_name == 'root'"
           - "mns_mounts[1].stat.mode == '0755'"
+          - "expected_explicit_ids_share in mns_fstab"
+          - "expected_explicit_ids_mount in mns_fstab"
+          - "mns_fstab is search(expected_workstation_mount ~ '.*uid=molecule')"
+          - "mns_fstab is search(expected_workstation_mount ~ '.*gid=molecule')"
+          - "mns_fstab is search(expected_explicit_ids_mount ~ '.*uid=1001')"
+          - "mns_fstab is search(expected_explicit_ids_mount ~ '.*gid=1002')"
+          - >-
+            mns_explicit_ids_fstab_entry
+            | regex_findall('(?:^|,)uid=([^,\\s]+)') == ['1001']
+          - >-
+            mns_explicit_ids_fstab_entry
+            | regex_findall('(?:^|,)gid=([^,\\s]+)') == ['1002']
           - "not mns_mounts[2].stat.exists"
           - "mns_creds[0].stat.mode == '0600'"
           - "mns_creds[0].stat.pw_name == 'molecule'"

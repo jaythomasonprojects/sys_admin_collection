@@ -67,11 +67,11 @@ argument_specs:
             type: list
             elements: str
           owner:
-            description: Owner of the Linux mount point.
+            description: Default owner of the Linux mount point and CIFS files.
             type: str
             default: 'root'
           group:
-            description: Group of the Linux mount point.
+            description: Default group of the Linux mount point and CIFS files.
             type: str
             default: 'root'
           mode:

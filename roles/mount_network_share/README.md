@@ -59,7 +59,11 @@ Define `username` and `password` together as non-empty strings, or omit both.
 On Linux, `mount_point` is a filesystem path. `state` is passed to
 `ansible.posix.mount` and defaults to `present`; `absent` and
 `absent_from_fstab` remove the managed credential file when credentials were
-declared. `owner`, `group`, and `mode` configure present mount points.
+declared. `owner`, `group`, and `mode` configure present mount-point
+directories. The role also adds `uid=<owner>` and `gid=<group>` CIFS options
+unless `fstab_options` already provides them. This makes the mounted files
+locally accessible to the configured owner and group. SMB server permissions
+still apply to the configured SMB account.
 
 With credentials, Linux writes a file at `credentials_path`, defaulting to
 `/etc/samba/credentials/<name>`. `credentials_owner`, `credentials_group`, and

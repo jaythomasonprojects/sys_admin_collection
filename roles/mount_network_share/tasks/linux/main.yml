@@ -20,9 +20,25 @@
       {{ mount_network_share_item.username is defined
          and mount_network_share_item.password is defined }}
     mount_network_share_option_list: >-
-      {{ mount_network_share_item.fstab_options | default(
-           ['_netdev', 'nofail', 'iocharset=utf8']
-         ) }}
+      {{
+        mount_network_share_item.fstab_options | default(
+          ['_netdev', 'nofail', 'iocharset=utf8']
+        )
+        + (
+          ['uid=' ~ mount_network_share_item.owner | default('root')]
+          if (
+            mount_network_share_item.fstab_options | default([])
+            | select('match', '^uid=') | list | length == 0
+          ) else []
+        )
+        + (
+          ['gid=' ~ mount_network_share_item.group | default('root')]
+          if (
+            mount_network_share_item.fstab_options | default([])
+            | select('match', '^gid=') | list | length == 0
+          ) else []
+        )
+      }}
     mount_network_share_present: >-
       {{ mount_network_share_item.state | default('present')
          not in ['absent', 'absent_from_fstab'] }}

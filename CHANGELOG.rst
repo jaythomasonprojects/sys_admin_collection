@@ -1,6 +1,12 @@
 jaythomasonprojects.sys_admin changelog
 =======================================
 
+0.9.1
+-----
+
+- Corrected Linux ``mount_network_share`` local CIFS ownership mapping from
+  each share's configured owner and group.
+
 0.9.0
 -----
 
