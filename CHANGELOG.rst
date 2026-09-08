@@ -1,6 +1,12 @@
 jaythomasonprojects.sys_admin changelog
 =======================================
 
+0.9.2
+-----
+
+- Renamed the Linux SSH client and server drop-ins to collection-owned paths
+  and removes the former ``99-custom.conf`` files during convergence.
+
 0.9.1
 -----
 

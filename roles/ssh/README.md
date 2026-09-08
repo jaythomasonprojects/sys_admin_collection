@@ -64,6 +64,12 @@ state. Restoring prior SSH policy is not safe or unambiguous.
 `ssh` replaces `config_ssh`. Rename every setting below. No compatibility
 aliases are provided.
 
+The Linux client and server drop-ins are now
+`/etc/ssh/ssh_config.d/99-sys-admin-ssh.conf` and
+`/etc/ssh/sshd_config.d/99-sys-admin-sshd.conf`. The role removes the former
+`99-custom.conf` files during convergence so legacy settings cannot retain
+precedence.
+
 | Old variable | New variable |
 | --- | --- |
 | `config_ssh_sshd_allow_agent_forwarding` | `ssh_server_allow_agent_forwarding` |

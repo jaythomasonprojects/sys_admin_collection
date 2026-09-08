@@ -4,15 +4,18 @@
   become: true
   gather_facts: false
   vars:
-    expected_cloudinit_path: "/etc/ssh/sshd_config.d/50-cloud-init.conf"
-    expected_client_config_path: "/etc/ssh/ssh_config.d/99-custom.conf"
-    expected_server_config_path: "/etc/ssh/sshd_config.d/99-custom.conf"
-    expected_client_strict_host_key_checking: "StrictHostKeyChecking no"
-    expected_client_forward_agent: "ForwardAgent yes"
-    expected_client_host_override: "Host github.com"
-    expected_client_override_user: "User git"
-    expected_server_permit_root_login: "PermitRootLogin prohibit-password"
-    expected_server_allow_users: "AllowUsers molecule"
+    expected_cloudinit_path: '/etc/ssh/sshd_config.d/50-cloud-init.conf'
+    expected_client_config_path: '/etc/ssh/ssh_config.d/99-sys-admin-ssh.conf'
+    expected_server_config_path: '/etc/ssh/sshd_config.d/99-sys-admin-sshd.conf'
+    expected_legacy_config_paths:
+      - '/etc/ssh/ssh_config.d/99-custom.conf'
+      - '/etc/ssh/sshd_config.d/99-custom.conf'
+    expected_client_strict_host_key_checking: 'StrictHostKeyChecking no'
+    expected_client_forward_agent: 'ForwardAgent yes'
+    expected_client_host_override: 'Host github.com'
+    expected_client_override_user: 'User git'
+    expected_server_permit_root_login: 'PermitRootLogin prohibit-password'
+    expected_server_allow_users: 'AllowUsers molecule'
   tasks:
     - name: Gather minimal facts
       ansible.builtin.setup:
@@ -24,6 +27,12 @@
       ansible.builtin.stat:
         path: "{{ expected_cloudinit_path }}"
       register: ssh_cloudinit_stat
+
+    - name: Check legacy SSH drop-ins
+      ansible.builtin.stat:
+        path: '{{ item }}'
+      loop: '{{ expected_legacy_config_paths }}'
+      register: ssh_legacy_config_stats
 
     - name: Read rendered SSH client drop-in
       ansible.builtin.slurp:
@@ -71,6 +80,12 @@
       ansible.builtin.assert:
         that:
           - "not ssh_cloudinit_stat.stat.exists"
+          - >-
+            ssh_legacy_config_stats.results |
+            map(attribute='stat.exists') |
+            select |
+            list |
+            length == 0
           - "ssh_sshd_validation.rc == 0"
           - 'expected_ssh_client_package in ansible_facts.packages'
           - 'expected_ssh_server_package in ansible_facts.packages'

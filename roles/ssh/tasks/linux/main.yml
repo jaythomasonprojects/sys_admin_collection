@@ -1,4 +1,6 @@
 ---
+# Fedora SELinux permits sshd on port 22 by default.
+# This role does not manage alternate port labels.
 - name: Assert Fedora SSH port
   ansible.builtin.assert:
     that:

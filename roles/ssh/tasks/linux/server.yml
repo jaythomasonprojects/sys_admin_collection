@@ -23,10 +23,17 @@
     mode: '0755'
   become: true
 
+- name: Delete legacy SSH server configuration
+  ansible.builtin.file:
+    path: '/etc/ssh/sshd_config.d/99-custom.conf'
+    state: absent
+  notify: Restart SSH service
+  become: true
+
 - name: Deploy SSH server configuration
   ansible.builtin.template:
     src: 'sshd_custom.conf.j2'
-    dest: '/etc/ssh/sshd_config.d/99-custom.conf'
+    dest: '/etc/ssh/sshd_config.d/99-sys-admin-sshd.conf'
     mode: '0640'
   notify: Restart SSH service
   become: true
