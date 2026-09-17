@@ -22,6 +22,8 @@ For Ansible guidance use the `ansible-expert` skill.
 
 ## Commands
 
+For substantial behaviour changes, follow `docs/engineering/openspec-workflow.md`.
+
 ```bash
 . .venv/bin/activate
 ansible-lint .

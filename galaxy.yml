@@ -30,9 +30,11 @@ dependencies:
   community.general: "*"
   community.windows: "*"
 build_ignore:
+  - ".opencode"
   - ".ansible"
   - ".cache"
   - ".gitignore"
   - ".molecule"
   - ".venv"
   - "*.tar.gz"
+  - "openspec"
