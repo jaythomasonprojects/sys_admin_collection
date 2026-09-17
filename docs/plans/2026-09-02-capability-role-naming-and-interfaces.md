@@ -1,9 +1,5 @@
 # Capability Role Naming and Interfaces Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use subagent-driven-development (recommended) or
-> executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for
-> tracking.
-
 **Goal:** Rename every role after the outcome it delivers, delete the two interfaces that only
 restate Ansible module arguments, replace hand-written validation with native argument
 specifications, and release the result as `0.8.0`.
