@@ -75,6 +75,8 @@ Task key order: `name` → module → parameters → `loop` → task options (al
 
 ## Role design
 
+- Design for the environment this collection manages. Before adding complexity, agree which edge
+  cases warrant handling and testing there.
 - Name a role after the outcome it produces, never the module, subsystem, or technique it uses.
   No prefixes. Subsystem nouns (`ssh`, `time_sync`, `power_policy`) where the role configures an
   existing subsystem; verb phrases (`disable_usb_storage`, `allow_ping`) for one discrete policy.
