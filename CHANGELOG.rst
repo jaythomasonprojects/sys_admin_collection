@@ -9,7 +9,9 @@ jaythomasonprojects.sys_admin changelog
   protected ACLs use the account SID. The former shared administrator file is
   no longer read or managed.
 - Kept per-share SMB usernames and passwords while removing custom credential
-  paths and permissions. Linux owns root-only files at
+  paths and permissions. Every declared share now requires non-empty credentials.
+  Linux share names must be distinct single filenames without whitespace.
+  Linux owns root-only files at
   ``/etc/samba/credentials/<share-name>`` and retains them after share removal.
   Windows preserves configured-user mappings and native password refresh.
 - Simplified ``install_app_debs`` to a list of managed-host Debian package
@@ -23,7 +25,7 @@ jaythomasonprojects.sys_admin changelog
   ``00-sys-admin-ssh.conf`` so it takes precedence, and preserved foreign files
   without merging them. Installed Windows OpenSSH through ``win_capability``
   with ``ansible.windows >=3.6.0`` and native prerequisite reporting.
-- Stopped removing legacy SSH drop-ins, reversing 0.9.2. Remove the former
+- Left legacy SSH drop-ins untouched. Remove the former
   ``99-custom.conf`` and ``99-sys-admin-*.conf`` files yourself if they remain.
 - Suppressed password-bearing SMB task results from callbacks.
 - Cleared inherited APT origins before declaring automatic-update policy and
@@ -35,17 +37,13 @@ jaythomasonprojects.sys_admin changelog
   credential-directory inspection when the caller is unprivileged.
 - Corrected Debian GDM automatic-login policy to use ``daemon.conf`` while
   keeping Ubuntu on ``custom.conf``.
+- Changed the Windows ``power_policy_plan`` default from ``'high performance'``
+  to ``'balanced'``.
 - Made enabled USB-storage enforcement install its ``kmod`` prerequisite.
 - Breaking: dropped Ubuntu 22.04 from ``desktop_layout``, which now supports
   Ubuntu 24.04 and 26.04 only.
 - Made printer-discovery policy preserve masked units and reject failed or
   unusable service inspection instead of silently skipping enforcement.
-
-0.9.2
------
-
-- Renamed the Linux SSH client and server drop-ins to collection-owned paths
-  and removes the former ``99-custom.conf`` files during convergence.
 
 0.9.1
 -----
