@@ -39,6 +39,25 @@
       "problemMatcher": []
     },
     {
+      "label": "Galaxy: build",
+      "type": "shell",
+      "command": ".venv/bin/ansible-galaxy collection build --force --output-path dist",
+      "problemMatcher": []
+    },
+    {
+      "label": "Galaxy: publish",
+      "type": "shell",
+      "command": "version=$(sed -n \"s/^version: '\\(.*\\)'/\\1/p\" galaxy.yml) && .venv/bin/ansible-galaxy collection publish \"dist/jaythomasonprojects-sys_admin-${version}.tar.gz\" --token \"$(tr -d '\\n' < ~/.ansible/galaxy_token)\"",
+      "detail": "Publish the existing versioned archive only after installing it and passing the full release gate. This task does not rebuild it.",
+      "options": {
+        "shell": {
+          "executable": "/bin/bash",
+          "args": ["-c"]
+        }
+      },
+      "problemMatcher": []
+    },
+    {
       "label": "Clean: caches",
       "type": "shell",
       "command": "find . -type d \\( -name .venv -o -name .ansible -o -name .cache -o -name openspec \\) -prune -o -type d \\( -name __pycache__ -o -name .ruff_cache -o -name .pytest_cache \\) -exec rm -rf {} +",
