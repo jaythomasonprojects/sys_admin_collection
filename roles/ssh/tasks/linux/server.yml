@@ -1,50 +1,28 @@
 ---
-- name: Find cloud-init SSH configuration files
-  ansible.builtin.find:
-    paths: '/etc/ssh/sshd_config.d'
-    patterns:
-      - '*cloud-init*'
-      - '*cloudimg*'
-  register: ssh_cloudinit_conf
-  become: true
-
-- name: Delete cloud-init SSH configuration files
+- name: Create SSH runtime directory
   ansible.builtin.file:
-    path: '{{ item.path }}'
-    state: absent
-  loop: '{{ ssh_cloudinit_conf.files }}'
-  notify: Restart SSH service
-  become: true
-
-- name: Create SSH server drop-in directory
-  ansible.builtin.file:
-    path: '/etc/ssh/sshd_config.d'
+    path: '/run/sshd'
     state: directory
     mode: '0755'
   become: true
 
-- name: Delete legacy SSH server configuration
-  ansible.builtin.file:
-    path: '/etc/ssh/sshd_config.d/99-custom.conf'
-    state: absent
-  notify: Restart SSH service
-  become: true
-
-- name: Deploy SSH server configuration
-  ansible.builtin.template:
-    src: 'sshd_custom.conf.j2'
-    dest: '/etc/ssh/sshd_config.d/99-sys-admin-sshd.conf'
-    mode: '0640'
-  notify: Restart SSH service
-  become: true
-
-- name: Validate SSH server configuration
+- name: Establish missing native SSH host keys
   ansible.builtin.command:
     argv:
-      - 'sshd'
-      - '-t'
-  changed_when: false
+      - 'ssh-keygen'
+      - '-A'
   become: true
+  changed_when: ssh_host_keys.stdout | trim | length > 0
+  register: ssh_host_keys
+
+- name: Validate and deploy complete SSH server configuration
+  ansible.builtin.template:
+    src: 'sshd_custom.conf.j2'
+    dest: '/etc/ssh/sshd_config'
+    mode: '0600'
+    validate: '/usr/sbin/sshd -t -f %s'
+  become: true
+  notify: Restart SSH service
 
 - name: Enable and start SSH service
   ansible.builtin.systemd_service:

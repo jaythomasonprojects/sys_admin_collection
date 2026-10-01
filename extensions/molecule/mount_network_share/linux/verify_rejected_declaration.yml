@@ -1,0 +1,52 @@
+---
+- name: Require invalid declarations to fail before changes
+  block:
+    - name: Apply invalid share declarations
+      ansible.builtin.include_role:
+        name: 'jaythomasonprojects.sys_admin.mount_network_share'
+      vars:
+        mount_network_share_shares: '{{ smb_test_invalid.shares }}'
+
+    - name: Fail if invalid declarations were accepted
+      ansible.builtin.fail:
+        msg: 'Invalid SMB declarations unexpectedly succeeded'
+  rescue:
+    - name: Require the expected declaration validation failure
+      ansible.builtin.assert:
+        that:
+          - ansible_failed_task.name == smb_test_invalid.failed_task
+          - >-
+            ansible_failed_task.name
+            != 'Require distinct Linux credential filenames'
+            or ansible_failed_result.msg ==
+            'Linux share names must be distinct single credential filenames
+            without whitespace.'
+
+- name: Inspect credentials after rejected declarations
+  ansible.builtin.stat:
+    path: '/etc/samba/credentials/{{ item }}'
+  loop:
+    - 'host_one'
+    - 'host_two'
+  register: smb_test_rejected_files
+
+- name: Require rejected declarations to leave credentials untouched
+  ansible.builtin.assert:
+    that:
+      - >-
+        smb_test_rejected_files.results[item].stat.checksum
+        == smb_test_before.results[item].stat.checksum
+      - >-
+        smb_test_rejected_files.results[item].stat.mtime
+        == smb_test_before.results[item].stat.mtime
+  loop: '{{ range(2) | list }}'
+
+- name: Read mount policy after rejected declarations
+  ansible.builtin.slurp:
+    src: '/etc/fstab'
+  register: smb_test_rejected_fstab
+
+- name: Require rejected declarations to leave mount policy untouched
+  ansible.builtin.assert:
+    that:
+      - smb_test_rejected_fstab.content == smb_test_fstab.content

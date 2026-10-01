@@ -1,5 +1,15 @@
 # Custom SSHD configuration managed by Ansible
 
+# Complete standard server policy. Foreign drop-ins are not included.
+{% if ssh_crypto_policy_include is defined %}
+# Fedora's ciphers, MACs and key exchange come from the system crypto policy.
+Include {{ ssh_crypto_policy_include }}
+{% endif %}
+UsePAM yes
+KbdInteractiveAuthentication no
+PrintMotd no
+Subsystem sftp internal-sftp
+
 # Network and Connection Settings
 Port {{ ssh_server_port }}
 ListenAddress {{ ssh_server_listen_address }}

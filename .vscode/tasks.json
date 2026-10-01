@@ -1,0 +1,51 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Setup: worktree",
+      "type": "shell",
+      "command": "uv run --no-project scripts/setup_worktree.py",
+      "problemMatcher": []
+    },
+    {
+      "label": "Lint: check",
+      "type": "shell",
+      "command": ".venv/bin/ansible-lint .",
+      "problemMatcher": []
+    },
+    {
+      "label": "Lint: format",
+      "type": "shell",
+      "command": ".venv/bin/yamllint .",
+      "problemMatcher": []
+    },
+    {
+      "label": "Lint: fix",
+      "type": "shell",
+      "command": ".venv/bin/ansible-lint . --fix",
+      "problemMatcher": []
+    },
+    {
+      "label": "Test: all",
+      "type": "shell",
+      "command": ".venv/bin/molecule test --all",
+      "options": {
+        "env": {
+          "ANSIBLE_CONFIG": "ansible.cfg",
+          "MOLECULE_GLOB": "extensions/molecule/**/molecule.yml",
+          "PATH": "${workspaceFolder}/.venv/bin:${env:PATH}"
+        }
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Clean: caches",
+      "type": "shell",
+      "command": "find . -type d \\( -name .venv -o -name .ansible -o -name .cache -o -name openspec \\) -prune -o -type d \\( -name __pycache__ -o -name .ruff_cache -o -name .pytest_cache \\) -exec rm -rf {} +",
+      "problemMatcher": []
+    }
+  ],
+  "options": {
+    "cwd": "${workspaceFolder}"
+  }
+}

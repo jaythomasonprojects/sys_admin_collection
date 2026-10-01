@@ -1,0 +1,6 @@
+---
+- name: Converge the default Windows ping policy
+  hosts: all
+  gather_facts: true
+  roles:
+    - role: 'jaythomasonprojects.sys_admin.allow_ping'

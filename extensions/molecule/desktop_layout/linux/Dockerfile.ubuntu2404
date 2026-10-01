@@ -1,0 +1,6 @@
+FROM geerlingguy/docker-ubuntu2404-ansible:latest
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        gnome-shell-common gnome-shell-extension-ubuntu-dock \
+    && rm -rf /var/lib/apt/lists/*

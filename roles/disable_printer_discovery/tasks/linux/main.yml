@@ -21,10 +21,26 @@
   register: disable_printer_discovery_load_states
   changed_when: false
   check_mode: false
+  # Capture the command outcome so the following assertion can name the unit.
   failed_when: false
   when: disable_printer_discovery_enabled | bool
 
-- name: Stop and disable loaded printer services
+- name: Validate printer service inspection
+  ansible.builtin.assert:
+    that:
+      - item.rc == 0
+      - item.stderr | trim == ''
+      - item.stdout in ['loaded', 'masked', 'not-found']
+    fail_msg: >-
+      Could not inspect printer unit {{ item.item }}:
+      rc={{ item.rc }}, state={{ item.stdout | to_json }},
+      stderr={{ item.stderr | to_json }}.
+  loop: '{{ disable_printer_discovery_load_states.results | default([]) }}'
+  loop_control:
+    label: '{{ item.item }}'
+  when: not item.skipped | default(false)
+
+- name: Stop and disable present printer services
   ansible.builtin.systemd_service:
     enabled: false
     name: '{{ item.item }}'
@@ -35,4 +51,4 @@
   become: true
   when:
     - not item.skipped | default(false)
-    - item.stdout == 'loaded'
+    - item.stdout in ['loaded', 'masked']

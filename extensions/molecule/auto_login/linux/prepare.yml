@@ -1,0 +1,39 @@
+---
+- name: Prepare auto_login scenario
+  hosts: all
+  become: true
+  gather_facts: true
+  vars:
+    auto_login_expected_paths:
+      Debian: '/etc/gdm3/daemon.conf'
+      Fedora: '/etc/gdm/custom.conf'
+      Ubuntu: '/etc/gdm3/custom.conf'
+  tasks:
+    - name: Ensure GDM configuration directory exists
+      ansible.builtin.file:
+        path: >-
+          {{ auto_login_expected_paths[ansible_facts.distribution] | dirname }}
+        state: directory
+        mode: '0755'
+
+    - name: Ensure GDM configuration file exists
+      ansible.builtin.copy:
+        dest: '{{ auto_login_expected_paths[ansible_facts.distribution] }}'
+        mode: '0644'
+        content: |
+          [daemon]
+
+    - name: Seed unrelated Debian custom configuration
+      ansible.builtin.copy:
+        dest: '/etc/gdm3/custom.conf'
+        mode: '0644'
+        content: |
+          [unrelated]
+          Sentinel = leave-this-file-alone
+      when: ansible_facts.distribution == 'Debian'
+
+    - name: Ensure LightDM configuration directory exists
+      ansible.builtin.file:
+        path: '/etc/lightdm/lightdm.conf.d'
+        state: directory
+        mode: '0755'

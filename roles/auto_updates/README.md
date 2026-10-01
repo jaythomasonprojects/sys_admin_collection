@@ -1,84 +1,73 @@
 # auto_updates
 
-Configures persistent native automatic updates on Linux and immediately installs
-available updates on Windows.
+Configures persistent automatic updates on Linux and immediately installs
+available updates on Windows. Linux supports package managers `apt`, `dnf`,
+and `dnf5`. Other platforms and Linux package managers fail explicitly.
 
-## Guarantee
+## Guarantee and ownership
 
-On Linux, the role owns the supported package manager's persistent automatic
-update configuration. `auto_updates_enabled` is the collection's reference
-converging flag: disabling it writes zeroed APT periodic counters and stops the
-DNF automatic-update timer instead of skipping. On Windows, the role immediately
-installs available updates with `ansible.windows.win_updates`; Windows has no
-scheduled configuration and ignores `auto_updates_enabled`.
-
-## Ownership
-
-- APT: the `unattended-upgrades` package plus
-  `/etc/apt/apt.conf.d/20auto-upgrades` and
-  `/etc/apt/apt.conf.d/52sys-admin-auto-updates`.
-- DNF4: the `dnf-automatic` package, `/etc/dnf/automatic.conf`, and
-  `dnf-automatic.timer` state.
-- DNF5: the `dnf5-plugin-automatic` package, `/etc/dnf/automatic.conf`, and
-  `dnf5-automatic.timer` state.
-- Windows: the immediate update installation requested through
-  `ansible.windows.win_updates`.
-
-## Supported platforms
-
-- Linux with `apt`, `dnf`, or `dnf5`.
-- Windows.
-
-Unsupported operating systems and Linux package managers fail explicitly.
-
-## Implementation
-
-`tasks/main.yml` owns the complete support gate and dispatches Linux hosts to
-`tasks/linux/main.yml` and Windows hosts to `tasks/windows/main.yml`. The Linux
-dispatcher selects APT or DNF tasks.
-
-### APT (Debian/Ubuntu)
-
-Installs `unattended-upgrades` and manages two files in `/etc/apt/apt.conf.d/`:
-
-- **`20auto-upgrades`** is the schedule. It tells APT's periodic daemon to refresh package lists, download, and install upgrades daily. This is the canonical filename the `unattended-upgrades` package ships; we overwrite it with our own values.
-- **`52sys-admin-auto-updates`** is the policy. It controls which repos are trusted for upgrades, which packages are excluded, and whether the system may reboot. The `52` prefix ensures it loads after the package's own default policy file (`50unattended-upgrades`), so our settings win. Convergence deletes the former `52jtprojects-unattended-upgrades` path.
-
-APT reads `/etc/apt/apt.conf.d/` in filename order. The numbering convention: packages own the low range (≤ 50), admins own the high range (≥ 50). Later files override earlier ones.
-
-### DNF (RHEL/Fedora/CentOS)
-
-Installs `dnf-automatic` on DNF4 or `dnf5-plugin-automatic` on DNF5, then
-writes `/etc/dnf/automatic.conf`. The corresponding systemd timer
-(`dnf-automatic.timer` or `dnf5-automatic.timer`) triggers it on schedule. The
-config controls whether updates are downloaded only or also applied, and how
-results are reported.
+- APT hosts receive `unattended-upgrades`, owned schedule file
+  `/etc/apt/apt.conf.d/20auto-upgrades`, and owned policy file
+  `/etc/apt/apt.conf.d/52sys-admin-auto-updates`. Enabled policy also unmasks,
+  enables, and starts `apt-daily.timer` and `apt-daily-upgrade.timer` on systemd.
+- DNF4 hosts receive `dnf-automatic`, `/etc/dnf/automatic.conf`, and
+  `dnf-automatic.timer`. DNF5 uses `dnf5-plugin-automatic` and
+  `dnf5-automatic.timer` with the same configuration path.
+- Windows installs available updates through `ansible.windows.win_updates`.
+  The role does not configure a Windows update schedule.
 
 ## Interface
 
-- `auto_updates_enabled`: the collection's reference converging flag. On Linux,
-  `false` writes zeroed APT periodic counters and stops the appropriate DNF
-  automatic-update timer instead of skipping; Windows ignores this setting.
-- `auto_updates_apt_origins`: explicit APT origins pattern override.
-- `auto_updates_apt_package_blacklist`: packages to exclude from unattended
-  upgrades.
-- `auto_updates_apt_auto_reboot`: allow unattended-upgrades to reboot when
-  needed.
-- `auto_updates_apt_auto_reboot_time`: reboot window for unattended-upgrades.
-- `auto_updates_dnf_download_updates`: download package updates with
-  `dnf-automatic`.
-- `auto_updates_dnf_apply_updates`: install downloaded updates with
-  `dnf-automatic`.
-- `auto_updates_dnf_random_sleep`: maximum random delay before DNF starts.
-- `auto_updates_dnf_upgrade_type`: DNF upgrade type.
-- `auto_updates_dnf_reboot`: DNF reboot policy (`never`, `when-needed`, etc.).
-- `auto_updates_dnf_emit_via`: DNF update notification transport.
-- `auto_updates_win_reboot`: allow the immediate Windows update installation to
-  reboot the host when required.
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `auto_updates_enabled` | `true` | Manage the Linux automatic-update schedule; ignored on Windows |
+| `auto_updates_apt_auto_reboot` | `false` | Permit a required unattended reboot |
+| `auto_updates_apt_auto_reboot_time` | `'02:00'` | APT reboot time |
+| `auto_updates_apt_origins` | `[]` | Explicit allowed origins; empty selects release and security patterns |
+| `auto_updates_apt_package_blacklist` | `[]` | Packages excluded from unattended upgrades |
+| `auto_updates_dnf_apply_updates` | `true` | Install downloaded updates |
+| `auto_updates_dnf_download_updates` | `true` | Download updates |
+| `auto_updates_dnf_emit_via` | `'stdio'` | Notification transport |
+| `auto_updates_dnf_random_sleep` | `0` | Maximum random delay before DNF starts |
+| `auto_updates_dnf_reboot` | `'never'` | `never`, `when-changed`, or `when-needed` |
+| `auto_updates_dnf_upgrade_type` | `'default'` | `default` or `security` |
+| `auto_updates_win_reboot` | `true` | Permit Windows update installation to reboot |
 
-## Invariants
+APT and DNF options apply only to their respective Linux package managers.
+Windows uses only `auto_updates_win_reboot`. Types and choices are declared in
+[`meta/argument_specs.yml`](meta/argument_specs.yml).
 
-- Linux configures persistent package-manager automatic updates.
-- Windows always performs an immediate installation, independently of
-  `auto_updates_enabled`.
-- Windows update installation uses `state: installed`.
+## Enable behaviour and invariants
+
+On Linux, `auto_updates_enabled: false` disables the schedule instead of
+skipping the role. APT writes zero for its three managed periodic counters;
+it preserves shared timer state and does not cancel an upgrade already running.
+DNF stops and disables its automatic-update timer. Required packages and
+configuration remain installed. Re-enabling restores policy and timer state.
+
+Windows ignores `auto_updates_enabled` and always requests immediate update
+installation with `state: installed`. It may reboot by default. Omitting the
+role, not setting its Linux enable flag, is how you avoid that Windows action.
+
+APT policy clears the package-supplied origin allow-lists before adding the
+requested patterns. An explicit origins list replaces those defaults; an empty
+list selects Ubuntu or Debian release and security patterns. Package policy
+and foreign files remain on disk. APT merges files in filename order, so later
+foreign policy can override the role's settings. The role does not inspect it.
+On non-systemd APT hosts, the package's native scheduling mechanism remains in use.
+
+## Implementation map
+
+- `tasks/main.yml` checks the complete platform and package-manager gate.
+- `tasks/linux/main.yml` selects `apt.yml` or `dnf.yml` and DNF version data.
+- `tasks/linux/apt.yml` installs the package, renders policy, and manages timers.
+- `tasks/linux/dnf.yml` manages the selected package, configuration, and timer.
+- `tasks/windows/main.yml` requests immediate updates and optional reboot.
+- `templates/` holds the owned APT and DNF configuration sources.
+
+## Migration
+
+The current APT policy path is `52sys-admin-auto-updates`. The role does not
+reconcile foreign or historical policy files. When adopting its origin policy,
+check that no later file overrides your intended configuration. Disabling the
+role does not remove the installed update tools or foreign policy.

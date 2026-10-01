@@ -1,0 +1,270 @@
+---
+- name: Verify auto_updates results
+  hosts: all
+  become: true
+  gather_facts: true
+  vars:
+    expected_dnf_automatic: |
+      [commands]
+      upgrade_type = default
+      download_updates = yes
+      apply_updates = yes
+      reboot = never
+      random_sleep = 0
+
+      [emitters]
+      emit_via = stdio
+  tasks:
+    - name: Gather package facts
+      ansible.builtin.package_facts:
+
+    - name: Verify APT auto-update configuration
+      when: ansible_facts["pkg_mgr"] == "apt"
+      block:
+        - name: Assert unattended-upgrades is installed
+          ansible.builtin.assert:
+            that:
+              - "'unattended-upgrades' in ansible_facts.packages"
+
+        - name: Read effective APT origin policy
+          ansible.builtin.command:
+            argv:
+              - 'apt-config'
+              - 'dump'
+          register: auto_updates_effective_apt
+          changed_when: false
+
+        - name: Assert only the requested origin is effective
+          ansible.builtin.assert:
+            that:
+              - >-
+                auto_updates_effective_apt.stdout
+                | regex_findall(
+                '(?m)^Unattended-Upgrade::Allowed-Origins:: "(.*?)";$')
+                == []
+              - >-
+                auto_updates_effective_apt.stdout
+                | regex_findall(
+                '(?m)^Unattended-Upgrade::Origins-Pattern:: "(.*?)";$')
+                == ['origin=Ubuntu,codename=jammy,label=Ubuntu']
+            fail_msg: 'Unrequested APT origins are effective.'
+
+        - name: Read native APT timer states
+          ansible.builtin.command:
+            argv:
+              - 'systemctl'
+              - '{{ item.command }}'
+              - '{{ item.name }}'
+          loop:
+            - command: 'is-enabled'
+              name: 'apt-daily.timer'
+            - command: 'is-active'
+              name: 'apt-daily.timer'
+            - command: 'is-enabled'
+              name: 'apt-daily-upgrade.timer'
+            - command: 'is-active'
+              name: 'apt-daily-upgrade.timer'
+          register: auto_updates_apt_timer_states
+          changed_when: false
+          failed_when: false
+
+        - name: Assert native APT timers are enabled and running
+          ansible.builtin.assert:
+            that:
+              - >-
+                auto_updates_apt_timer_states.results
+                | map(attribute='stdout') | list ==
+                ['enabled', 'active', 'enabled', 'active']
+
+        - name: Read package default policy
+          ansible.builtin.slurp:
+            src: '/etc/apt/apt.conf.d/50unattended-upgrades'
+          register: auto_updates_package_policy
+
+        - name: Assert package default file remains untouched
+          ansible.builtin.assert:
+            that:
+              - >-
+                auto_updates_package_policy.content | b64decode
+                is search('Molecule:unrequested')
+              - >-
+                auto_updates_package_policy.content | b64decode
+                is search('origin=Molecule,codename=unrequested')
+
+        - name: Configure documented empty-list origin defaults
+          ansible.builtin.include_role:
+            name: 'jaythomasonprojects.sys_admin.auto_updates'
+          vars:
+            auto_updates_apt_origins: []
+
+        - name: Inspect effective default APT origins
+          ansible.builtin.command:
+            argv:
+              - 'apt-config'
+              - 'dump'
+          register: auto_updates_default_apt
+          changed_when: false
+
+        - name: Assert documented default origins are effective
+          ansible.builtin.assert:
+            that:
+              - >-
+                auto_updates_default_apt.stdout
+                | regex_findall(
+                '(?m)^Unattended-Upgrade::Allowed-Origins:: "(.*?)";$')
+                == []
+              - >-
+                auto_updates_default_apt.stdout
+                | regex_findall(
+                '(?m)^Unattended-Upgrade::Origins-Pattern:: "(.*?)";$')
+                == [
+                  'origin=${distro_id},codename=${distro_codename},label=${distro_id}',
+                  'origin=${distro_id},codename=${distro_codename}-security,label=${distro_id}-Security'
+                ]
+
+        - name: Restore requested APT origin policy
+          ansible.builtin.include_role:
+            name: 'jaythomasonprojects.sys_admin.auto_updates'
+          vars:
+            auto_updates_apt_origins:
+              - 'origin=Ubuntu,codename=jammy,label=Ubuntu'
+
+    - name: Verify DNF auto-update configuration
+      when: ansible_facts["pkg_mgr"] in ["dnf", "dnf5"]
+      block:
+        - name: Read rendered DNF automatic config
+          ansible.builtin.slurp:
+            src: "/etc/dnf/automatic.conf"
+          register: auto_updates_dnf_config
+
+        - name: Set expected DNF automatic package and timer
+          ansible.builtin.set_fact:
+            expected_dnf_package: >-
+              {{ 'dnf5-plugin-automatic' if ansible_facts.pkg_mgr == 'dnf5'
+                 else 'dnf-automatic' }}
+            expected_dnf_timer: >-
+              {{ 'dnf5-automatic.timer' if ansible_facts.pkg_mgr == 'dnf5'
+                 else 'dnf-automatic.timer' }}
+
+        - name: Check whether DNF automatic timer is enabled
+          ansible.builtin.command:
+            argv:
+              - "systemctl"
+              - "is-enabled"
+              - "{{ expected_dnf_timer }}"
+          register: auto_updates_timer_enabled
+          changed_when: false
+
+        - name: Check whether DNF automatic timer is active
+          ansible.builtin.command:
+            argv:
+              - "systemctl"
+              - "is-active"
+              - "{{ expected_dnf_timer }}"
+          register: auto_updates_timer_active
+          changed_when: false
+
+        - name: Decode rendered DNF config
+          ansible.builtin.set_fact:
+            actual_dnf_automatic: >-
+              {{ auto_updates_dnf_config.content | b64decode }}
+
+        - name: Assert DNF automatic configuration and timer state
+          ansible.builtin.assert:
+            that:
+              - expected_dnf_package in ansible_facts.packages
+              - "actual_dnf_automatic.strip() == expected_dnf_automatic.strip()"
+              - "auto_updates_timer_enabled.stdout == 'enabled'"
+              - "auto_updates_timer_active.stdout == 'active'"
+
+    - name: Converge automatic updates with string-valued false controls
+      ansible.builtin.include_role:
+        name: 'jaythomasonprojects.sys_admin.auto_updates'
+      vars:
+        auto_updates_apt_auto_reboot: 'false'
+        auto_updates_dnf_apply_updates: 'false'
+        auto_updates_dnf_download_updates: 'false'
+        auto_updates_enabled: 'false'
+
+    - name: Verify string false disables APT updates and reboot
+      when: ansible_facts.pkg_mgr == 'apt'
+      block:
+        - name: Read APT policy after string false
+          ansible.builtin.slurp:
+            src: '{{ item }}'
+          loop:
+            - '/etc/apt/apt.conf.d/20auto-upgrades'
+            - '/etc/apt/apt.conf.d/52sys-admin-auto-updates'
+          register: auto_updates_false_apt
+
+        - name: Inspect APT timers after string false
+          ansible.builtin.command:
+            argv:
+              - 'systemctl'
+              - '{{ item.command }}'
+              - '{{ item.name }}'
+          loop:
+            - command: 'is-enabled'
+              name: 'apt-daily.timer'
+            - command: 'is-active'
+              name: 'apt-daily.timer'
+            - command: 'is-enabled'
+              name: 'apt-daily-upgrade.timer'
+            - command: 'is-active'
+              name: 'apt-daily-upgrade.timer'
+          register: auto_updates_false_apt_timers
+          changed_when: false
+
+        - name: Assert APT updates and reboot are disabled
+          ansible.builtin.assert:
+            that:
+              - >-
+                auto_updates_false_apt.results[0].content | b64decode
+                is search('Update-Package-Lists "0"')
+              - >-
+                auto_updates_false_apt.results[0].content | b64decode
+                is search('Download-Upgradeable-Packages "0"')
+              - >-
+                auto_updates_false_apt.results[0].content | b64decode
+                is search('Unattended-Upgrade "0"')
+              - >-
+                auto_updates_false_apt.results[1].content | b64decode
+                is search('Automatic-Reboot "false"')
+              - >-
+                auto_updates_false_apt_timers.results
+                | map(attribute='stdout') | list ==
+                ['enabled', 'active', 'enabled', 'active']
+
+    - name: Verify string false disables DNF updates and timer
+      when: ansible_facts.pkg_mgr == 'dnf5'
+      block:
+        - name: Read DNF policy after string false
+          ansible.builtin.slurp:
+            src: '/etc/dnf/automatic.conf'
+          register: auto_updates_false_dnf
+
+        - name: Inspect DNF timer after string false
+          ansible.builtin.command:
+            argv:
+              - 'systemctl'
+              - '{{ item }}'
+              - 'dnf5-automatic.timer'
+          loop:
+            - 'is-enabled'
+            - 'is-active'
+          register: auto_updates_false_dnf_timer
+          changed_when: false
+          failed_when: false
+
+        - name: Assert DNF updates and timer are disabled
+          ansible.builtin.assert:
+            that:
+              - >-
+                auto_updates_false_dnf.content | b64decode
+                is search('download_updates = no')
+              - >-
+                auto_updates_false_dnf.content | b64decode
+                is search('apply_updates = no')
+              - >-
+                auto_updates_false_dnf_timer.results
+                | map(attribute='stdout') | list == ['disabled', 'inactive']

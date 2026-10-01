@@ -15,7 +15,7 @@
   vars:
     ansible_become_pass: '{{ mount_network_share_item.password }}'
     ansible_become_user: '{{ mount_network_share_item.username }}'
-  when: mount_network_share_item.username is defined
+  no_log: true
 
 - name: Map Windows network drive
   ansible.windows.win_mapped_drive:
@@ -23,11 +23,12 @@
     path: >-
       \\{{ windows_share_server }}\{{ windows_share_name }}
     state: '{{ mount_network_share_item.state | default("present") }}'
-  become: '{{ mount_network_share_item.username is defined }}'
+  become: true
   become_flags: 'logon_type=interactive logon_flags=with_profile'
   become_method: ansible.builtin.runas
   vars:
-    ansible_become_pass: '{{ mount_network_share_item.password | default("") }}'
-    ansible_become_user: '{{ mount_network_share_item.username | default("") }}'
+    ansible_become_pass: '{{ mount_network_share_item.password }}'
+    ansible_become_user: '{{ mount_network_share_item.username }}'
     windows_share_name: '{{ mount_network_share_item.share }}'
     windows_share_server: '{{ mount_network_share_item.server }}'
+  no_log: true

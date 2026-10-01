@@ -1,7 +1,7 @@
 # allow_ping
 
-Manages the Windows inbound ICMP echo request rules. It allows the host to
-answer IPv4 and IPv6 ping requests when enabled.
+Manages Windows inbound Internet Control Message Protocol (ICMP) echo rules.
+It allows the host to answer IPv4 and IPv6 ping requests when enabled.
 
 ## Guarantee
 
@@ -19,24 +19,20 @@ rule, using `ssh_server_port` to select the port.
 Windows hosts only. Other platforms fail with
 `allow_ping supports Windows hosts only.`
 
-## Implementation map
-
-- `tasks/main.yml` rejects unsupported platforms and dispatches Windows hosts.
-- `tasks/windows/main.yml` creates or removes the two named ping rules.
-
 ## Interface
 
 ```yaml
-allow_ping_enabled: true
+allow_ping_enabled: false
 ```
 
-This is the role's only public variable.
+This is the role's only public variable. Set `allow_ping_enabled: true` to opt in
+to inbound IPv4 and IPv6 echo request access through the role-owned rules.
 
 ## Enable behaviour
 
 `allow_ping_enabled` converges both owned rules. `true` creates them and
-`false` removes them. This replaces the previous skip behaviour, where `false`
-left rules created by an earlier run in place.
+`false` (the default) removes them. Removing these rules does not block ping
+traffic permitted by another firewall rule.
 
 ## Invariants
 
@@ -47,6 +43,11 @@ left rules created by an earlier run in place.
 ## Requirements
 
 Requires the `community.windows` collection.
+
+## Implementation map
+
+- `tasks/main.yml` rejects unsupported platforms and dispatches Windows hosts.
+- `tasks/windows/main.yml` creates or removes the two named ping rules.
 
 ## Migration
 

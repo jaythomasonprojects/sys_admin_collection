@@ -25,7 +25,7 @@ argument_specs:
         default: []
         options:
           name:
-            description: Human-readable label used in task output.
+            description: Task label and unique Linux credential filename.
             type: str
             required: true
           server:
@@ -40,28 +40,13 @@ argument_specs:
             description: Linux mount path or Windows drive letter.
             type: str
             required: true
-          username:
-            description: Username for SMB authentication.
-            type: str
           password:
-            description: Password for SMB authentication.
+            description: Non-empty SMB password required for enabled share work.
             type: str
             no_log: true
-          credentials_path:
-            description: Linux path for the managed SMB credential file.
+          username:
+            description: Non-empty SMB account required for enabled share work.
             type: str
-          credentials_owner:
-            description: Owner of the Linux SMB credential file.
-            type: str
-            default: 'root'
-          credentials_group:
-            description: Group of the Linux SMB credential file.
-            type: str
-            default: 'root'
-          credentials_mode:
-            description: Mode of the Linux SMB credential file.
-            type: str
-            default: '0600'
           fstab_options:
             description: Linux fstab options for the share.
             type: list

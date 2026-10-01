@@ -1,0 +1,6 @@
+---
+- name: Converge Windows power policy
+  hosts: all
+  gather_facts: true
+  roles:
+    - role: 'jaythomasonprojects.sys_admin.power_policy'

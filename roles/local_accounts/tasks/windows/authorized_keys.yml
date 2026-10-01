@@ -1,59 +1,69 @@
 ---
-- name: Manage administrator authorised keys
-  when: local_accounts_windows_administrators | length > 0
-  no_log: true
-  vars:
-    local_accounts_windows_administrators: >-
-      {{ local_accounts_users
-         | selectattr('groups', 'defined')
-         | selectattr('groups', 'contains', 'Administrators')
-         | list }}
-    local_accounts_windows_administrator_keys: >-
-      {{ local_accounts_users
-         | selectattr('groups', 'defined')
-         | selectattr('groups', 'contains', 'Administrators')
-         | map(attribute='ssh_authorized_keys', default=[])
-         | flatten
-         | list }}
-  block:
-    - name: Write administrator authorised keys
-      ansible.windows.win_copy:
-        content: '{{ local_accounts_windows_administrator_keys | join("\n") }}'
-        dest: 'C:\ProgramData\ssh\administrators_authorized_keys'
-
-    - name: Set administrator authorised-key ACL
-      ansible.windows.win_powershell:
-        path: 'Set-AuthorizedKeyAcl.ps1'
-        parameters:
-          Administrator: true
-
-- name: Create standard-user SSH directories
-  ansible.windows.win_file:
-    path: 'C:\Users\{{ item.name }}\.ssh'
-    state: directory
-  loop: '{{ local_accounts_users }}'
-  when:
-    - item.ssh_authorized_keys is defined
-    - item.groups is not defined or 'Administrators' not in item.groups
-  no_log: true
-
-- name: Write standard-user authorised keys
-  ansible.windows.win_copy:
-    content: '{{ item.ssh_authorized_keys | join("\n") }}'
-    dest: 'C:\Users\{{ item.name }}\.ssh\authorized_keys'
-  loop: '{{ local_accounts_users }}'
-  when:
-    - item.ssh_authorized_keys is defined
-    - item.groups is not defined or 'Administrators' not in item.groups
-  no_log: true
-
-- name: Set standard-user SSH ACLs
+- name: Resolve configured Windows account identities
   ansible.windows.win_powershell:
-    path: 'Set-AuthorizedKeyAcl.ps1'
+    path: 'Resolve-LocalAccount.ps1'
     parameters:
       UserName: '{{ item.name }}'
   loop: '{{ local_accounts_users }}'
+  register: local_accounts_windows_resolved
+  when: item.ssh_authorized_keys is defined
+  no_log: true
+
+- name: Ensure account profiles exist
+  ansible.windows.win_user_profile:
+    username: '{{ item.result.Sid }}'
+    state: present
+  loop: '{{ local_accounts_windows_resolved.results }}'
+  register: local_accounts_windows_profiles
+  when: not item.skipped | default(false)
+  no_log: true
+
+- name: Create account SSH directories
+  ansible.windows.win_file:
+    path: '{{ item.path }}\.ssh'
+    state: directory
+  loop: '{{ local_accounts_windows_profiles.results }}'
+  when: not item.skipped | default(false)
+  no_log: true
+
+- name: Write account authorised keys
+  ansible.windows.win_copy:
+    content: |
+      {% for key in item.item.item.ssh_authorized_keys -%}
+      {{ key }}
+      {% endfor -%}
+    dest: '{{ item.path }}\.ssh\authorized_keys'
+  loop: '{{ local_accounts_windows_profiles.results }}'
   when:
-    - item.ssh_authorized_keys is defined
-    - item.groups is not defined or 'Administrators' not in item.groups
+    - not item.skipped | default(false)
+    - item.item.item.ssh_authorized_keys | length > 0
+  no_log: true
+
+- name: Clear account authorised keys
+  ansible.windows.win_powershell:
+    script: |
+      param ([String] $Path)
+      $ErrorActionPreference = 'Stop'
+      $Ansible.Changed = $false
+      if (-not (Test-Path -LiteralPath $Path) -or
+          [IO.File]::ReadAllText($Path) -ne '') {
+          [IO.File]::WriteAllText($Path, '')
+          $Ansible.Changed = $true
+      }
+    parameters:
+      Path: '{{ item.path }}\.ssh\authorized_keys'
+  loop: '{{ local_accounts_windows_profiles.results }}'
+  when:
+    - not item.skipped | default(false)
+    - item.item.item.ssh_authorized_keys | length == 0
+  no_log: true
+
+- name: Set account SSH ACLs
+  ansible.windows.win_powershell:
+    path: 'Set-AuthorizedKeyAcl.ps1'
+    parameters:
+      AccountSid: '{{ item.item.result.Sid }}'
+      ProfilePath: '{{ item.path }}'
+  loop: '{{ local_accounts_windows_profiles.results }}'
+  when: not item.skipped | default(false)
   no_log: true

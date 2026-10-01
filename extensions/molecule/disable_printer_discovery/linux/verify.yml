@@ -1,0 +1,102 @@
+---
+- name: Verify disable_printer_discovery results
+  hosts: all
+  gather_facts: true
+  tasks:
+    - name: Gather printer active states  # noqa: command-instead-of-module
+      ansible.builtin.command:
+        cmd: 'systemctl is-active {{ item }}'
+      loop:
+        - 'avahi-daemon.service'
+        - 'avahi-daemon.socket'
+        - 'cups-browsed.service'
+      register: disable_printer_discovery_active_states
+      changed_when: false
+      failed_when: false
+
+    - name: Assert printer service active states
+      ansible.builtin.assert:
+        that:
+          - >-
+            disable_printer_discovery_active_states.results[0].stdout ==
+            'inactive'
+          - >-
+            disable_printer_discovery_active_states.results[1].stdout ==
+            'inactive'
+
+    - name: Gather printer enablement states  # noqa: command-instead-of-module
+      ansible.builtin.command:
+        cmd: 'systemctl is-enabled {{ item }}'
+      loop:
+        - 'avahi-daemon.service'
+        - 'avahi-daemon.socket'
+        - 'cups-browsed.service'
+      register: disable_printer_discovery_enablement
+      changed_when: false
+      failed_when: false
+
+    - name: Assert printer service enablement states
+      ansible.builtin.assert:
+        that:
+          - disable_printer_discovery_enablement.results[0].stdout == 'disabled'
+          - disable_printer_discovery_enablement.results[1].stdout == 'masked'
+
+    - name: Inspect absent printer service load state
+      ansible.builtin.command:
+        argv:
+          - 'systemctl'
+          - 'show'
+          - '--property=LoadState'
+          - '--value'
+          - 'cups-browsed.service'
+      register: disable_printer_discovery_missing_state
+      changed_when: false
+
+    - name: Assert missing service was not created
+      ansible.builtin.assert:
+        that:
+          - disable_printer_discovery_missing_state.rc == 0
+          - disable_printer_discovery_missing_state.stdout == 'not-found'
+
+    - name: Exercise printer inspection error handling
+      block:
+        - name: Create test-only command directory
+          ansible.builtin.file:
+            path: '/tmp/sys-admin-printer-test'
+            mode: '0755'
+            state: directory
+
+        - name: Install test-only failing systemctl command
+          ansible.builtin.copy:
+            dest: '/tmp/sys-admin-printer-test/systemctl'
+            mode: '0755'
+            content: |
+              #!/bin/sh
+              echo 'Failed to connect to bus' >&2
+              exit 1
+
+        - name: Require role to reject unusable printer inspection
+          environment:
+            PATH: '/tmp/sys-admin-printer-test:{{ ansible_env.PATH }}'
+          block:
+            - name: Apply printer policy with faulty inspection
+              ansible.builtin.include_role:
+                name: 'jaythomasonprojects.sys_admin.disable_printer_discovery'
+
+            - name: Reject silently accepted inspection
+              ansible.builtin.fail:
+                msg: 'Role silently accepted a faulty printer inspection.'
+          rescue:
+            - name: Assert failure came from printer inspection
+              ansible.builtin.assert:
+                that:
+                  - >-
+                    ansible_failed_result.results | default([])
+                    | map(attribute='msg')
+                    | select('search', 'Could not inspect printer unit')
+                    | list | length > 0
+      always:
+        - name: Remove test-only command directory
+          ansible.builtin.file:
+            path: '/tmp/sys-admin-printer-test'
+            state: absent

@@ -13,10 +13,10 @@ The role owns the dock position and maximum icon size, plus GNOME favourites whe
 
 ## Supported platforms
 
-Ubuntu 22.04, 24.04, and 26.04 with existing GNOME Shell and Ubuntu Dock
+Ubuntu 24.04 and 26.04 with existing GNOME Shell and Ubuntu Dock
 schemas. Fedora is explicitly unsupported, as Ubuntu Dock is an Ubuntu-specific
 host precondition. Other operating systems and releases fail with
-`desktop_layout supports Ubuntu 22.04, 24.04, and 26.04 hosts only.`
+`desktop_layout supports Ubuntu 24.04 and 26.04 hosts only.`
 
 ## Interface
 
@@ -31,17 +31,31 @@ desktop_layout_user: ''
 `desktop_layout_user` must be an existing local account with an existing home
 directory. The role runs dconf as that account and sets its resolved `HOME`.
 
+Dock position accepts `BOTTOM`, `LEFT`, `RIGHT`, or `TOP`. Icon size must be
+between 16 and 64 pixels. Favourites are ordered desktop launcher identifiers,
+such as `org.gnome.Nautilus.desktop`; the role does not install their applications.
+
 An empty favourites list is unmanaged and does not clear existing favourites.
 Likewise, `desktop_layout_enabled: false` skips the role and preserves prior
 values.
 
 ## Implementation and requirements
 
-`tasks/main.yml` validates the supported Ubuntu releases, then dispatches
-enabled hosts to the Ubuntu implementation. The role owns its `dbus`, `dconf-cli`, `libglib2.0-bin`,
+`tasks/main.yml` validates supported Ubuntu releases and dispatches enabled hosts
+to `tasks/linux/main.yml`. That file checks the user and schemas, installs
+runtime packages, and writes the owned dconf settings. `vars/Ubuntu.yml` lists
+the required `dbus`, `dconf-cli`, `libglib2.0-bin`,
 `python3-gi`, and `python3-psutil` runtime packages. GNOME Shell and Ubuntu Dock
 schemas are host preconditions, not role-managed dependencies.
 
 The role does not install GNOME, Ubuntu Dock, applications, or launcher targets.
 It does not manage wallpaper, themes, shortcuts, fonts, extensions, power policy,
 or arbitrary dconf keys.
+
+## Migration
+
+Introduced in `0.9.0`. There is no predecessor interface to rename. Existing
+favourites remain unmanaged unless you supply a non-empty favourites list.
+
+`0.10.0` drops Ubuntu 22.04. Upgrade those hosts to 24.04 or stop applying
+the role to them; the platform check fails before any change.

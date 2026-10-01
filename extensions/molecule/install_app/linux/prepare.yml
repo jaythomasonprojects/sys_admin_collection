@@ -1,0 +1,162 @@
+---
+- name: Prepare install_app scenario
+  hosts: all
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Gather minimal facts
+      ansible.builtin.setup:
+        gather_subset:
+          - "!all"
+          - "min"
+
+    - name: Remove npm from Ubuntu before prerequisite test
+      ansible.builtin.apt:
+        name: 'npm'
+        state: absent
+      when: inventory_hostname == 'ubuntu'
+
+    - name: Check npm is unavailable before convergence
+      ansible.builtin.command:
+        argv:
+          - 'npm'
+          - '--version'
+      register: install_app_npm_before
+      changed_when: false
+      failed_when: false
+      when: inventory_hostname == 'ubuntu'
+
+    - name: Assert npm prerequisite is missing on Ubuntu
+      ansible.builtin.assert:
+        that:
+          - install_app_npm_before.rc != 0
+      when: inventory_hostname == 'ubuntu'
+
+    - name: Create unprivileged application caller
+      ansible.builtin.user:
+        create_home: true
+        name: 'molecule'
+        state: present
+
+    - name: Permit application caller to escalate without a password
+      ansible.builtin.copy:
+        content: "molecule ALL=(ALL) NOPASSWD: ALL\n"
+        dest: '/etc/sudoers.d/90-molecule'
+        mode: '0440'
+
+    - name: Install python3-rpm for package_facts on DNF hosts
+      ansible.builtin.dnf:
+        name: 'python3-rpm'
+        state: present
+      when: ansible_facts['pkg_mgr'] in ['dnf', 'dnf5']
+
+    - name: Create Debian package fixture directories
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        state: directory
+        mode: "{{ item.mode }}"
+      loop:
+        - path: "/opt/install-app-fixture/build/DEBIAN"
+          mode: "0755"
+        - path: "/opt/install-app-fixture/build/usr/local/bin"
+          mode: "0755"
+      when: ansible_facts["pkg_mgr"] == "apt"
+
+    - name: Create Debian package fixture control file
+      ansible.builtin.copy:
+        dest: "/opt/install-app-fixture/build/DEBIAN/control"
+        mode: "0644"
+        content: |
+          Package: install-app-fixture
+          Version: 1.0.0
+          Section: utils
+          Priority: optional
+          Architecture: all
+          Maintainer: Molecule <molecule@example.invalid>
+          Description: Local fixture package for install_app Molecule tests
+      when: ansible_facts["pkg_mgr"] == "apt"
+
+    - name: Create Debian package fixture executable
+      ansible.builtin.copy:
+        dest: "/opt/install-app-fixture/build/usr/local/bin/install-app-fixture"
+        mode: "0755"
+        content: |
+          #!/bin/sh
+          echo install-app-fixture
+      when: ansible_facts["pkg_mgr"] == "apt"
+
+    - name: Build local Debian package fixture
+      ansible.builtin.command:
+        argv:
+          - "dpkg-deb"
+          - "--build"
+          - "/opt/install-app-fixture/build"
+          - "/usr/local/src/install-app-fixture.deb"
+        creates: "/usr/local/src/install-app-fixture.deb"
+      when: ansible_facts["pkg_mgr"] == "apt"
+
+    - name: Create URL package fixture directories
+      ansible.builtin.file:
+        path: '{{ item }}'
+        mode: '0755'
+        state: directory
+      loop:
+        - '/opt/install-app-fixture/build-url/DEBIAN'
+        - '/opt/install-app-fixture/build-url/usr/local/bin'
+      when: ansible_facts.pkg_mgr == 'apt'
+
+    - name: Create URL package fixture control file
+      ansible.builtin.copy:
+        dest: '/opt/install-app-fixture/build-url/DEBIAN/control'
+        mode: '0644'
+        content: |
+          Package: install-app-url-fixture
+          Version: 1.0.0
+          Section: utils
+          Priority: optional
+          Architecture: all
+          Maintainer: Molecule <molecule@example.invalid>
+          Description: Local HTTP package for install_app Molecule tests
+      when: ansible_facts.pkg_mgr == 'apt'
+
+    - name: Create URL package fixture executable
+      ansible.builtin.copy:
+        dest: >-
+          /opt/install-app-fixture/build-url/usr/local/bin/install-app-url-fixture
+        mode: '0755'
+        content: |
+          #!/bin/sh
+          echo install-app-url-fixture
+      when: ansible_facts.pkg_mgr == 'apt'
+
+    - name: Build URL package fixture
+      ansible.builtin.command:
+        argv:
+          - 'dpkg-deb'
+          - '--build'
+          - '/opt/install-app-fixture/build-url'
+          - '/usr/local/src/install-app-url-fixture.deb'
+        creates: '/usr/local/src/install-app-url-fixture.deb'
+      when: ansible_facts.pkg_mgr == 'apt'
+
+    - name: Serve URL package fixture on loopback
+      ansible.builtin.command:
+        argv:
+          - 'python3'
+          - '-m'
+          - 'http.server'
+          - '8765'
+          - '--bind'
+          - '127.0.0.1'
+          - '--directory'
+          - '/usr/local/src'
+      async: 3600
+      poll: 0
+      when: ansible_facts.pkg_mgr == 'apt'
+
+    - name: Wait for loopback package fixture
+      ansible.builtin.wait_for:
+        host: '127.0.0.1'
+        port: 8765
+        timeout: 30
+      when: ansible_facts.pkg_mgr == 'apt'

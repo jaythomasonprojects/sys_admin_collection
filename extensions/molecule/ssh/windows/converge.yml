@@ -1,0 +1,11 @@
+---
+- name: Converge Windows SSH with a non-default server port
+  hosts: all
+  gather_facts: true
+  vars:
+    ssh_server_allow_users:
+      - 'ssh_test_allowed'
+    ssh_server_password_authentication: 'no'
+    ssh_server_port: 2222
+  roles:
+    - role: 'jaythomasonprojects.sys_admin.ssh'

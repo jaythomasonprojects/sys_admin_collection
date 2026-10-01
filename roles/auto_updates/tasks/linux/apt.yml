@@ -1,10 +1,4 @@
 ---
-- name: Remove legacy unattended-upgrades policy
-  ansible.builtin.file:
-    path: '/etc/apt/apt.conf.d/52jtprojects-unattended-upgrades'
-    state: absent
-  become: true
-
 - name: Install unattended-upgrades
   ansible.builtin.apt:
     name: unattended-upgrades
@@ -29,3 +23,38 @@
     group: root
     mode: '0644'
   become: true
+
+- name: Load native APT timer names
+  ansible.builtin.include_vars: >-
+    {{ lookup('ansible.builtin.first_found', auto_updates_apt_vars_files) }}
+  vars:
+    auto_updates_apt_vars_files:
+      files:
+        - '{{ ansible_facts.distribution }}.yml'
+        - '{{ ansible_facts.os_family }}.yml'
+      paths:
+        - '{{ role_path }}/vars'
+  when:
+    - auto_updates_enabled | bool
+    - ansible_facts.service_mgr == 'systemd'
+
+- name: Unmask native APT timers
+  ansible.builtin.systemd_service:
+    masked: false
+    name: '{{ item }}'
+  loop: '{{ auto_updates_apt_timers | default([]) }}'
+  become: true
+  when:
+    - auto_updates_enabled | bool
+    - ansible_facts.service_mgr == 'systemd'
+
+- name: Enable and start native APT timers
+  ansible.builtin.systemd_service:
+    enabled: true
+    name: '{{ item }}'
+    state: started
+  loop: '{{ auto_updates_apt_timers | default([]) }}'
+  become: true
+  when:
+    - auto_updates_enabled | bool
+    - ansible_facts.service_mgr == 'systemd'

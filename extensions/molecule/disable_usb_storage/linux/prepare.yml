@@ -1,0 +1,70 @@
+---
+- name: Prepare disable_usb_storage scenario
+  hosts: all
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Gather package manager facts
+      ansible.builtin.setup:
+        gather_subset:
+          - '!all'
+          - 'min'
+
+    - name: Refresh APT package cache
+      ansible.builtin.apt:
+        update_cache: true
+      when: ansible_facts.pkg_mgr == 'apt'
+
+    - name: Read shared kernel modules before convergence
+      ansible.builtin.command:
+        argv:
+          - 'cat'
+          - '/proc/modules'
+      changed_when: false
+      register: disable_usb_storage_loaded_modules
+
+    - name: Assert USB mass-storage modules are not loaded
+      ansible.builtin.assert:
+        that:
+          - >-
+            disable_usb_storage_loaded_modules.stdout_lines |
+            select('match', '^usb_storage\\s') | list | length == 0
+          - >-
+            disable_usb_storage_loaded_modules.stdout_lines |
+            select('match', '^uas\\s') | list | length == 0
+        fail_msg: >-
+          The Docker host has USB mass-storage modules loaded, so this scenario
+          cannot safely validate mandatory runtime unloading.
+
+    - name: Remove kmod on Ubuntu to test role-owned prerequisite
+      ansible.builtin.package:
+        name: 'kmod'
+        state: absent
+      when: ansible_facts.distribution == 'Ubuntu'
+
+    - name: Inspect package state before convergence
+      ansible.builtin.package_facts:
+
+    - name: Assert kmod is absent on Ubuntu test hosts
+      ansible.builtin.assert:
+        that:
+          - "'kmod' not in ansible_facts.packages"
+      when: ansible_facts.distribution == 'Ubuntu'
+
+    - name: Create modprobe configuration directory on disabled host
+      ansible.builtin.file:
+        group: 'root'
+        mode: '0755'
+        owner: 'root'
+        path: '/etc/modprobe.d'
+        state: 'directory'
+      when: inventory_hostname in groups['disabled']
+
+    - name: Seed obsolete USB mass-storage policy on disabled host
+      ansible.builtin.copy:
+        content: 'obsolete policy\n'
+        dest: '/etc/modprobe.d/disable-usb-storage.conf'
+        group: 'root'
+        mode: '0644'
+        owner: 'root'
+      when: inventory_hostname in groups['disabled']

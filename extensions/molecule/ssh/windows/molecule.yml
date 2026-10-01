@@ -1,0 +1,37 @@
+---
+driver:
+  name: 'molecule-proxmox'
+  options:
+    full: false
+    node: '${MOLECULE_PROXMOX_NODE}'
+    pool: '${MOLECULE_PROXMOX_POOL}'
+    proxmox_secrets: '${MOLECULE_PROXMOX_SECRETS}'
+    sethostname: false
+    ssh_identity_file: '${MOLECULE_WINDOWS_IDENTITY_FILE}'
+    ssh_port: '${MOLECULE_WINDOWS_SSH_PORT}'
+    ssh_user: '${MOLECULE_WINDOWS_USER}'
+    timeout: 1200
+    validate_certs: true
+
+platforms:
+  - name: 'ssh-windows'
+    newid: '${MOLECULE_SSH_WINDOWS_VMID:-required-vmid}'
+    template_vmid: '${MOLECULE_WINDOWS_TEMPLATE_VMID:-required-template-vmid}'
+
+provisioner:
+  connection_options:
+    ansible_become_method: 'ansible.builtin.runas'
+    ansible_become_password: >-
+      {{ lookup('ansible.builtin.env', 'MOLECULE_WINDOWS_PASSWORD') }}
+    ansible_become_user: '${MOLECULE_WINDOWS_USER}'
+    ansible_connection: 'winrm'
+    ansible_password: >-
+      {{ lookup('ansible.builtin.env', 'MOLECULE_WINDOWS_PASSWORD') }}
+    ansible_port: 5986
+    ansible_shell_type: 'powershell'
+    ansible_winrm_scheme: 'https'
+    ansible_winrm_server_cert_validation: 'ignore'
+    ansible_winrm_transport: 'ntlm'
+
+scenario:
+  name: 'ssh/windows'

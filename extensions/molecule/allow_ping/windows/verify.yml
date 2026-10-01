@@ -1,0 +1,91 @@
+---
+- name: Verify Windows ping rule ownership and transitions
+  hosts: all
+  gather_facts: true
+  tasks:
+    - name: Apply ping policy without an enable override
+      ansible.builtin.include_role:
+        name: 'jaythomasonprojects.sys_admin.allow_ping'
+
+    - name: Inspect rules after omitted input
+      ansible.windows.win_shell: |
+        $owned = @('Allow ICMPv4 ping', 'Allow ICMPv6 ping')
+        $foreign = 'sys_admin_ping_test_foreign_echo'
+        $rules = @(
+          Get-NetFirewallRule -DisplayName $owned -ErrorAction Ignore
+        )
+        $rules.Count
+        $rules = @(
+          Get-NetFirewallRule -DisplayName $foreign -ErrorAction Ignore
+        )
+        $rules.Count
+      register: ping_default_state
+      changed_when: false
+
+    - name: Assert omitted input removes owned rules only
+      ansible.builtin.assert:
+        that:
+          - >-
+            ping_default_state.stdout_lines | map('trim') | list ==
+            ['0', '1']
+
+    - name: Enable ping explicitly
+      ansible.builtin.include_role:
+        name: 'jaythomasonprojects.sys_admin.allow_ping'
+      vars:
+        allow_ping_enabled: true
+
+    - name: Inspect explicitly enabled rules
+      ansible.windows.win_shell: |
+        $owned = @('Allow ICMPv4 ping', 'Allow ICMPv6 ping')
+        $rules = @(
+          Get-NetFirewallRule -DisplayName $owned -ErrorAction Ignore
+        )
+        $rules.Count
+      register: ping_enabled_state
+      changed_when: false
+
+    - name: Assert both owned rules exist
+      ansible.builtin.assert:
+        that:
+          - ping_enabled_state.stdout | trim == '2'
+
+    - name: Enable ping again without a state change
+      ansible.builtin.include_role:
+        name: 'jaythomasonprojects.sys_admin.allow_ping'
+      vars:
+        allow_ping_enabled: true
+
+    - name: Disable ping explicitly
+      ansible.builtin.include_role:
+        name: 'jaythomasonprojects.sys_admin.allow_ping'
+      vars:
+        allow_ping_enabled: false
+
+    - name: Disable ping again without a state change
+      ansible.builtin.include_role:
+        name: 'jaythomasonprojects.sys_admin.allow_ping'
+      vars:
+        allow_ping_enabled: false
+
+    - name: Inspect rules after explicit disablement
+      ansible.windows.win_shell: |
+        $owned = @('Allow ICMPv4 ping', 'Allow ICMPv6 ping')
+        $foreign = 'sys_admin_ping_test_foreign_echo'
+        $rules = @(
+          Get-NetFirewallRule -DisplayName $owned -ErrorAction Ignore
+        )
+        $rules.Count
+        $rules = @(
+          Get-NetFirewallRule -DisplayName $foreign -ErrorAction Ignore
+        )
+        $rules.Count
+      register: ping_disabled_state
+      changed_when: false
+
+    - name: Assert owned rules are absent and foreign rule remains
+      ansible.builtin.assert:
+        that:
+          - >-
+            ping_disabled_state.stdout_lines | map('trim') | list ==
+            ['0', '1']

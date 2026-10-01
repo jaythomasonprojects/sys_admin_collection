@@ -1,0 +1,37 @@
+---
+- name: Manage SMB/CIFS shares
+  ansible.builtin.include_tasks: 'share.yml'
+  loop: '{{ mount_network_share_shares }}'
+  loop_control:
+    loop_var: mount_network_share_item
+    label: '{{ mount_network_share_item.name }}'
+  vars:
+    mount_network_share_option_list: >-
+      {{
+        mount_network_share_item.fstab_options | default(
+          ['_netdev', 'nofail', 'iocharset=utf8']
+        )
+        + (
+          ['uid=' ~ mount_network_share_item.owner | default('root')]
+          if (
+            mount_network_share_item.fstab_options | default([])
+            | select('match', '^uid=') | list | length == 0
+          ) else []
+        )
+        + (
+          ['gid=' ~ mount_network_share_item.group | default('root')]
+          if (
+            mount_network_share_item.fstab_options | default([])
+            | select('match', '^gid=') | list | length == 0
+          ) else []
+        )
+      }}
+    mount_network_share_present: >-
+      {{ mount_network_share_item.state | default('present')
+         not in ['absent', 'absent_from_fstab'] }}
+    mount_network_share_source: >-
+      {{ '//' ~ mount_network_share_item.server ~ '/'
+         ~ mount_network_share_item.share }}
+    mount_network_share_state: >-
+      {{ mount_network_share_item.state | default('present') }}
+  no_log: true

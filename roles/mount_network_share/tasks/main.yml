@@ -8,47 +8,39 @@
     fail_msg: 'mount_network_share supports Linux and Windows hosts only.'
 
 - name: Manage network shares
-  when: mount_network_share_enabled | bool
+  when:
+    - mount_network_share_enabled | bool
+    - mount_network_share_shares | length > 0
   block:
-    - name: Validate Linux mount options
+    - name: Require credentials for each declared share
       ansible.builtin.assert:
         that:
-          - >-
-            mount_network_share_item.fstab_options is not defined or
-            (mount_network_share_item.fstab_options is sequence and
-            mount_network_share_item.fstab_options is not string)
+          - mount_network_share_item.username | default('') | length > 0
+          - mount_network_share_item.password | default('') | length > 0
         fail_msg: >-
-          mount_network_share fstab_options must be a YAML list of strings.
+          Define username and password as non-empty strings
+          on each declared share.
       loop: '{{ mount_network_share_shares }}'
       loop_control:
         loop_var: mount_network_share_item
         label: '{{ mount_network_share_item.name }}'
-      no_log: '{{ mount_network_share_item.password is defined }}'
-      when: ansible_facts.system == 'Linux'
+      no_log: true
 
-    - name: Validate share credential pairing
+    - name: Require distinct Linux credential filenames
       ansible.builtin.assert:
         that:
           - >-
-            (
-              mount_network_share_item.username is not defined
-              and mount_network_share_item.password is not defined
-            )
-            or
-            (
-              mount_network_share_item.username is string
-              and mount_network_share_item.username | length > 0
-              and mount_network_share_item.password is string
-              and mount_network_share_item.password | length > 0
-            )
+            mount_network_share_shares | map(attribute='name')
+            | unique(case_sensitive=true) | length
+            == mount_network_share_shares | length
+          - >-
+            mount_network_share_shares | map(attribute='name')
+            | select('match', '^(?!\.{1,2}$)[^/\\\\\s]+\Z') | list | length
+            == mount_network_share_shares | length
         fail_msg: >-
-          Define username and password together as non-empty strings, or omit
-          both.
-      loop: '{{ mount_network_share_shares }}'
-      loop_control:
-        loop_var: mount_network_share_item
-        label: '{{ mount_network_share_item.name | default("unnamed") }}'
-      no_log: true
+          Linux share names must be distinct single credential filenames
+          without whitespace.
+      when: ansible_facts.system == 'Linux'
 
     - name: Manage network shares on Linux hosts
       ansible.builtin.include_tasks: 'linux/main.yml'

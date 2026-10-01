@@ -1,0 +1,60 @@
+---
+- name: Prepare Windows power policy fixtures
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Wait for the clone connection
+      ansible.builtin.wait_for_connection:
+        timeout: 600
+
+    - name: Verify Windows module execution over SSH
+      ansible.windows.win_ping:
+
+    - name: Gather Windows facts before applying policy
+      ansible.builtin.setup:
+
+    - name: Require the clone transport and identity
+      ansible.builtin.assert:
+        that:
+          - ansible_connection == 'ssh'
+          - ansible_shell_type == 'powershell'
+          - inventory_hostname == 'power-policy-windows'
+
+    - name: Select the balanced fixture plan
+      community.windows.win_power_plan:
+        name: 'balanced'
+
+    - name: Seed non-zero AC and DC timeouts
+      ansible.windows.win_command:
+        argv:
+          - 'powercfg.exe'
+          - '/change'
+          - '{{ item }}'
+          - '10'
+      loop:
+        - 'monitor-timeout-ac'
+        - 'monitor-timeout-dc'
+        - 'standby-timeout-ac'
+        - 'standby-timeout-dc'
+      changed_when: true
+
+    - name: Inspect seeded numeric timeout values
+      ansible.windows.win_powershell:
+        path: >-
+          {{ playbook_dir }}/files/Inspect-PowerPolicy.ps1
+        parameters:
+          Expected: 600
+
+    - name: Leave sleep timeouts unmanaged
+      ansible.builtin.include_role:
+        name: 'jaythomasonprojects.sys_admin.power_policy'
+      vars:
+        power_policy_disable_hibernate: false
+        power_policy_disable_sleep: false
+
+    - name: Verify false preserves all four timeouts
+      ansible.windows.win_powershell:
+        path: >-
+          {{ playbook_dir }}/files/Inspect-PowerPolicy.ps1
+        parameters:
+          Expected: 600

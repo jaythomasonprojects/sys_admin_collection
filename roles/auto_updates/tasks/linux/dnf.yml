@@ -17,6 +17,6 @@
 - name: Ensure DNF automatic timer state
   ansible.builtin.systemd_service:
     name: '{{ auto_updates_dnf_timer }}'
-    enabled: '{{ auto_updates_enabled }}'
-    state: '{{ "started" if auto_updates_enabled else "stopped" }}'
+    enabled: '{{ auto_updates_enabled | bool }}'
+    state: '{{ "started" if auto_updates_enabled | bool else "stopped" }}'
   become: true

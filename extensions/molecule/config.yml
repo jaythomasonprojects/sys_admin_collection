@@ -1,18 +1,19 @@
 ---
 # Shared Molecule defaults for this collection.
 #
-# Scenario directories under extensions/molecule/<scenario>/ inherit this file
-# automatically. Keep per-scenario molecule.yml files focused on the container
+# Role/platform scenarios load this project-level config.
+# Keep per-scenario molecule.yml files focused on the driver and guest
 # runtime they need, and centralise the common execution flow here.
 dependency:
   name: "galaxy"
   options:
-    requirements-file: "../../../requirements.yml"
+    requirements-file: '${MOLECULE_PROJECT_DIRECTORY}/requirements.yml'
 
 provisioner:
   name: "ansible"
   env:
-    ANSIBLE_COLLECTIONS_PATH: '../../../.ansible/collections'
+    ANSIBLE_COLLECTIONS_PATH: >-
+      ${MOLECULE_PROJECT_DIRECTORY}/.ansible/collections
 
 scenario:
   test_sequence:

@@ -18,4 +18,9 @@ Thumbs.db
 .ansible/
 .cache/
 .molecule/
-extensions/molecule/*/.molecule/
+extensions/molecule/**/.molecule/
+
+# Machine-specific test settings and secrets
+.config/molecule/proxmox.yml
+.env
+.env.*

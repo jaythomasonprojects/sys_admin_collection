@@ -1,0 +1,153 @@
+---
+- name: Verify install_app results
+  hosts: all
+  become: true
+  gather_facts: true
+  vars:
+    expected_package_name: "jq"
+  tasks:
+    - name: Gather package facts
+      ansible.builtin.package_facts:
+
+    - name: Assert channel prerequisites and skips
+      ansible.builtin.assert:
+        that:
+          - "expected_package_name in ansible_facts.packages"
+          - >-
+            'npm' in ansible_facts.packages
+            if ansible_facts['pkg_mgr'] == 'apt'
+            else ansible_facts.packages.keys()
+            | select('match', '^nodejs.*-npm$') | list | length > 0
+          - "'flatpak' not in ansible_facts.packages"
+          - >-
+            ansible_facts['pkg_mgr'] == 'apt' or
+            'install-app-fixture' not in ansible_facts.packages
+        fail_msg: >-
+          install_app did not apply native and npm channels while skipping
+          unrequested Flatpak and unsupported Debian-installer channels.
+
+    - name: Verify APT package installation
+      when: ansible_facts["pkg_mgr"] == "apt"
+      block:
+        - name: Query jq package status with dpkg-query
+          ansible.builtin.command:
+            argv:
+              - "dpkg-query"
+              - "-W"
+              - "-f=${Status}"
+              - "{{ expected_package_name }}"
+          register: install_app_package_status
+          changed_when: false
+
+        - name: Run jq to prove the binary is available
+          ansible.builtin.command:
+            argv:
+              - "jq"
+              - "--version"
+          register: install_app_jq_version
+          changed_when: false
+
+        - name: Assert jq package installation on APT hosts
+          ansible.builtin.assert:
+            that:
+              - "expected_package_name in ansible_facts.packages"
+              - "install_app_package_status.stdout == 'install ok installed'"
+              - "install_app_jq_version.rc == 0"
+
+        - name: Query local Debian fixture package status with dpkg-query
+          ansible.builtin.command:
+            argv:
+              - "dpkg-query"
+              - "-W"
+              - "-f=${Status}"
+              - "install-app-fixture"
+          register: install_app_fixture_package_status
+          changed_when: false
+
+        - name: Run local Debian fixture executable
+          ansible.builtin.command:
+            argv:
+              - "install-app-fixture"
+          register: install_app_fixture_output
+          changed_when: false
+
+        - name: Assert local Debian package installation on APT hosts
+          ansible.builtin.assert:
+            that:
+              - "'install-app-fixture' in ansible_facts.packages"
+              - >-
+                install_app_fixture_package_status.stdout ==
+                'install ok installed'
+              - "install_app_fixture_output.stdout == 'install-app-fixture'"
+
+        - name: Query URL Debian fixture package status
+          ansible.builtin.command:
+            argv:
+              - 'dpkg-query'
+              - '-W'
+              - '-f=${Status}'
+              - 'install-app-url-fixture'
+          register: install_app_url_fixture_status
+          changed_when: false
+
+        - name: Run URL Debian fixture executable
+          ansible.builtin.command:
+            argv:
+              - 'install-app-url-fixture'
+          register: install_app_url_fixture_output
+          changed_when: false
+
+        - name: Assert URL Debian package installation
+          ansible.builtin.assert:
+            that:
+              - "'install-app-url-fixture' in ansible_facts.packages"
+              - install_app_url_fixture_status.stdout == 'install ok installed'
+              - >-
+                install_app_url_fixture_output.stdout ==
+                'install-app-url-fixture'
+
+    - name: Verify DNF package installation
+      when: ansible_facts["pkg_mgr"] in ["dnf", "dnf5"]
+      block:
+        - name: Query jq package status with rpm
+          ansible.builtin.command:
+            argv:
+              - "rpm"
+              - "-q"
+              - "{{ expected_package_name }}"
+          register: install_app_package_status
+          changed_when: false
+
+        - name: Run jq to prove the binary is available
+          ansible.builtin.command:
+            argv:
+              - "jq"
+              - "--version"
+          register: install_app_jq_version
+          changed_when: false
+
+        - name: Assert jq package installation on DNF hosts
+          ansible.builtin.assert:
+            that:
+              - "expected_package_name in ansible_facts.packages"
+              - "install_app_package_status.rc == 0"
+              - "install_app_jq_version.rc == 0"
+
+    - name: Query globally installed npm fixture
+      ansible.builtin.command:
+        argv:
+          - 'npm'
+          - 'list'
+          - '--global'
+          - '--depth=0'
+          - 'is-number'
+      register: install_app_npm_fixture
+      changed_when: false
+
+    - name: Assert global npm fixture installation
+      ansible.builtin.assert:
+        that:
+          - install_app_npm_fixture.rc == 0
+          - install_app_npm_fixture.stdout is search('is-number@')
+        fail_msg: >-
+          install_app did not install is-number globally through npm.

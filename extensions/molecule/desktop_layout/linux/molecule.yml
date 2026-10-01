@@ -1,0 +1,22 @@
+---
+driver:
+  name: 'docker'
+
+platforms:
+  - name: 'desktop-layout-ubuntu2404'
+    command: 'sleep infinity'
+    dockerfile: 'Dockerfile.ubuntu2404'
+    image: 'sys-admin-desktop-ubuntu2404'
+    pre_build_image: false
+  - name: 'desktop-layout-ubuntu2604'
+    command: 'sleep infinity'
+    dockerfile: 'Dockerfile.ubuntu2604'
+    image: 'sys-admin-desktop-ubuntu2604'
+    pre_build_image: false
+  - name: 'desktop-layout-missing-schemas'
+    command: 'sleep infinity'
+    image: 'docker.io/geerlingguy/docker-ubuntu2404-ansible:latest'
+    pre_build_image: true
+
+scenario:
+  name: 'desktop_layout/linux'

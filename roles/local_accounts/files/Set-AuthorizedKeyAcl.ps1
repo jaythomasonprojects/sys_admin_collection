@@ -1,45 +1,39 @@
-[CmdletBinding(DefaultParameterSetName = 'StandardUser')]
+[CmdletBinding()]
 param (
-    [Parameter(Mandatory, ParameterSetName = 'Administrator')]
-    [Switch] $Administrator,
+    [Parameter(Mandatory)]
+    [String] $AccountSid,
 
-    [Parameter(Mandatory, ParameterSetName = 'StandardUser')]
-    [String] $UserName
+    [Parameter(Mandatory)]
+    [String] $ProfilePath
 )
 
+$ErrorActionPreference = 'Stop'
 $Ansible.Changed = $false
 $administratorSid = [System.Security.Principal.SecurityIdentifier]::new(
     'S-1-5-32-544')
 $systemSid = [System.Security.Principal.SecurityIdentifier]::new('S-1-5-18')
 
-if ($Administrator) {
-    $ownerSid = $administratorSid
-    $expectedSids = @($administratorSid, $systemSid)
-    $paths = @('C:\ProgramData\ssh\administrators_authorized_keys')
-}
-else {
-    $account = [System.Security.Principal.NTAccount]::new(
-        $env:COMPUTERNAME, $UserName)
-    $ownerSid = $account.Translate(
-        [System.Security.Principal.SecurityIdentifier])
-    $expectedSids = @($ownerSid, $administratorSid, $systemSid)
-    $paths = @(
-        "C:\Users\$UserName\.ssh",
-        "C:\Users\$UserName\.ssh\authorized_keys"
-    )
-}
+$ownerSid = [System.Security.Principal.SecurityIdentifier]::new($AccountSid)
+$expectedSids = @($ownerSid, $administratorSid, $systemSid)
+$paths = @(
+    (Join-Path $ProfilePath '.ssh'),
+    (Join-Path $ProfilePath '.ssh\authorized_keys')
+)
 
 $fullControl = [System.Security.AccessControl.FileSystemRights]::FullControl
-foreach ($path in $paths) {
-    $acl = Get-Acl -LiteralPath $path
-    $rules = @($acl.GetAccessRules(
+function Test-AuthorisedKeyAcl {
+    param (
+        [Parameter(Mandatory)] $Acl
+    )
+
+    $rules = @($Acl.GetAccessRules(
         $true,
         $true,
         [System.Security.Principal.SecurityIdentifier]
     ))
-    $actualOwner = $acl.GetOwner(
+    $actualOwner = $Acl.GetOwner(
         [System.Security.Principal.SecurityIdentifier])
-    $aclMatches = $acl.AreAccessRulesProtected -and
+    $aclMatches = $Acl.AreAccessRulesProtected -and
         $actualOwner.Value -eq $ownerSid.Value -and
         $rules.Count -eq $expectedSids.Count
 
@@ -55,7 +49,12 @@ foreach ($path in $paths) {
         $aclMatches = $aclMatches -and ($matchingRules.Count -eq 1)
     }
 
-    if (-not $aclMatches) {
+    return $aclMatches
+}
+
+foreach ($path in $paths) {
+    $acl = Get-Acl -LiteralPath $path -ErrorAction Stop
+    if (-not (Test-AuthorisedKeyAcl -Acl $acl)) {
         $acl.SetOwner($ownerSid)
         $acl.SetAccessRuleProtection($true, $false)
         foreach ($rule in @($acl.Access)) {
@@ -63,13 +62,17 @@ foreach ($path in $paths) {
         }
         foreach ($sid in $expectedSids) {
             $rule = [System.Security.AccessControl.FileSystemAccessRule]::new(
-                $sid,
+                $sid.Translate([System.Security.Principal.NTAccount]),
                 'FullControl',
                 'Allow'
             )
             [void] $acl.AddAccessRule($rule)
         }
-        Set-Acl -LiteralPath $path -AclObject $acl
+        Set-Acl -LiteralPath $path -AclObject $acl -ErrorAction Stop
+        $verified = Get-Acl -LiteralPath $path -ErrorAction Stop
+        if (-not (Test-AuthorisedKeyAcl -Acl $verified)) {
+            throw "Authorised-key ACL verification failed for $path"
+        }
         $Ansible.Changed = $true
     }
 }

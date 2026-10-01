@@ -6,3 +6,4 @@ ignore: |
   .cache/
   .venv/
   .molecule/
+  openspec/retired/

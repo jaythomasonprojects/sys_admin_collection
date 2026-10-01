@@ -1,0 +1,26 @@
+---
+driver:
+  name: 'molecule-proxmox'
+  options:
+    full: false
+    node: '${MOLECULE_PROXMOX_NODE}'
+    pool: '${MOLECULE_PROXMOX_POOL}'
+    proxmox_secrets: '${MOLECULE_PROXMOX_SECRETS}'
+    sethostname: false
+    ssh_identity_file: '${MOLECULE_WINDOWS_IDENTITY_FILE}'
+    ssh_port: '${MOLECULE_WINDOWS_SSH_PORT}'
+    ssh_user: '${MOLECULE_WINDOWS_USER}'
+    timeout: 1200
+    validate_certs: true
+
+platforms:
+  - name: 'allow-ping-windows'
+    newid: '${MOLECULE_ALLOW_PING_WINDOWS_VMID:-required-vmid}'
+    template_vmid: '${MOLECULE_WINDOWS_TEMPLATE_VMID:-required-template-vmid}'
+
+provisioner:
+  connection_options:
+    ansible_shell_type: 'powershell'
+
+scenario:
+  name: 'allow_ping/windows'

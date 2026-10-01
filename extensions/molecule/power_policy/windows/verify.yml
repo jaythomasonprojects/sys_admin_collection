@@ -1,0 +1,29 @@
+---
+- name: Verify Windows power policy runtime state
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Inspect native power values after policy
+      ansible.windows.win_powershell:
+        path: >-
+          {{ playbook_dir }}/files/Inspect-PowerPolicy.ps1
+        parameters:
+          Expected: 0
+      register: power_test_result
+
+    - name: Assert hibernation is disabled
+      ansible.builtin.assert:
+        that:
+          - power_test_result.result.HibernateEnabled == 0
+
+    - name: Repeat sleep timeout enforcement
+      ansible.windows.win_powershell:
+        path: >-
+          {{ [playbook_dir, '..', '..', '..', '..', 'roles', 'power_policy',
+          'files', 'Disable-PowerPolicySleep.ps1'] | join('/') }}
+      register: power_test_repeat
+
+    - name: Assert unchanged sleep enforcement reports no change
+      ansible.builtin.assert:
+        that:
+          - power_test_repeat is not changed

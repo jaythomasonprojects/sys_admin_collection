@@ -1,0 +1,4 @@
+---
+auto_updates_apt_timers:
+  - 'apt-daily.timer'
+  - 'apt-daily-upgrade.timer'

@@ -5,45 +5,23 @@
     state: present
   become: true
 
-- name: Manage SMB/CIFS shares
-  ansible.builtin.include_tasks: 'share.yml'
-  loop: '{{ mount_network_share_shares }}'
-  loop_control:
-    loop_var: mount_network_share_item
-    label: '{{ mount_network_share_item.name }}'
-  vars:
-    mount_network_share_credentials_path: >-
-      {{ mount_network_share_item.credentials_path | default(
-           '/etc/samba/credentials/' ~ mount_network_share_item.name
-         ) }}
-    mount_network_share_has_credentials: >-
-      {{ mount_network_share_item.username is defined
-         and mount_network_share_item.password is defined }}
-    mount_network_share_option_list: >-
-      {{
-        mount_network_share_item.fstab_options | default(
-          ['_netdev', 'nofail', 'iocharset=utf8']
-        )
-        + (
-          ['uid=' ~ mount_network_share_item.owner | default('root')]
-          if (
-            mount_network_share_item.fstab_options | default([])
-            | select('match', '^uid=') | list | length == 0
-          ) else []
-        )
-        + (
-          ['gid=' ~ mount_network_share_item.group | default('root')]
-          if (
-            mount_network_share_item.fstab_options | default([])
-            | select('match', '^gid=') | list | length == 0
-          ) else []
-        )
-      }}
-    mount_network_share_present: >-
-      {{ mount_network_share_item.state | default('present')
-         not in ['absent', 'absent_from_fstab'] }}
-    mount_network_share_source: >-
-      {{ '//' ~ mount_network_share_item.server ~ '/'
-         ~ mount_network_share_item.share }}
-    mount_network_share_state: >-
-      {{ mount_network_share_item.state | default('present') }}
+- name: Inspect the credential directory
+  ansible.builtin.stat:
+    path: '/etc/samba/credentials'
+  become: true
+  register: mount_network_share_credentials_dir
+
+- name: Create the credential directory without changing existing metadata
+  ansible.builtin.file:
+    path: '/etc/samba/credentials'
+    state: directory
+    owner: >-
+      {{ omit if mount_network_share_credentials_dir.stat.exists else 'root' }}
+    group: >-
+      {{ omit if mount_network_share_credentials_dir.stat.exists else 'root' }}
+    mode: >-
+      {{ omit if mount_network_share_credentials_dir.stat.exists else '0700' }}
+  become: true
+
+- name: Manage declared Linux shares
+  ansible.builtin.include_tasks: 'shares.yml'

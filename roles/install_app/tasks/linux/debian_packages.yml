@@ -9,18 +9,13 @@
     - ansible_facts.pkg_mgr is defined
     - ansible_facts.pkg_mgr != 'apt'
 
-- name: Install Debian package items
-  ansible.builtin.include_tasks: 'deb_package.yml'
+- name: Install Debian package references
+  ansible.builtin.apt:
+    deb: '{{ item }}'
+    state: present
   loop: '{{ install_app_debs }}'
-  loop_control:
-    loop_var: install_app_deb
-    label: >-
-      {{ install_app_deb.name
-      | default(install_app_deb.dest
-      | default(install_app_deb.deb
-      | default('unnamed deb'))) }}
+  become: true
   when:
     - install_app_debs | length > 0
     - ansible_facts.pkg_mgr is defined
     - ansible_facts.pkg_mgr == 'apt'
-    - install_app_deb.enabled | default(true)

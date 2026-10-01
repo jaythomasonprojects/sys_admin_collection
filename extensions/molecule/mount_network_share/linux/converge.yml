@@ -1,0 +1,21 @@
+---
+- name: Converge per-share authentication from an unprivileged caller
+  hosts: all
+  gather_facts: true
+  roles:
+    - role: 'jaythomasonprojects.sys_admin.mount_network_share'
+      mount_network_share_shares:
+        - group: 'molecule'
+          mount_point: '/mnt/host-one'
+          name: 'host_one'
+          owner: 'molecule'
+          password: 'Synthetic-Share-One!'
+          server: 'files.example.invalid'
+          share: 'One'
+          username: 'fixture_one'
+        - mount_point: '/mnt/host-two'
+          name: 'host_two'
+          password: 'Synthetic-Share-Two!'
+          server: 'files.example.invalid'
+          share: 'Two'
+          username: 'fixture_two'

@@ -1,16 +1,8 @@
 ---
 - name: Install OpenSSH Server capability
-  ansible.windows.win_shell: |
-    $p = 'OpenSSH.Server'
-    $sshCap = (Get-WindowsCapability -Online |
-        Where-Object { $_.Name -like "*$p*" })
-    if ($sshCap -and $sshCap.State -ne 'Installed') {
-      Add-WindowsCapability -Online -Name $sshCap.Name
-      Write-Output 'CAPABILITY_INSTALLED'
-    }
-  register: ssh_install
-  changed_when: >-
-    ssh_install.stdout is search('CAPABILITY_INSTALLED')
+  ansible.windows.win_capability:
+    name: 'OpenSSH.Server'
+    state: present
   become: true
 
 - name: Create SSH server configuration directory
@@ -18,11 +10,41 @@
     path: 'C:\ProgramData\ssh'
     state: directory
 
-- name: Deploy Windows SSH server configuration
-  ansible.windows.win_template:
-    dest: 'C:\ProgramData\ssh\sshd_config'
-    src: 'sshd_config_win.j2'
-  notify: Restart Windows SSH service
+- name: Establish native Windows SSH host keys before validation
+  ansible.windows.win_powershell:
+    path: 'Initialize-WindowsSshHostKeys.ps1'
+  when: not ansible_check_mode
+
+- name: Validate and promote Windows SSH server configuration
+  when: not ansible_check_mode
+  block:
+    - name: Render temporary Windows SSH server candidate
+      ansible.windows.win_template:
+        dest: 'C:\ProgramData\ssh\sshd_config.sys-admin-candidate'
+        src: 'sshd_config_win.j2'
+      changed_when: false
+
+    - name: Validate native Windows SSH server syntax
+      ansible.windows.win_command:
+        argv:
+          - 'C:\Windows\System32\OpenSSH\sshd.exe'
+          - '-t'
+          - '-f'
+          - 'C:\ProgramData\ssh\sshd_config.sys-admin-candidate'
+      changed_when: false
+
+    - name: Promote validated Windows SSH server configuration
+      ansible.windows.win_copy:
+        dest: 'C:\ProgramData\ssh\sshd_config'
+        remote_src: true
+        src: 'C:\ProgramData\ssh\sshd_config.sys-admin-candidate'
+      notify: Restart Windows SSH service
+  always:
+    - name: Remove temporary Windows SSH server candidate
+      ansible.windows.win_file:
+        path: 'C:\ProgramData\ssh\sshd_config.sys-admin-candidate'
+        state: absent
+      changed_when: false
 
 - name: Create firewall rule for SSH port
   community.windows.win_firewall_rule:

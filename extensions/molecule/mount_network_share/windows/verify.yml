@@ -1,0 +1,111 @@
+---
+- name: Verify Windows SMB mapping under the configured account
+  hosts: all
+  gather_facts: true
+  tasks:
+    - name: Read the SMB test account
+      ansible.windows.win_user:
+        name: 'smb_test_user'
+        state: query
+      register: smb_test_account
+
+    - name: Repeat mapping with native password refresh reporting
+      ansible.builtin.include_role:
+        name: 'jaythomasonprojects.sys_admin.mount_network_share'
+      vars:
+        mount_network_share_shares:
+          - name: 'mapped'
+            mount_point: 'S'
+            server: 'localhost'
+            share: 'SysAdminSmbTest'
+            password: '{{ smb_test_password }}'
+            username: '{{ ansible_facts.hostname }}\smb_test_user'
+
+    - name: Inspect usable mapped drive after repeated convergence
+      ansible.windows.win_shell: |
+        $sid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+        if ($sid -ne '{{ smb_test_account.sid }}') {
+          throw 'Mapped-drive inspection ran under the wrong account'
+        }
+        $registryPath = "Registry::HKEY_USERS\$sid\Network\S"
+        $drive = Get-ItemProperty -Path $registryPath -ErrorAction Stop
+        if ($drive.RemotePath -ne '\\localhost\SysAdminSmbTest') {
+          throw 'Expected local SMB fixture mapping was not created'
+        }
+        if (-not (Test-Path '\\localhost\SysAdminSmbTest')) {
+          throw 'Configured share is not usable under the mapping account'
+        }
+        'mapped'
+      register: smb_test_success_result
+      become: true
+      become_flags: 'logon_type=interactive logon_flags=with_profile'
+      become_method: ansible.builtin.runas
+      vars:
+        ansible_become_pass: '{{ smb_test_password }}'
+        ansible_become_user: '{{ ansible_facts.hostname }}\smb_test_user'
+
+    - name: Assert the successful mapping was observed
+      ansible.builtin.assert:
+        that:
+          - smb_test_success_result.stdout | trim == 'mapped'
+
+    - name: Skip a password-bearing share while the policy is disabled
+      ansible.builtin.include_role:
+        name: 'jaythomasonprojects.sys_admin.mount_network_share'
+      vars:
+        mount_network_share_enabled: false
+        mount_network_share_shares:
+          - name: 'skipped'
+            mount_point: 'T'
+            server: 'localhost'
+            share: 'SysAdminSmbTest'
+            password: '{{ smb_test_password }}'
+            username: '{{ ansible_facts.hostname }}\smb_test_user'
+
+    - name: Inspect skipped mapped-drive state
+      ansible.windows.win_shell: |
+        $sid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value
+        if ($sid -ne '{{ smb_test_account.sid }}') {
+          throw 'Skipped-drive inspection ran under the wrong account'
+        }
+        if (Test-Path "Registry::HKEY_USERS\$sid\Network\T") {
+          throw 'Disabled share policy unexpectedly created a mapping'
+        }
+        'skipped'
+      register: smb_test_skipped_result
+      become: true
+      become_flags: 'logon_type=interactive logon_flags=with_profile'
+      become_method: ansible.builtin.runas
+      vars:
+        ansible_become_pass: '{{ smb_test_password }}'
+        ansible_become_user: '{{ ansible_facts.hostname }}\smb_test_user'
+
+    - name: Assert skipped item left no mapping
+      ansible.builtin.assert:
+        that:
+          - smb_test_skipped_result.stdout | trim == 'skipped'
+
+    - name: Require native failure for a missing share
+      block:
+        - name: Map a nonexistent synthetic SMB share
+          ansible.builtin.include_role:
+            name: 'jaythomasonprojects.sys_admin.mount_network_share'
+          vars:
+            mount_network_share_shares:
+              - name: 'missing'
+                mount_point: 'U'
+                server: 'localhost'
+                share: 'SysAdminSmbMissing'
+                password: '{{ smb_test_password }}'
+                username: '{{ ansible_facts.hostname }}\smb_test_user'
+
+        - name: Fail if nonexistent share unexpectedly mapped
+          ansible.builtin.fail:
+            msg: 'Expected the nonexistent local SMB share to fail mapping'
+      rescue:
+        - name: Assert the share mapping task failed
+          ansible.builtin.assert:
+            that:
+              - ansible_failed_result.failed | default(false)
+              - >-
+                ansible_failed_task.name == 'Map Windows network drive'

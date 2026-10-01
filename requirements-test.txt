@@ -3,6 +3,10 @@
 # (`item.invocation.module_args.dest`). Cap below 14 to stay on core 2.20.x.
 ansible>=11.9.0,<14
 ansible-lint>=25.8.1
-molecule>=25.4.0
+molecule>=25.12.0
 molecule-plugins[docker]
+molecule-proxmox==1.2.1
+proxmoxer>=2.3
+pywinrm>=0.5.0
+requests
 yamllint>=1.35.1

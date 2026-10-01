@@ -1,3 +1,5 @@
+#clear Unattended-Upgrade::Allowed-Origins;
+#clear Unattended-Upgrade::Origins-Pattern;
 Unattended-Upgrade::Origins-Pattern {
 {% if auto_updates_apt_origins | length > 0 %}
 {%   for origin in auto_updates_apt_origins %}
@@ -15,5 +17,5 @@ Unattended-Upgrade::Package-Blacklist {
 {% endfor %}
 };
 
-Unattended-Upgrade::Automatic-Reboot "{{ 'true' if auto_updates_apt_auto_reboot else 'false' }}";
+Unattended-Upgrade::Automatic-Reboot "{{ 'true' if auto_updates_apt_auto_reboot | bool else 'false' }}";
 Unattended-Upgrade::Automatic-Reboot-Time "{{ auto_updates_apt_auto_reboot_time }}";

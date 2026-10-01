@@ -1,0 +1,217 @@
+---
+- name: Check per-user Windows SSH authentication
+  hosts: all
+  gather_facts: true
+  vars:
+    fixture_accounts:
+      - groups:
+          - 'S-1-5-32-544'
+        name: 'sa_key_admin'
+        password: 'Synthetic-Key-Fixture!2026'
+        ssh_authorized_keys:
+          - >-
+            {{ lookup('ansible.builtin.file',
+                      fixture_keys.path ~ '/admin.pub') }}
+      - name: 'sa_key_standard'
+        password: 'Synthetic-Key-Fixture!2026'
+        ssh_authorized_keys:
+          - >-
+            {{ lookup('ansible.builtin.file',
+                      fixture_keys.path ~ '/standard.pub') }}
+  tasks:
+    - name: Allocate temporary controller keys
+      ansible.builtin.tempfile:
+        path: '/tmp/opencode'
+        state: directory
+        prefix: 'per-user-ssh-'
+      delegate_to: localhost
+      register: fixture_keys
+
+    - name: Verify account-specific key access
+      block:
+        - name: Generate distinct temporary SSH keys
+          ansible.builtin.command:
+            argv:
+              - 'ssh-keygen'
+              - '-q'
+              - '-t'
+              - 'ed25519'
+              - '-N'
+              - ''
+              - '-f'
+              - '{{ fixture_keys.path }}/{{ item }}'
+            creates: '{{ fixture_keys.path }}/{{ item }}'
+          delegate_to: localhost
+          loop:
+            - 'admin'
+            - 'standard'
+            - 'shared'
+
+        - name: Create standard fixture account before assigning its profile
+          ansible.windows.win_user:
+            name: 'sa_key_standard'
+            password: 'Synthetic-Key-Fixture!2026'
+            state: present
+          register: fixture_standard_account
+          no_log: true
+
+        - name: Create a native profile with a different directory name
+          ansible.windows.win_user_profile:
+            name: 'sa_key_alternate'
+            username: '{{ fixture_standard_account.sid }}'
+            state: present
+
+        - name: Configure key-bearing accounts
+          ansible.builtin.include_role:
+            name: 'jaythomasonprojects.sys_admin.local_accounts'
+          vars:
+            local_accounts_users: '{{ fixture_accounts }}'
+
+        - name: Configure SSH for fixture logins
+          ansible.builtin.include_role:
+            name: 'jaythomasonprojects.sys_admin.ssh'
+          vars:
+            ssh_server_port: 4022
+
+        - name: Apply SSH service changes before login checks
+          ansible.builtin.meta: flush_handlers
+
+        - name: Seed a key only in the obsolete shared file
+          ansible.windows.win_copy:
+            content: >-
+              {{ lookup('ansible.builtin.file',
+                        fixture_keys.path ~ '/shared.pub') }}
+            dest: 'C:\ProgramData\ssh\administrators_authorized_keys'
+
+        - name: Require genuine administrator and standard-user key logins
+          ansible.builtin.command:
+            argv:
+              - 'ssh'
+              - '-F'
+              - '/dev/null'
+              - '-o'
+              - 'BatchMode=yes'
+              - '-o'
+              - 'IdentitiesOnly=yes'
+              - '-o'
+              - 'StrictHostKeyChecking=no'
+              - '-o'
+              - 'UserKnownHostsFile=/dev/null'
+              - '-o'
+              - 'ConnectTimeout=15'
+              - '-i'
+              - '{{ fixture_keys.path }}/{{ item.key }}'
+              - '-p'
+              - '4022'
+              - '{{ item.user }}@{{ ansible_host }}'
+              - 'whoami'
+          delegate_to: localhost
+          changed_when: false
+          register: fixture_login
+          failed_when: >-
+            fixture_login.rc != 0 or
+            not fixture_login.stdout | lower is search(item.user ~ '$')
+          loop:
+            - key: 'admin'
+              user: 'sa_key_admin'
+            - key: 'standard'
+              user: 'sa_key_standard'
+
+        - name: Reject another account key and the obsolete shared-file key
+          ansible.builtin.command:
+            argv:
+              - 'ssh'
+              - '-F'
+              - '/dev/null'
+              - '-o'
+              - 'BatchMode=yes'
+              - '-o'
+              - 'IdentitiesOnly=yes'
+              - '-o'
+              - 'StrictHostKeyChecking=no'
+              - '-o'
+              - 'UserKnownHostsFile=/dev/null'
+              - '-o'
+              - 'ConnectTimeout=15'
+              - '-i'
+              - '{{ fixture_keys.path }}/{{ item.key }}'
+              - '-p'
+              - '4022'
+              - '{{ item.user }}@{{ ansible_host }}'
+              - 'whoami'
+          delegate_to: localhost
+          changed_when: false
+          register: fixture_rejected_login
+          failed_when: >-
+            fixture_rejected_login.rc != 255 or
+            'Permission denied' not in fixture_rejected_login.stderr
+          loop:
+            - key: 'standard'
+              user: 'sa_key_admin'
+            - key: 'admin'
+              user: 'sa_key_standard'
+            - key: 'shared'
+              user: 'sa_key_admin'
+
+        - name: Inspect native profile placement and protected ACLs
+          ansible.windows.win_powershell:
+            path: >-
+              {{ playbook_dir }}/files/Inspect-PerUserKeys.ps1
+            parameters:
+              ExpectedJson: '{{ fixture_accounts | to_json }}'
+
+        - name: Replace only the administrator key
+          ansible.builtin.include_role:
+            name: 'jaythomasonprojects.sys_admin.local_accounts'
+          vars:
+            local_accounts_users:
+              - name: 'sa_key_admin'
+                ssh_authorized_keys: >-
+                  {{ fixture_accounts[1].ssh_authorized_keys }}
+              - name: 'sa_key_standard'
+
+        - name: Inspect replaced administrator and untouched standard-user keys
+          ansible.windows.win_powershell:
+            path: '{{ playbook_dir }}/files/Inspect-PerUserKeys.ps1'
+            parameters:
+              ExpectedJson: '{{ fixture_expected | to_json }}'
+          vars:
+            fixture_expected:
+              - keys: '{{ fixture_accounts[1].ssh_authorized_keys }}'
+                name: 'sa_key_admin'
+              - keys: '{{ fixture_accounts[1].ssh_authorized_keys }}'
+                name: 'sa_key_standard'
+
+        - name: Clear only the administrator key
+          ansible.builtin.include_role:
+            name: 'jaythomasonprojects.sys_admin.local_accounts'
+          vars:
+            local_accounts_users:
+              - name: 'sa_key_admin'
+                ssh_authorized_keys: []
+              - name: 'sa_key_standard'
+
+        - name: Inspect cleared administrator and untouched standard-user keys
+          ansible.windows.win_powershell:
+            path: '{{ playbook_dir }}/files/Inspect-PerUserKeys.ps1'
+            parameters:
+              ExpectedJson: '{{ fixture_expected | to_json }}'
+          vars:
+            fixture_expected:
+              - keys: []
+                name: 'sa_key_admin'
+              - keys: '{{ fixture_accounts[1].ssh_authorized_keys }}'
+                name: 'sa_key_standard'
+      always:
+        - name: Remove temporary fixture private keys
+          ansible.builtin.file:
+            path: '{{ fixture_keys.path }}'
+            state: absent
+          delegate_to: localhost
+
+- name: Verify management access after altering SSH files
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Execute a Windows module after per-user key replacement
+      ansible.windows.win_ping:

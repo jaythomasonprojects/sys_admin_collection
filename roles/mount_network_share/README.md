@@ -1,99 +1,120 @@
 # mount_network_share
 
-Manages SMB/CIFS network-share policy on Linux and Windows hosts. The role owns
-the Linux `cifs-utils` prerequisite, Linux mount points and `/etc/fstab`
-entries, credential files, and Windows mapped drives and Credential Manager
-entries.
+Manages Server Message Block (SMB) network shares on Linux and Windows.
+Linux uses the Common Internet File System (CIFS) client; Windows uses mapped drive letters.
+Other platforms fail explicitly.
 
-## Supported platforms
+## Guarantee and ownership
 
-- Linux: mounts SMB/CIFS shares at filesystem paths.
-- Windows: maps SMB shares to bare drive letters such as `Z`.
+Linux owns `cifs-utils`, declared mount-point directories, `/etc/fstab` entries,
+and per-share root-owned credential files, `/etc/samba/credentials/<share-name>`, with
+mode `0600`. The default `present` state writes mount policy without requiring
+an immediate mount. Existing credential-directory ownership and modes are
+preserved; legacy credential files are not discovered or deleted.
 
-The role fails on other platforms.
+Windows owns declared drive mappings and the configured user's Credential
+Manager entries. Each share declares its own authentication.
+The role does not manage the SMB server or its share permissions.
+
+## Interface
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `mount_network_share_enabled` | `true` | Manage declared credentials and shares |
+| `mount_network_share_reload_remote_fs` | `false` | Restart Linux `remote-fs.target` after changes |
+| `mount_network_share_shares` | `[]` | List of share mappings |
+
+Each share requires `name`, `server`, `share`, and `mount_point`. The name labels
+task output and identifies its Linux credential file. Linux names must be distinct
+single filenames, not `.` or `..`, and contain no path separators or whitespace.
+The server and share form `\\server\share`. Argument validation
+still checks declared fields when the role is disabled.
+
+Linux example, using an existing local owner and group:
+
+```yaml
+mount_network_share_shares:
+  - fstab_options:
+      - '_netdev'
+      - 'nofail'
+    group: 'example_user'
+    mode: '0750'
+    mount_point: '/mnt/example-data'
+    name: 'example_data'
+    owner: 'example_user'
+    password: '{{ vault_mount_network_share_password }}'
+    server: 'files.example.invalid'
+    share: 'Data'
+    username: 'example_user'
+```
+
+Keep passwords in Ansible Vault or another secret source. Enabled, non-empty
+share input requires non-empty `username` and `password` on every share,
+including removal requests.
+Empty share input makes no changes.
+
+### Linux share fields
+
+| Field | Default | Meaning |
+| --- | --- | --- |
+| `fstab_options` | `['_netdev', 'nofail', 'iocharset=utf8']` | List of mount options, not a comma-separated string |
+| `group` | `'root'` | Mount-point group and default CIFS file group |
+| `mode` | `'0755'` | Mount-point directory mode |
+| `mount_point` | Required | Filesystem path |
+| `owner` | `'root'` | Mount-point owner and default CIFS file owner |
+| `state` | `'present'` | Native mount state |
+
+State accepts `present`, `absent`, `mounted`, `unmounted`, or
+`absent_from_fstab`, passed to `ansible.posix.mount`. The role adds `uid=<owner>`
+and `gid=<group>` options unless supplied explicitly. Those values control local
+ownership; SMB server permissions still apply to the SMB credential account.
+The owned credential path is always added to mount options.
+
+### Windows share fields and prerequisites
+
+Use a bare `mount_point` letter such as `Z`, not `Z:`. Use `state: present`
+or `state: absent`; Linux-only mount options, ownership, and modes do not apply.
+The credential username must also identify the local user whose drive is mapped,
+and its password must permit that user's interactive logon.
+
+The role uses interactive `runas` with the user's profile to persist a local
+`domain_password` credential before mapping the drive. Windows allows one such
+credential per server per user. Native password refresh reports a change on
+every run, even when the drive mapping is already correct. Shares on the same
+server under the same user must use consistent credentials.
+
+## Enable behaviour and invariants
+
+`mount_network_share_enabled: false` skips credential validation and share work.
+It does not remove shares from an earlier run. Remove a share with an explicit
+`state: absent` declaration while the role is enabled.
+
+Share removal retains Linux's per-share files and Windows's server credentials.
+The role does not discover or delete legacy files, including `sys-admin`.
+Remove a retained credential manually
+only after confirming no mapping or mount depends on it.
+
+`mount_network_share_reload_remote_fs: true` restarts `remote-fs.target` after
+Linux credential, mount, or fstab changes. The role does not mount a remote
+filesystem merely to validate connectivity.
 
 ## Implementation map
 
-- `tasks/main.yml`: asserts the supported platform, validates enabled share
-  invariants and credentials, and dispatches once to the supported platform flow.
-- `tasks/linux/main.yml`: installs `cifs-utils`, calculates scoped values, and
-  passes them to each Linux share include.
-- `tasks/linux/share.yml`: manages mount points, credentials, and fstab.
-- `tasks/windows/main.yml`: processes each Windows share.
-- `tasks/windows/share.yml`: persists SMB credentials and maps drive letters.
+- `tasks/main.yml` checks the platform and enabled credential requirements.
+- `tasks/linux/main.yml` installs the client and prepares the credential directory.
+- `tasks/linux/shares.yml` calculates native mount state and options.
+- `tasks/linux/share.yml` writes protected credentials and manages mounts.
+- `tasks/windows/main.yml` iterates Windows shares.
+- `tasks/windows/share.yml` persists credentials and maps drive letters.
+- `handlers/main.yml` conditionally restarts `remote-fs.target`.
 
-## Variables
+## Migration
 
-```yaml
-mount_network_share_enabled: true
-mount_network_share_reload_remote_fs: false
-mount_network_share_shares:
-  - name: 'workstation_data'
-    server: 'files.example.invalid'
-    share: 'Data'
-    mount_point: '/mnt/workstation-data'
-    owner: 'molecule'
-    group: 'molecule'
-    mode: '0750'
-    fstab_options:
-      - '_netdev'
-      - 'nofail'
-    credentials_path: '/home/molecule/.smbcredentials'
-    credentials_owner: 'molecule'
-    credentials_group: 'molecule'
-    credentials_mode: '0600'
-    username: 'molecule'
-    password: '{{ vault_mount_network_share_password }}'
-```
-
-`mount_network_share_enabled` defaults to `true`. Set it to `false` to skip
-credential validation and share management. Disabling the role does not remove
-shares managed by an earlier run.
-
-`mount_network_share_shares` defaults to `[]`. Every entry, including an entry
-provided while the role is disabled, must define `name`, `server`, `share`, and
-`mount_point`. The role argument specification validates supplied field types,
-defaults, and `state` choices.
-Define `username` and `password` together as non-empty strings, or omit both.
-
-On Linux, `mount_point` is a filesystem path. `state` is passed to
-`ansible.posix.mount` and defaults to `present`; `absent` and
-`absent_from_fstab` remove the managed credential file when credentials were
-declared. `owner`, `group`, and `mode` configure present mount-point
-directories. The role also adds `uid=<owner>` and `gid=<group>` CIFS options
-unless `fstab_options` already provides them. This makes the mounted files
-locally accessible to the configured owner and group. SMB server permissions
-still apply to the configured SMB account.
-
-With credentials, Linux writes a file at `credentials_path`, defaulting to
-`/etc/samba/credentials/<name>`. `credentials_owner`, `credentials_group`, and
-`credentials_mode` default to `root`, `root`, and `0600`. Keep passwords in
-Ansible Vault or another secret source. A credential path must be suitable for
-the configured account and should not be shared by shares requiring different
-credentials. Set `fstab_options` as a YAML list only; it defaults to
-`['_netdev', 'nofail', 'iocharset=utf8']`.
-
-On Windows, `mount_point` must be a bare mapped-drive letter. The role maps
-`\\server\share`; Linux-only fstab and credential-path settings do not apply.
-
-## Activation policy
-
-`mount_network_share_reload_remote_fs` defaults to `false`. Set it to `true`
-to restart `remote-fs.target` after a Linux credential, fstab, or mount change.
-The role does not mount a remote filesystem merely to validate connectivity.
-
-## Invariants and migration
-
-Linux package installation is mandatory. The
-`mount_network_share_manage_packages` opt-out has been removed, so remove it
-from inventories and playbooks.
-
-Windows SMB authentication is coupled to the configured local user. The role
-uses interactive `runas` so that user's Credential Manager profile receives a
-local `domain_password` entry before drive mapping. Windows permits one such
-credential per server per user, so every share for a given server and user must
-use the same credentials. Removing a mapped drive intentionally retains the
-server credential because another share can still use it. The credential secret
-refreshes on every run so inventory password changes take effect; Windows does
-not expose stored secrets for comparison, so this refresh is reported as a
-change even when the mapped drives are already compliant.
+Move the existing host-level `mount_network_share_credential.username` and
+`.password` values into `username` and `password` on each share, then remove
+the host mapping. Keep existing Vault expressions rather than copying secrets.
+Remove per-share `credentials_path`, `credentials_owner`, `credentials_group`,
+and `credentials_mode` if present. Paths and permissions are fixed, and there
+is no host-credential fallback.
+Remove `mount_network_share_manage_packages`; client installation is mandatory.
+The role does not remove old credential files during this migration.

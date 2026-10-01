@@ -1,0 +1,42 @@
+---
+- name: Prepare auto_updates scenario
+  hosts: all
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Gather minimal facts
+      ansible.builtin.setup:
+        gather_subset:
+          - "!all"
+          - "min"
+
+    - name: Install package default policy for APT fixture
+      ansible.builtin.apt:
+        name: 'unattended-upgrades'
+        state: present
+        update_cache: true
+      when: ansible_facts.pkg_mgr == 'apt'
+
+    - name: Add extra allowances to package default policy
+      ansible.builtin.blockinfile:
+        path: '/etc/apt/apt.conf.d/50unattended-upgrades'
+        marker: '// {mark} Molecule extra origins'
+        block: |
+          Unattended-Upgrade::Allowed-Origins {
+              "Molecule:unrequested";
+          };
+          Unattended-Upgrade::Origins-Pattern {
+              "origin=Molecule,codename=unrequested";
+          };
+      when: ansible_facts.pkg_mgr == 'apt'
+
+    - name: Stop and mask native APT timers before convergence
+      ansible.builtin.systemd_service:
+        enabled: false
+        masked: true
+        name: '{{ item }}'
+        state: stopped
+      loop:
+        - 'apt-daily.timer'
+        - 'apt-daily-upgrade.timer'
+      when: ansible_facts.pkg_mgr == 'apt'

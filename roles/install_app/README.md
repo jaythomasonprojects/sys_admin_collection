@@ -1,13 +1,13 @@
 # install_app
 
 Installs applications through native package, Debian installer, npm, Flatpak,
-and Chocolatey channels. It supports Debian, EL, Fedora, Ubuntu, and Windows
-hosts.
+and Chocolatey channels. It supports Debian, Enterprise Linux, Fedora, Ubuntu,
+and Windows hosts.
 
 ## Guarantee and ownership
 
 On Linux, the role processes channels in this order: native packages, Debian
-package installers, npm applications, then Flatpak applications. Native package
+package references, npm applications, then Flatpak applications. Native package
 installation owns required npm and Flatpak tools. Its first-found distribution
 data selects `npm` for Debian-family hosts and `nodejs-npm` for Red Hat-family
 hosts; Flatpak requests receive `flatpak`.
@@ -24,24 +24,6 @@ channels to Windows.
 Application package lists are site data supplied from `group_vars` in the
 consuming playbook repository, not from this collection.
 
-## Implementation map
-
-- `tasks/main.yml`: validates the supported platform and dispatches to the
-  platform implementation.
-- `tasks/linux/main.yml`: loads first-found distribution data, then processes
-  Linux channels in their required order.
-- `tasks/linux/native_packages.yml`: installs requested native packages and
-  channel prerequisites.
-- `tasks/linux/debian_packages.yml`: skips non-APT hosts or dispatches enabled
-  Debian installer definitions.
-- `tasks/linux/deb_package.yml`: validates, prepares, and installs each Debian
-  installer definition.
-- `tasks/linux/npm.yml`: validates bare names, checks npm, and installs global
-  packages.
-- `tasks/linux/flatpaks.yml`: checks Flatpak, optionally configures Flathub,
-  and installs refs.
-- `tasks/windows/main.yml`: installs Chocolatey packages.
-
 ## Variables
 
 - `install_app_enabled`: whether this host should have its requested
@@ -49,19 +31,23 @@ consuming playbook repository, not from this collection.
   role and does not remove applications installed by an earlier run.
 - `install_app_packages`: native Linux package names or Windows Chocolatey
   package names to install. Defaults to `[]`.
-- `install_app_debs`: Debian package installers to apply on APT hosts. Defaults
-  to `[]`. Each item supports:
-  - `name`: human-readable label used in task output.
-  - `enabled`: set to `false` to skip an item. Defaults to `true`.
-  - `src`: package file on the controller to copy to the managed host.
-  - `url`: package URL to download to the managed host.
-  - `dest`: managed-host path used with `src` or `url`.
-  - `deb`: managed-host package path or URL passed directly to `apt`.
-  - `state`: package state passed to `apt`. Defaults to `present`.
-  - `mode`: copied/downloaded file mode. Defaults to `0644`.
-  - `checksum`: checksum for downloaded packages.
-  - `creates`: managed-host path that skips the installer when it already
-    exists.
+- `install_app_debs`: list of absolute package paths on the managed APT host
+  or HTTP(S) package URLs. Defaults to `[]`. For example:
+
+  ```yaml
+  install_app_debs:
+    - '/usr/local/src/example.deb'
+    - 'https://packages.example.invalid/example_1.2.3_all.deb'
+  ```
+
+  The role installs the referenced package with APT's native package/version
+  idempotence. It does not copy controller files, stage downloads, verify
+  checksums or remove packages. A caller requiring those guarantees must copy
+  or download and verify the package before the role runs, then supply its
+  managed-host path. Construct the list conditionally to skip an application;
+  there is no per-item enable or state switch. Use versioned URLs or verified
+  local files when mutable URL content is not acceptable. The input type is
+  declared in `meta/argument_specs.yml`.
 - `install_app_flatpaks`: Flatpak refs to install. Defaults to `[]`.
 - `install_app_manage_flatpak_remote`: ensure Flathub is configured before
   installing Flatpak refs. Defaults to `true`.
@@ -71,16 +57,25 @@ consuming playbook repository, not from this collection.
 
 ## Invariants
 
-- All requested native packages and channel prerequisites are installed once,
-  with `state: present`.
-- `install_app_debs` retains its item schema. Non-APT hosts skip it with a
-  debug message without accessing installer paths.
-- Invalid Debian installer definitions fail before any installer action.
+- Requested native packages and channel prerequisites use `state: present`.
+- Non-APT hosts skip `install_app_debs` without accessing package references.
+- Missing active APT references fail installation instead of silently skipping.
 - npm package requests reject versioned names and require a working executable
   after prerequisite installation.
 
+## Implementation map
+
+- `tasks/main.yml` checks the platform and dispatches enabled hosts.
+- `tasks/linux/main.yml` loads distribution data and selects package channels.
+- `tasks/linux/native_packages.yml` installs native packages and prerequisites.
+- `tasks/linux/debian_packages.yml` uses native APT for package paths or URLs.
+- `tasks/linux/npm.yml` validates bare names and installs global packages with
+  privilege escalation for the system-wide prefix.
+- `tasks/linux/flatpaks.yml` checks Flatpak and manages Flathub and requested refs.
+- `tasks/windows/main.yml` installs Chocolatey packages, bootstrapping Chocolatey
+  through its native module if necessary.
+
 ## Migration
 
-No variables or item schemas changed. Remove caller-managed `npm`,
-`nodejs-npm`, and `flatpak` entries from `install_app_packages` when they were
-only prerequisites for the corresponding channels; keeping them is harmless.
+Beta dictionary-valued `install_app_debs` entries and beta configuration
+upgrades are unsupported. Supply string package references on fresh hosts.

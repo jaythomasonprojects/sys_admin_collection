@@ -9,50 +9,12 @@ argument_specs:
         the consuming playbook repository, not from this collection.
     options:
       install_app_debs:
-        description: Debian package installers to apply on APT hosts.
+        description: >-
+          Managed-host Debian package paths or HTTP(S) URLs to install on APT
+          hosts.
         type: list
-        elements: dict
+        elements: str
         default: []
-        options:
-          checksum:
-            description: Checksum for a downloaded Debian package.
-            type: str
-          creates:
-            description: >-
-              Managed-host path that skips the installer when present.
-            type: str
-          deb:
-            description: Managed-host package path or URL passed to APT.
-            type: str
-          dest:
-            description: >-
-              Managed-host destination for a copied or downloaded package.
-            type: str
-          enabled:
-            description: Whether to apply this Debian package installer.
-            type: bool
-            default: true
-          mode:
-            description: File mode for a copied or downloaded package.
-            type: str
-            default: '0644'
-          name:
-            description: Human-readable label used in task output.
-            type: str
-          src:
-            description: >-
-              Package file on the controller to copy to the managed host.
-            type: str
-          state:
-            description: Package state passed to APT.
-            type: str
-            choices:
-              - 'present'
-              - 'absent'
-            default: 'present'
-          url:
-            description: Package URL to download to the managed host.
-            type: str
       install_app_enabled:
         description:
           - Whether this host should have requested applications installed.

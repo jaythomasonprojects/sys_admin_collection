@@ -6,15 +6,10 @@
     mode: '0755'
   become: true
 
-- name: Delete legacy SSH client configuration
-  ansible.builtin.file:
-    path: '/etc/ssh/ssh_config.d/99-custom.conf'
-    state: absent
-  become: true
-
-- name: Deploy SSH client configuration
+- name: Deploy SSH client policy
   ansible.builtin.template:
     src: 'ssh_custom.conf.j2'
-    dest: '/etc/ssh/ssh_config.d/99-sys-admin-ssh.conf'
+    dest: '/etc/ssh/ssh_config.d/00-sys-admin-ssh.conf'
     mode: '0644'
+    validate: '/usr/bin/ssh -G -F %s sys-admin-probe.invalid'
   become: true

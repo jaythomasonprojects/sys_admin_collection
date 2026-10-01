@@ -1,12 +1,15 @@
 # disable_printer_discovery
 
 Stops and disables Avahi and CUPS printer-discovery services on Linux hosts
-using systemd. Missing units are already compliant.
+using systemd. Genuinely missing units are already compliant; failed service
+inspection is not.
 
 ## Guarantee
 
-When enabled, the role stops and disables loaded `avahi-daemon.service`,
-`avahi-daemon.socket`, and `cups-browsed.service`.
+When enabled, the role stops and disables present `avahi-daemon.service`,
+`avahi-daemon.socket`, and `cups-browsed.service` units without removing an
+existing mask. It rejects failed or unusable service-manager inspection.
+It owns only those unit states, not their packages or unrelated service policy.
 
 ## Interface
 
@@ -21,6 +24,7 @@ This is the role's only public variable.
 `disable_printer_discovery_enabled: false` skips the policy rather than
 converging services to another state. It does not restart services that an
 earlier enabled run stopped.
+The Linux and systemd prerequisites still apply when disabled.
 
 ## Supported platforms
 
@@ -33,7 +37,7 @@ systemd fails with
 
 - `tasks/main.yml` rejects unsupported platforms and dispatches Linux hosts.
 - `tasks/linux/main.yml` validates systemd, inspects the fixed service list, and
-  stops and disables loaded units.
+  validates each query before stopping and disabling loaded or masked units.
 - `vars/main.yml` holds the internal printer-discovery service list.
 
 ## Migration

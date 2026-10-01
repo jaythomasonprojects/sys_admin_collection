@@ -1,0 +1,66 @@
+---
+- name: Prepare mount_network_share scenario
+  hosts: all
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Gather minimal facts
+      ansible.builtin.setup:
+        gather_subset:
+          - '!all'
+          - 'min'
+
+    - name: Refresh APT package metadata
+      ansible.builtin.apt:
+        update_cache: true
+      when: ansible_facts['pkg_mgr'] == 'apt'
+
+    - name: Install python3-rpm for package_facts on DNF hosts
+      ansible.builtin.dnf:
+        name: 'python3-rpm'
+        state: present
+      when: ansible_facts['pkg_mgr'] in ['dnf', 'dnf5']
+
+    - name: Ensure molecule group exists
+      ansible.builtin.group:
+        gid: 1000
+        name: 'molecule'
+        state: present
+
+    - name: Ensure molecule user exists
+      ansible.builtin.user:
+        create_home: true
+        group: 'molecule'
+        name: 'molecule'
+        state: present
+        uid: 1000
+
+    - name: Permit molecule to escalate without a password
+      ansible.builtin.copy:
+        content: "molecule ALL=(ALL) NOPASSWD: ALL\n"
+        dest: '/etc/sudoers.d/90-molecule'
+        mode: '0440'
+
+    - name: Create credential parent with retained metadata
+      ansible.builtin.file:
+        path: '/etc/samba/credentials'
+        group: 'root'
+        mode: '0750'
+        owner: 'root'
+        state: directory
+
+    - name: Create protected credential directory with a retained mode
+      ansible.builtin.file:
+        path: '/etc/samba/credentials/private'
+        group: 'root'
+        mode: '0750'
+        owner: 'root'
+        state: directory
+
+    - name: Create retained legacy credential fixture
+      ansible.builtin.copy:
+        content: 'Unrelated legacy credential fixture'
+        dest: '/etc/samba/credentials/sys-admin'
+        group: 'root'
+        mode: '0600'
+        owner: 'root'

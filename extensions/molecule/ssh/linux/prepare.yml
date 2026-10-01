@@ -1,0 +1,56 @@
+---
+- name: Prepare SSH scenario
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Gather minimal facts
+      ansible.builtin.setup:
+        gather_subset:
+          - "!all"
+          - "min"
+
+    - name: Remove OpenSSH packages
+      ansible.builtin.apt:
+        name:
+          - 'openssh-client'
+          - 'openssh-server'
+        state: absent
+        update_cache: true
+      when: ansible_facts.distribution in ['Debian', 'Ubuntu']
+
+    - name: Remove Fedora OpenSSH packages
+      ansible.builtin.dnf:
+        name:
+          - 'openssh-clients'
+          - 'openssh-server'
+        state: absent
+      when: ansible_facts.distribution == 'Fedora'
+
+    - name: Create SSH drop-in directories
+      ansible.builtin.file:
+        path: '{{ item }}'
+        state: directory
+        mode: '0755'
+      loop:
+        - '/etc/ssh/ssh_config.d'
+        - '/etc/ssh/sshd_config.d'
+
+    - name: Seed cloud-init SSHD drop-in
+      ansible.builtin.copy:
+        dest: '/etc/ssh/sshd_config.d/50-cloud-init.conf'
+        content: |
+          PasswordAuthentication yes
+          PermitRootLogin yes
+        mode: '0644'
+
+    - name: Create unprivileged SSH policy caller
+      ansible.builtin.user:
+        create_home: true
+        name: 'molecule'
+        state: present
+
+    - name: Permit unprivileged caller to escalate without a password
+      ansible.builtin.copy:
+        content: "molecule ALL=(ALL) NOPASSWD: ALL\n"
+        dest: '/etc/sudoers.d/90-molecule'
+        mode: '0440'

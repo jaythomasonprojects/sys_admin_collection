@@ -1,0 +1,164 @@
+---
+- name: Verify protected per-share authentication
+  hosts: all
+  become: true
+  gather_facts: true
+  vars:
+    smb_test_shares:
+      - mount_point: '/mnt/host-one'
+        name: 'host_one'
+        password: 'Synthetic-Share-One!'
+        server: 'files.example.invalid'
+        share: 'One'
+        username: 'fixture_one'
+      - mount_point: '/mnt/host-two'
+        name: 'host_two'
+        password: 'Synthetic-Share-Two!'
+        server: 'files.example.invalid'
+        share: 'Two'
+        username: 'fixture_two'
+  tasks:
+    - name: Inspect each credential and retained fixture
+      ansible.builtin.stat:
+        path: '/etc/samba/credentials/{{ item }}'
+      loop:
+        - 'host_one'
+        - 'host_two'
+        - 'sys-admin'
+        - 'private'
+        - '.'
+      register: smb_test_before
+
+    - name: Read each protected credential
+      ansible.builtin.slurp:
+        src: '/etc/samba/credentials/{{ item.name }}'
+      loop: '{{ smb_test_shares }}'
+      no_log: true
+      register: smb_test_contents
+
+    - name: Require matching credentials and protected metadata
+      ansible.builtin.assert:
+        that:
+          - >-
+            smb_test_contents.results[item].content | b64decode ==
+            'username=' ~ smb_test_shares[item].username ~ '\npassword='
+            ~ smb_test_shares[item].password ~ '\n'
+          - smb_test_before.results[item].stat.mode == '0600'
+          - smb_test_before.results[item].stat.pw_name == 'root'
+          - smb_test_before.results[item].stat.gr_name == 'root'
+      loop: '{{ range(2) | list }}'
+      no_log: true
+
+    - name: Read initial mount policy
+      ansible.builtin.slurp:
+        src: '/etc/fstab'
+      register: smb_test_fstab
+
+    - name: Require each mount to reference its own file
+      ansible.builtin.assert:
+        that:
+          - >-
+            smb_test_fstab.content | b64decode | regex_search(
+              '(?m)^//files.example.invalid/' ~ item.share ~ '\s+'
+              ~ item.mount_point
+              ~ '\s+cifs\s+[^\n]*credentials=/etc/samba/credentials/'
+              ~ item.name ~ '(,|\s)') is not none
+      loop: '{{ smb_test_shares }}'
+      no_log: true
+
+    - name: Check rejected and inactive declarations
+      ansible.builtin.include_tasks: 'verify_rejected_declaration.yml'
+      loop:
+        - description: 'escaping filename'
+          failed_task: 'Require distinct Linux credential filenames'
+          shares: '{{ [smb_test_shares[0] | combine({"name": "../escape"})] }}'
+        - description: 'duplicate filename'
+          failed_task: 'Require distinct Linux credential filenames'
+          shares: >-
+            {{ [smb_test_shares[0],
+                smb_test_shares[1] | combine({'name': 'host_one'})] }}
+        - description: 'missing authentication'
+          failed_task: 'Require credentials for each declared share'
+          shares: '{{ [smb_test_shares[0] | combine({"password": ""})] }}'
+      loop_control:
+        loop_var: smb_test_invalid
+        label: '{{ smb_test_invalid.description }}'
+
+    - name: Skip disabled declarations without authentication
+      ansible.builtin.include_role:
+        name: 'jaythomasonprojects.sys_admin.mount_network_share'
+      vars:
+        mount_network_share_enabled: false
+        mount_network_share_shares: >-
+          {{ [smb_test_shares[0] | combine({'password': ''})] }}
+
+    - name: Apply an empty share list
+      ansible.builtin.include_role:
+        name: 'jaythomasonprojects.sys_admin.mount_network_share'
+      vars:
+        mount_network_share_shares: []
+
+    - name: Read policy after inactive inputs
+      ansible.builtin.slurp:
+        src: '/etc/fstab'
+      register: smb_test_inactive_fstab
+
+    - name: Require inactive inputs to leave policy unchanged
+      ansible.builtin.assert:
+        that:
+          - smb_test_inactive_fstab.content == smb_test_fstab.content
+
+    - name: Remove one share while retaining another
+      ansible.builtin.include_role:
+        name: 'jaythomasonprojects.sys_admin.mount_network_share'
+      vars:
+        mount_network_share_shares: >-
+          {{ [smb_test_shares[0] | combine({'state': 'absent'}),
+              smb_test_shares[1]] }}
+
+    - name: Inspect retained credentials and fixtures
+      ansible.builtin.stat:
+        path: '/etc/samba/credentials/{{ item }}'
+      loop:
+        - 'host_one'
+        - 'host_two'
+        - 'sys-admin'
+        - 'private'
+        - '.'
+      register: smb_test_after
+
+    - name: Require retained credentials and metadata to remain unchanged
+      ansible.builtin.assert:
+        that:
+          - >-
+            smb_test_after.results[item].stat.mode
+            == smb_test_before.results[item].stat.mode
+          - >-
+            smb_test_after.results[item].stat.uid
+            == smb_test_before.results[item].stat.uid
+          - >-
+            smb_test_after.results[item].stat.gid
+            == smb_test_before.results[item].stat.gid
+          - >-
+            smb_test_after.results[item].stat.mtime
+            == smb_test_before.results[item].stat.mtime
+          - >-
+            smb_test_after.results[item].stat.checksum
+            | default('directory')
+            == smb_test_before.results[item].stat.checksum
+            | default('directory')
+      loop: '{{ range(5) | list }}'
+
+    - name: Read remaining mount policy
+      ansible.builtin.slurp:
+        src: '/etc/fstab'
+      register: smb_test_remaining
+
+    - name: Require isolated mount removal
+      ansible.builtin.assert:
+        that:
+          - "'/mnt/host-one' not in smb_test_remaining.content | b64decode"
+          - "'/mnt/host-two' in smb_test_remaining.content | b64decode"
+          - >-
+            'credentials=/etc/samba/credentials/host_two'
+            in smb_test_remaining.content | b64decode

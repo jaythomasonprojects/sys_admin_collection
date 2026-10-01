@@ -1,10 +1,7 @@
 ---
-# The checkout directory still uses jtprojects.infra for now, but the
-# Galaxy-facing collection identity has cut over to
-# jaythomasonprojects.sys_admin.
 namespace: jaythomasonprojects
 name: sys_admin
-version: '0.9.2'
+version: '0.10.0'
 readme: README.md
 authors:
   - Jay Thomason
@@ -17,19 +14,24 @@ tags:
   - automation
   - sysadmin
   - linux
-# Keep metadata URLs on the current source repo until the dedicated
-# ansible-collection-sys_admin repository/folder rename is completed.
-repository: "https://github.com/jaythomasonprojects/me-playbooks"
-documentation: "https://github.com/jaythomasonprojects/me-playbooks"
-homepage: "https://github.com/jaythomasonprojects/me-playbooks"
-issues: "https://github.com/jaythomasonprojects/me-playbooks/issues"
+repository: 'https://github.com/jaythomasonprojects/sys_admin_collection'
+documentation: 'https://github.com/jaythomasonprojects/sys_admin_collection'
+homepage: 'https://github.com/jaythomasonprojects/sys_admin_collection'
+issues: 'https://github.com/jaythomasonprojects/sys_admin_collection/issues'
 dependencies:
   ansible.posix: "*"
-  ansible.windows: "*"
+  ansible.windows: '>=3.6.0'
   chocolatey.chocolatey: "*"
   community.general: "*"
   community.windows: "*"
 build_ignore:
+  - '.config'
+  - '.ruff_cache'
+  - '.vscode'
+  - 'dist'
+  - 'scripts'
+  - '.env'
+  - '.env.*'
   - ".opencode"
   - ".ansible"
   - ".cache"

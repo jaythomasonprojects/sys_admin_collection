@@ -1,4 +1,24 @@
 ---
+- name: Load USB module package data
+  ansible.builtin.include_vars: >-
+    {{ lookup('ansible.builtin.first_found', disable_usb_storage_vars_files) }}
+  vars:
+    disable_usb_storage_vars_files:
+      files:
+        - '{{ ansible_facts.distribution }}.yml'
+        - '{{ ansible_facts.os_family }}.yml'
+        - 'Linux.yml'
+      paths:
+        - '{{ role_path }}/vars'
+  when: disable_usb_storage_enabled | bool
+
+- name: Install USB module management prerequisite
+  ansible.builtin.package:
+    name: '{{ disable_usb_storage_kmod_package }}'
+    state: present
+  become: true
+  when: disable_usb_storage_enabled | bool
+
 - name: Create modprobe configuration directory
   ansible.builtin.file:
     group: 'root'

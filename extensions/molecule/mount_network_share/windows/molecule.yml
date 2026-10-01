@@ -1,0 +1,38 @@
+---
+driver:
+  name: 'molecule-proxmox'
+  options:
+    full: false
+    node: '${MOLECULE_PROXMOX_NODE}'
+    pool: '${MOLECULE_PROXMOX_POOL}'
+    proxmox_secrets: '${MOLECULE_PROXMOX_SECRETS}'
+    sethostname: false
+    ssh_identity_file: '${MOLECULE_WINDOWS_IDENTITY_FILE}'
+    ssh_port: '${MOLECULE_WINDOWS_SSH_PORT}'
+    ssh_user: '${MOLECULE_WINDOWS_USER}'
+    timeout: 1200
+    validate_certs: true
+
+platforms:
+  - name: 'mount-network-share-windows'
+    newid: '${MOLECULE_MOUNT_NETWORK_SHARE_WINDOWS_VMID:-required-vmid}'
+    template_vmid: '${MOLECULE_WINDOWS_TEMPLATE_VMID:-required-template-vmid}'
+
+provisioner:
+  connection_options:
+    ansible_shell_type: 'powershell'
+  inventory:
+    group_vars:
+      all:
+        smb_test_password: 'Synthetic-Smb-Fixture!2026'
+
+scenario:
+  name: 'mount_network_share/windows'
+  # Each mapping refreshes its stored password and honestly reports a change.
+  test_sequence:
+    - dependency
+    - create
+    - prepare
+    - converge
+    - verify
+    - destroy

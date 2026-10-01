@@ -12,4 +12,4 @@ argument_specs:
           - Whether this host should answer ping.
           - Setting this to false removes both managed rules.
         type: bool
-        default: true
+        default: false

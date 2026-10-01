@@ -1,0 +1,51 @@
+---
+- name: Seed Windows ping rules
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Wait for the clone connection
+      ansible.builtin.wait_for_connection:
+        timeout: 600
+
+    - name: Seed role-owned echo rules
+      community.windows.win_firewall_rule:
+        action: allow
+        direction: in
+        enabled: true
+        icmp_type_code: '{{ item.icmp_type_code }}'
+        name: '{{ item.name }}'
+        protocol: '{{ item.protocol }}'
+        state: present
+      loop:
+        - icmp_type_code: '8:*'
+          name: 'Allow ICMPv4 ping'
+          protocol: 'icmpv4'
+        - icmp_type_code: '128:*'
+          name: 'Allow ICMPv6 ping'
+          protocol: 'icmpv6'
+
+    - name: Seed foreign echo rule
+      community.windows.win_firewall_rule:
+        action: allow
+        direction: in
+        enabled: true
+        icmp_type_code: '8:*'
+        name: 'sys_admin_ping_test_foreign_echo'
+        protocol: 'icmpv4'
+        state: present
+
+    - name: Check seeded rules
+      ansible.windows.win_shell: |
+        $names = @('Allow ICMPv4 ping', 'Allow ICMPv6 ping',
+          'sys_admin_ping_test_foreign_echo')
+        $rules = @(
+          Get-NetFirewallRule -DisplayName $names -ErrorAction SilentlyContinue
+        )
+        $rules.Count
+      register: ping_seeded
+      changed_when: false
+
+    - name: Assert seeded rules exist
+      ansible.builtin.assert:
+        that:
+          - ping_seeded.stdout | trim == '3'

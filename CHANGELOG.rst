@@ -1,6 +1,46 @@
 jaythomasonprojects.sys_admin changelog
 =======================================
 
+0.10.0
+------
+
+- Changed Windows SSH keys to each account's native profile, including
+  administrators. Declared keys replace or clear only that account's file;
+  protected ACLs use the account SID. The former shared administrator file is
+  no longer read or managed.
+- Kept per-share SMB usernames and passwords while removing custom credential
+  paths and permissions. Linux owns root-only files at
+  ``/etc/samba/credentials/<share-name>`` and retains them after share removal.
+  Windows preserves configured-user mappings and native password refresh.
+- Simplified ``install_app_debs`` to a list of managed-host Debian package
+  paths or URLs installed with native APT state and idempotence. Removed beta
+  dictionary options and role-managed acquisition, staging and sentinel checks.
+- Made inbound ping rules opt-in while retaining explicit enablement and
+  removal confined to the two role-owned rules.
+- Made SSH own the complete server configuration with native validation before
+  replacement. Fedora servers still include the system crypto policy; other
+  server drop-ins are no longer read. Moved Linux client policy to
+  ``00-sys-admin-ssh.conf`` so it takes precedence, and preserved foreign files
+  without merging them. Installed Windows OpenSSH through ``win_capability``
+  with ``ansible.windows >=3.6.0`` and native prerequisite reporting.
+- Stopped removing legacy SSH drop-ins, reversing 0.9.2. Remove the former
+  ``99-custom.conf`` and ``99-sys-admin-*.conf`` files yourself if they remain.
+- Suppressed password-bearing SMB task results from callbacks.
+- Cleared inherited APT origins before declaring automatic-update policy and
+  restored native APT timers when enabled. Foreign later policy files remain
+  the operator's responsibility.
+- Corrected automatic-update template and DNF timer Boolean handling so false
+  strings no longer enable updates or automatic reboot.
+- Escalated Linux SSH restarts, global npm installation and protected SMB
+  credential-directory inspection when the caller is unprivileged.
+- Corrected Debian GDM automatic-login policy to use ``daemon.conf`` while
+  keeping Ubuntu on ``custom.conf``.
+- Made enabled USB-storage enforcement install its ``kmod`` prerequisite.
+- Breaking: dropped Ubuntu 22.04 from ``desktop_layout``, which now supports
+  Ubuntu 24.04 and 26.04 only.
+- Made printer-discovery policy preserve masked units and reject failed or
+  unusable service inspection instead of silently skipping enforcement.
+
 0.9.2
 -----
 

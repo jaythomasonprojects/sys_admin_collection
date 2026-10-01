@@ -5,3 +5,4 @@
   loop_control:
     loop_var: mount_network_share_item
     label: '{{ mount_network_share_item.name }}'
+  no_log: true

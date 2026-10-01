@@ -1,0 +1,79 @@
+---
+- name: Prove independent Windows management access
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Require the WinRM transport override
+      ansible.builtin.assert:
+        that:
+          - ansible_connection == 'winrm'
+          - ansible_port | int == 5986
+          - inventory_hostname == 'ssh-windows'
+
+    - name: Wait for the clone connection
+      ansible.builtin.wait_for_connection:
+        timeout: 600
+
+    - name: Verify Windows module execution over WinRM
+      ansible.windows.win_ping:
+
+    - name: Stop SSH without losing the management connection
+      ansible.windows.win_service:
+        name: 'sshd'
+        state: stopped
+
+    - name: Verify WinRM remains usable without SSH
+      ansible.windows.win_ping:
+
+    - name: Remove the preinstalled SSH capability
+      ansible.windows.win_capability:
+        name: 'OpenSSH.Server'
+        state: absent
+      become: true
+      register: windows_ssh_removed
+
+    - name: Reboot after capability removal when required
+      ansible.windows.win_reboot:
+      when: windows_ssh_removed.reboot_required
+
+    - name: Reset SSH files while preserving the native directory permissions
+      ansible.windows.win_powershell:
+        path: >-
+          {{ playbook_dir }}/files/Reset-WindowsSshFixture.ps1
+
+    - name: Assert the fresh fixture has no native SSH host keys
+      ansible.windows.win_powershell:
+        script: |
+          $Ansible.Changed = $false
+          $path = 'C:\ProgramData\ssh'
+          if (Test-Path -LiteralPath $path) {
+              $keys = @(Get-ChildItem $path -Filter 'ssh_host_*_key')
+              if ($keys.Count -ne 0) {
+                  throw 'Fresh-host fixture already contains SSH host keys'
+              }
+          }
+
+    - name: Gather Windows facts for the disabled pass
+      ansible.builtin.setup:
+
+    - name: Apply disabled SSH policy without installing the capability
+      ansible.builtin.include_role:
+        name: 'jaythomasonprojects.sys_admin.ssh'
+      vars:
+        ssh_enabled: false
+
+    - name: Inspect OpenSSH Server capability after disabled pass
+      ansible.windows.win_shell: |
+        $capability = @(Get-WindowsCapability -Online |
+          Where-Object { $_.Name -like 'OpenSSH.Server*' })
+        if ($capability.Count -ne 1) {
+          throw 'Expected exactly one OpenSSH Server capability'
+        }
+        $capability[0].State.ToString()
+      register: ssh_test_disabled_capability
+      changed_when: false
+
+    - name: Assert disabled policy did not install OpenSSH
+      ansible.builtin.assert:
+        that:
+          - ssh_test_disabled_capability.stdout | trim == 'NotPresent'

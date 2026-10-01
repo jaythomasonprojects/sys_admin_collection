@@ -1,0 +1,8 @@
+---
+# Copy to .config/molecule/proxmox.yml and restrict permissions to 0600.
+# Replace placeholders locally. Never commit the populated file.
+# Guest passwords and SSH identities are separate environment inputs.
+api_host: 'proxmox.example.invalid'
+api_token_id: 'molecule-token'
+api_token_secret: 'REPLACE_WITH_EXTERNAL_TOKEN_SECRET'
+api_user: 'molecule@pam'

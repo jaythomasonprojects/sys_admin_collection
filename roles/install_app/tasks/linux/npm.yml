@@ -33,3 +33,4 @@
     name: '{{ item }}'
     state: present
   loop: '{{ install_app_npm_packages }}'
+  become: true

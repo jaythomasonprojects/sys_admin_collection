@@ -1,0 +1,26 @@
+---
+- name: Prepare desktop_layout scenario
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Refresh APT metadata for role-managed runtime packages
+      ansible.builtin.apt:
+        update_cache: true
+      become: true
+
+    - name: Create desktop fixture user
+      ansible.builtin.user:
+        name: 'molecule_desktop'
+        home: '/home/molecule_desktop'
+        shell: '/bin/bash'
+        state: present
+      become: true
+
+    - name: Create missing-home fixture user
+      ansible.builtin.user:
+        create_home: false
+        name: 'molecule_no_home'
+        home: '/home/molecule_no_home'
+        shell: '/bin/bash'
+        state: present
+      become: true

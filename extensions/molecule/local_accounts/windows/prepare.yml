@@ -1,0 +1,27 @@
+---
+- name: Prepare independent Windows account management access
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Require WinRM and an independent management account
+      ansible.builtin.assert:
+        that:
+          - ansible_connection == 'winrm'
+          - ansible_port | int == 5986
+          - ansible_user not in windows_fixture_accounts
+      vars:
+        windows_fixture_accounts:
+          - 'sa_molecule_stable'
+          - 'sa_parent_test'
+          - 'sa_test_admin'
+          - 'sa_test_limited'
+          - 'sa_test_new'
+          - 'sa_test_sid'
+          - 'sa_test_standard'
+
+    - name: Wait for the clone connection
+      ansible.builtin.wait_for_connection:
+        timeout: 600
+
+    - name: Verify Windows modules run over WinRM
+      ansible.windows.win_ping:

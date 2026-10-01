@@ -1,0 +1,139 @@
+---
+- name: Verify Windows SSH policy, validation and transitions
+  hosts: all
+  gather_facts: true
+  vars:
+    ssh_server_port: 2222
+  tasks:
+    - name: Check configured SSH port is reachable from the controller
+      ansible.builtin.wait_for:
+        host: '{{ ansible_host }}'
+        port: 2222
+        timeout: 20
+      delegate_to: localhost
+
+    - name: Inspect installed Windows SSH state
+      ansible.windows.win_powershell:
+        path: '{{ playbook_dir }}/files/Inspect-WindowsSshRuntime.ps1'
+        parameters:
+          AllowedUsers:
+            - 'ssh_test_allowed'
+          PasswordAuthentication: 'no'
+          Port: 2222
+      register: ssh_test_runtime_state
+
+    - name: Assert runtime policy check completed
+      ansible.builtin.assert:
+        that:
+          - >-
+            'Windows SSH runtime policy verified' in
+            ssh_test_runtime_state.output
+
+    - name: Verify native host keys were generated before service startup
+      ansible.windows.win_powershell:
+        script: |
+          $Ansible.Changed = $false
+          $keys = @(Get-ChildItem C:\ProgramData\ssh -Filter 'ssh_host_*_key')
+          if ($keys.Count -eq 0) {
+              throw 'Role did not generate native SSH host keys'
+          }
+          if ((Get-Service sshd).Status -ne 'Running') {
+              throw 'SSH did not start with generated host keys'
+          }
+
+    - name: Inspect active SSH policy and service process
+      ansible.windows.win_powershell:
+        path: '{{ playbook_dir }}/files/Inspect-WindowsSshPolicy.ps1'
+      register: ssh_validation_before
+
+    - name: Reject invalid SSH candidate without replacing active policy
+      block:
+        - name: Apply invalid SSH server grace period
+          ansible.builtin.include_role:
+            name: 'jaythomasonprojects.sys_admin.ssh'
+          vars:
+            ssh_server_login_grace_time: 'invalid'
+
+        - name: Fail when invalid SSH candidate was accepted
+          ansible.builtin.fail:
+            msg: 'Invalid Windows SSH server candidate was accepted'
+      rescue:
+        - name: Assert native SSH candidate rejection occurred
+          ansible.builtin.assert:
+            that:
+              - ansible_failed_result.stderr is search('invalid time value')
+
+    - name: Inspect active SSH policy after rejected candidate
+      ansible.windows.win_powershell:
+        path: '{{ playbook_dir }}/files/Inspect-WindowsSshPolicy.ps1'
+      register: ssh_validation_after
+
+    - name: Assert rejected SSH candidate preserved active file and service
+      ansible.builtin.assert:
+        that:
+          - >-
+            ssh_validation_before.result.Hash ==
+            ssh_validation_after.result.Hash
+          - ssh_validation_before.result.Pid == ssh_validation_after.result.Pid
+          - >-
+            ssh_validation_before.result.Keys ==
+            ssh_validation_after.result.Keys
+
+    - name: Check temporary candidate was removed after rejection
+      ansible.windows.win_stat:
+        path: 'C:\ProgramData\ssh\sshd_config.sys-admin-candidate'
+      register: ssh_validation_temp
+
+    - name: Assert rejected SSH candidate left no temporary file
+      ansible.builtin.assert:
+        that:
+          - not ssh_validation_temp.stat.exists
+
+    - name: Apply a valid Windows SSH port transition
+      ansible.builtin.include_role:
+        name: 'jaythomasonprojects.sys_admin.ssh'
+      vars:
+        ssh_server_port: 2223
+
+    - name: Flush handler after valid SSH transition
+      ansible.builtin.meta: flush_handlers
+
+    - name: Inspect effective transitioned SSH port and service
+      ansible.windows.win_powershell:
+        path: '{{ playbook_dir }}/files/Inspect-WindowsSshPolicy.ps1'
+        parameters:
+          ExpectedPort: 2223
+      register: ssh_validation_transition
+
+    - name: Assert valid transition activated and restarted SSH
+      ansible.builtin.assert:
+        that:
+          - ssh_validation_transition.result.Port == 1
+          - >-
+            ssh_validation_transition.result.Pid !=
+            ssh_validation_before.result.Pid
+          - >-
+            ssh_validation_transition.result.Hash !=
+            ssh_validation_before.result.Hash
+
+    - name: Reapply unchanged transitioned Windows SSH policy
+      ansible.builtin.include_role:
+        name: 'jaythomasonprojects.sys_admin.ssh'
+      vars:
+        ssh_server_port: 2223
+
+    - name: Flush any repeat SSH handler
+      ansible.builtin.meta: flush_handlers
+
+    - name: Inspect service process after unchanged SSH repeat
+      ansible.windows.win_powershell:
+        script: |
+          $service = Get-CimInstance Win32_Service -Filter "Name='sshd'"
+          $Ansible.Changed = $false
+          $Ansible.Result = $service.ProcessId
+      register: ssh_validation_repeat
+
+    - name: Assert unchanged repeat did not restart SSH
+      ansible.builtin.assert:
+        that:
+          - ssh_validation_repeat.result == ssh_validation_transition.result.Pid

@@ -34,7 +34,7 @@ argument_specs:
           - Name of the Windows power plan to activate.
           - An empty string leaves the active plan unchanged.
         type: str
-        default: 'high performance'
+        default: 'balanced'
       power_policy_user:
         description: >-
           Existing local user whose Ubuntu GNOME settings are configured.

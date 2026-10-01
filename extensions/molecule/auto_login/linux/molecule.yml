@@ -1,0 +1,20 @@
+---
+driver:
+  name: 'docker'
+
+platforms:
+  - name: 'debian'
+    command: 'sleep infinity'
+    image: 'docker.io/geerlingguy/docker-debian12-ansible:latest'
+    pre_build_image: true
+  - name: 'auto-login-fedora44'
+    command: 'sleep infinity'
+    image: 'docker.io/geerlingguy/docker-fedora44-ansible:latest'
+    pre_build_image: true
+  - name: 'ubuntu'
+    command: 'sleep infinity'
+    image: 'docker.io/geerlingguy/docker-ubuntu2204-ansible:latest'
+    pre_build_image: true
+
+scenario:
+  name: 'auto_login/linux'

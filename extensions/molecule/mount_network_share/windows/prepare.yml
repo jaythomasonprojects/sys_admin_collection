@@ -1,0 +1,26 @@
+---
+- name: Prepare a local SMB share and its test account
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Wait for the clone connection
+      ansible.builtin.wait_for_connection:
+        timeout: 600
+
+    - name: Create SMB test account
+      ansible.windows.win_user:
+        name: 'smb_test_user'
+        password: '{{ smb_test_password }}'
+        state: present
+
+    - name: Create local test share directory
+      ansible.windows.win_file:
+        path: 'C:\ProgramData\sys-admin-smb-test'
+        state: directory
+
+    - name: Share the test directory with the test account
+      ansible.windows.win_share:
+        full: '.\smb_test_user'
+        name: 'SysAdminSmbTest'
+        path: 'C:\ProgramData\sys-admin-smb-test'
+        state: present

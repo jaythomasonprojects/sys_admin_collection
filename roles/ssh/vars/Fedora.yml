@@ -3,3 +3,4 @@ ssh_packages:
   - 'openssh-clients'
   - 'openssh-server'
 ssh_service_name: 'sshd'
+ssh_crypto_policy_include: '/etc/crypto-policies/back-ends/opensshserver.config'

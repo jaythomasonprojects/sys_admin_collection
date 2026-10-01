@@ -4,8 +4,8 @@ Manages chrony time synchronisation policy on Debian, Ubuntu, and Fedora hosts.
 
 ## Guarantee
 
-The role installs chrony, configures its sole upstream pool, and enables and
-starts its service.
+The role installs chrony, configures one upstream pool in its main file, and
+enables and starts its service.
 
 ## Ownership
 
@@ -18,22 +18,13 @@ starts its service.
 
 Linux hosts running Debian, Ubuntu, or Fedora.
 
-## Implementation
-
-- `tasks/main.yml` owns the complete supported-platform gate and conditionally
-  dispatches to `tasks/linux/main.yml`.
-- The Linux task file loads distribution data with `first_found`, then changes
-  package, configuration, and service state.
-- `vars/Debian.yml`, `vars/Ubuntu.yml`, and `vars/Fedora.yml` define the
-  package, configuration path, and service data for their supported
-  distributions.
-
 ## Interface
 
 - `time_sync_enabled`: whether this host should have managed time
   synchronisation. Defaults to `true`. `false` skips the role and does not
   remove chrony or restore pool entries an earlier run commented out.
-- `time_sync_server`: upstream NTP server. Defaults to `''` and is required only
+- `time_sync_server`: upstream Network Time Protocol (NTP) pool hostname.
+  Defaults to `''` and is required only
   when `time_sync_enabled` is `true`.
 
 ## Invariants
@@ -42,6 +33,18 @@ Linux hosts running Debian, Ubuntu, or Fedora.
 - The configured upstream pool is the only active `pool` entry managed by the
   role.
 - Configuration changes restart chrony.
+
+The role comments out other `pool` entries in the named main file. It does not
+remove `server` entries or reconcile configuration included from other files.
+
+## Implementation
+
+- `tasks/main.yml` checks the platform and dispatches enabled hosts.
+- `tasks/linux/main.yml` loads distribution data and manages package,
+  configuration, and service state.
+- `vars/Debian.yml`, `vars/Ubuntu.yml`, and `vars/Fedora.yml` define package,
+  configuration-path, and service data.
+- `handlers/main.yml` restarts chrony after changed pool configuration.
 
 ## Migration
 

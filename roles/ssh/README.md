@@ -1,104 +1,149 @@
 # ssh
 
-Installs OpenSSH and owns client policy, server policy, Windows firewall access,
-and service state.
+Installs and configures OpenSSH, starts its server, and manages Windows firewall
+access. Authorised keys belong to [`local_accounts`](../local_accounts/README.md).
 
-## Ownership
+## Guarantee and ownership
 
-The role owns OpenSSH packages, Linux client and server drop-ins, cloud-init
-server drop-in cleanup, the SSH service, and the Windows `OpenSSH Server
-(sshd)` TCP firewall rule keyed to `ssh_server_port`. Linux firewall policy is
-outside this role's ownership. Authorised keys belong to `local_accounts`.
+The role owns OpenSSH packages, Linux client policy, the complete server
+configuration, and service state. Server paths are `/etc/ssh/sshd_config` and
+`C:\ProgramData\ssh\sshd_config`. Windows also owns the `OpenSSH Server (sshd)`
+TCP firewall rule and PowerShell as the default SSH shell. Linux firewall policy
+is outside this role.
 
-## Supported platforms
+The role replaces the entire server main file, including custom settings and
+includes. Its Linux file does not include the general server drop-in directory.
+On Fedora it includes only the system crypto-policy file
+`/etc/crypto-policies/back-ends/opensshserver.config`, which supplies ciphers,
+MACs and key exchange.
+Foreign files remain on disk but are not merged or deleted.
 
-- Debian and Ubuntu: install `openssh-client` and `openssh-server`, remove
-  conflicting cloud-init server drop-ins, validate `sshd -t`, and enable and
-  start the service.
-- Fedora: install `openssh-clients` and `openssh-server`, remove conflicting
-  cloud-init server drop-ins, validate `sshd -t`, and enable and start `sshd`.
-  Fedora hosts only support `ssh_server_port: 22`.
-- Windows: install OpenSSH Server, configure `sshd`, manage the firewall rule
-  and service, and set PowerShell as the default SSH shell.
+## Supported platforms and prerequisites
 
-Other platforms fail with `ssh supports Linux and Windows hosts only.`
+- Debian and Ubuntu use `openssh-client`, `openssh-server`, and the native service.
+- Fedora uses `openssh-clients`, `openssh-server`, and `sshd`. Server port must be
+  `22`; this role does not manage alternate-port SELinux labels.
+- Windows uses the native OpenSSH Server capability and `sshd`.
 
-## Implementation map
-
-- `tasks/main.yml`: validates the platform and dispatches supported hosts.
-- `tasks/linux/main.yml`: loads first-found distribution variables, installs
-  packages, and dispatches client and server policy.
-- `tasks/linux/client.yml`: manages the SSH client drop-in.
-- `tasks/linux/server.yml`: removes cloud-init drop-ins, manages server policy,
-  validates it, and manages the service.
-- `tasks/windows/server.yml`: manages the OpenSSH capability, server policy,
-  firewall rule, service, and shell policy.
-- `vars/Debian.yml`, `vars/Fedora.yml`, and `vars/Ubuntu.yml`: provide package
-  and service names.
+Other platforms fail explicitly. Windows requires `ansible.windows >=3.6.0`
+and its `win_capability` prerequisites. The installing account needs
+administrative access and the batch logon right. The role does not grant that
+right or provide a missing capability source. Installation may need an
+operator-managed reboot.
 
 ## Interface
 
-`ssh_enabled` defaults to `true`. The full `ssh_server_*` and `ssh_client_*`
-interface, including defaults and validation, is defined in
-`meta/argument_specs.yml`. `ssh_service_name` is an internal distribution value,
-not a public option.
+`ssh_enabled` defaults to `true`. Setting it to `false` skips management without
+removing packages, configuration, firewall access, or service state from earlier
+runs. It does not restore previous policy. Unsupported-platform validation
+still applies.
 
-## Enable behaviour
+Boolean-like OpenSSH settings below use quoted strings `'yes'` and `'no'`, not
+YAML Booleans. Types and choices are declared in
+[`meta/argument_specs.yml`](meta/argument_specs.yml).
 
-When `ssh_enabled` is `false`, the role skips rather than converges or removes
-previously managed OpenSSH packages, configuration, firewall rules, or service
-state. Restoring prior SSH policy is not safe or unambiguous.
+### Server options
 
-## Invariants
+These configure both platforms. OpenSSH interprets patterns and values, and
+native validation reports invalid settings.
 
-- A rendered Linux server configuration must pass `sshd -t`.
-- The Windows firewall rule always uses `ssh_server_port`.
-- Authorised keys and Windows authorised-key ACLs are owned by `local_accounts`.
-- The Linux service name comes from first-found `vars/` data, not runtime
-  detection.
-- Fedora hosts require `ssh_server_port` to be `22` before the role loads
-  variables, installs packages, or configures OpenSSH.
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `ssh_server_allow_agent_forwarding` | `'yes'` | Allow SSH agent forwarding |
+| `ssh_server_allow_groups` | `null` | List of allowed group patterns |
+| `ssh_server_allow_tcp_forwarding` | `'yes'` | Allow TCP forwarding |
+| `ssh_server_allow_users` | `null` | List of allowed user patterns |
+| `ssh_server_client_alive_count_max` | `3` | Unanswered server keepalives before disconnect |
+| `ssh_server_client_alive_interval` | `0` | Server keepalive interval in seconds; zero disables it |
+| `ssh_server_deny_groups` | `null` | List of denied group patterns |
+| `ssh_server_deny_users` | `null` | List of denied user patterns |
+| `ssh_server_listen_address` | `'0.0.0.0'` | Listener address |
+| `ssh_server_login_grace_time` | `'1m'` | Time allowed to authenticate |
+| `ssh_server_max_auth_tries` | `3` | Maximum authentication attempts per connection |
+| `ssh_server_password_authentication` | `'yes'` | Permit password authentication |
+| `ssh_server_permit_empty_passwords` | `'no'` | Permit empty passwords |
+| `ssh_server_permit_root_login` | `'no'` | `yes`, `no`, or `prohibit-password` |
+| `ssh_server_port` | `22` | Server port; Fedora supports only `22` |
+| `ssh_server_pubkey_authentication` | `'yes'` | Permit public-key authentication |
+| `ssh_server_use_dns` | `'no'` | Request reverse DNS lookup |
+| `ssh_server_x11_forwarding` | `'yes'` | Permit X11 forwarding |
+
+`null` or empty access lists omit the corresponding directive. Windows uses
+`.ssh/authorized_keys` in each account's native profile for administrators and
+standard accounts alike. There is no shared administrator-key override.
+
+### Linux client options
+
+Windows does not manage SSH client policy through this role.
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `ssh_client_compression` | `'no'` | Enable compression |
+| `ssh_client_connect_timeout` | `0` | Connection timeout in seconds |
+| `ssh_client_forward_agent` | `'no'` | Forward the local SSH agent |
+| `ssh_client_forward_x11` | `'no'` | Forward X11 |
+| `ssh_client_host_overrides` | `[]` | Ordered host patterns and native settings |
+| `ssh_client_password_authentication` | `'yes'` | Permit password authentication |
+| `ssh_client_port` | `22` | Default destination port |
+| `ssh_client_pubkey_authentication` | `'yes'` | Permit public-key authentication |
+| `ssh_client_server_alive_count_max` | `3` | Unanswered client keepalives before disconnect |
+| `ssh_client_server_alive_interval` | `0` | Client keepalive interval in seconds |
+| `ssh_client_strict_host_key_checking` | `'ask'` | `yes`, `no`, or `ask` |
+
+Each override requires `host` and a `settings` mapping of native OpenSSH keys:
+
+```yaml
+ssh_client_host_overrides:
+  - host: '*.example.invalid'
+    settings:
+      Port: 4022
+      User: 'example_user'
+```
+
+Host overrides appear before general defaults, in caller order. OpenSSH uses the
+first obtained value. The owned client file is
+`/etc/ssh/ssh_config.d/00-sys-admin-ssh.conf`; the packaged system include must
+load it. Custom system and per-user client configuration remains your responsibility.
+
+## Validation and invariants
+
+Native `sshd -t -f` checks the complete candidate before replacement. Rejection
+preserves the installed server file and does not restart the service. A valid
+changed file notifies a restart; an unchanged repeat does not. Syntax validation
+does not prove every effective setting.
+
+Linux establishes missing host keys before validation. Windows generates missing
+keys and restricts newly created private-key access control lists (ACLs).
+Existing host keys are untouched. Windows validates and promotes its candidate
+outside check mode; check mode is not equivalent to runtime acceptance.
+
+The Windows firewall rule uses `ssh_server_port`. Linux service names come from
+distribution data; `ssh_service_name` is internal, not a public option.
+The [Windows scenario](../../extensions/molecule/ssh/windows/README.md) uses
+independent Windows Remote Management (WinRM) access while checking installation
+and policy transitions.
+Setup and commands are in the [Molecule guide](../../extensions/molecule/README.md).
+
+## Implementation map
+
+- `tasks/main.yml` checks the platform and dispatches enabled hosts.
+- `tasks/linux/main.yml` checks Fedora's port and installs distribution packages.
+- `tasks/linux/client.yml` manages and validates the client drop-in.
+- `tasks/linux/server.yml` establishes prerequisites and validates server policy.
+- `tasks/windows/server.yml` manages the capability, candidate, firewall, and service.
+- `files/Initialize-WindowsSshHostKeys.ps1` generates and protects new host keys.
+- `handlers/main.yml` restarts services after changed server policy.
+- `vars/Debian.yml`, `vars/Fedora.yml`, and `vars/Ubuntu.yml` provide package and service
+  data; Fedora also names its crypto-policy include.
 
 ## Migration
 
-`ssh` replaces `config_ssh`. Rename every setting below. No compatibility
-aliases are provided.
+`ssh` replaces `config_ssh`, without aliases. Replace the variable prefixes
+`config_ssh_sshd_` with `ssh_server_` and `config_ssh_ssh_` with `ssh_client_`,
+keeping the suffix. Remove `config_ssh_service_name`; service names are internal.
 
-The Linux client and server drop-ins are now
-`/etc/ssh/ssh_config.d/99-sys-admin-ssh.conf` and
-`/etc/ssh/sshd_config.d/99-sys-admin-sshd.conf`. The role removes the former
-`99-custom.conf` files during convergence so legacy settings cannot retain
-precedence.
-
-| Old variable | New variable |
-| --- | --- |
-| `config_ssh_sshd_allow_agent_forwarding` | `ssh_server_allow_agent_forwarding` |
-| `config_ssh_sshd_allow_groups` | `ssh_server_allow_groups` |
-| `config_ssh_sshd_allow_tcp_forwarding` | `ssh_server_allow_tcp_forwarding` |
-| `config_ssh_sshd_allow_users` | `ssh_server_allow_users` |
-| `config_ssh_sshd_client_alive_count_max` | `ssh_server_client_alive_count_max` |
-| `config_ssh_sshd_client_alive_interval` | `ssh_server_client_alive_interval` |
-| `config_ssh_sshd_deny_groups` | `ssh_server_deny_groups` |
-| `config_ssh_sshd_deny_users` | `ssh_server_deny_users` |
-| `config_ssh_sshd_listen_address` | `ssh_server_listen_address` |
-| `config_ssh_sshd_login_grace_time` | `ssh_server_login_grace_time` |
-| `config_ssh_sshd_max_auth_tries` | `ssh_server_max_auth_tries` |
-| `config_ssh_sshd_password_authentication` | `ssh_server_password_authentication` |
-| `config_ssh_sshd_permit_empty_passwords` | `ssh_server_permit_empty_passwords` |
-| `config_ssh_sshd_permit_root_login` | `ssh_server_permit_root_login` |
-| `config_ssh_sshd_port` | `ssh_server_port` |
-| `config_ssh_sshd_pubkey_authentication` | `ssh_server_pubkey_authentication` |
-| `config_ssh_sshd_use_dns` | `ssh_server_use_dns` |
-| `config_ssh_sshd_x11_forwarding` | `ssh_server_x11_forwarding` |
-| `config_ssh_ssh_compression` | `ssh_client_compression` |
-| `config_ssh_ssh_connect_timeout` | `ssh_client_connect_timeout` |
-| `config_ssh_ssh_forward_agent` | `ssh_client_forward_agent` |
-| `config_ssh_ssh_forward_x11` | `ssh_client_forward_x11` |
-| `config_ssh_ssh_host_overrides` | `ssh_client_host_overrides` |
-| `config_ssh_ssh_password_authentication` | `ssh_client_password_authentication` |
-| `config_ssh_ssh_port` | `ssh_client_port` |
-| `config_ssh_ssh_pubkey_authentication` | `ssh_client_pubkey_authentication` |
-| `config_ssh_ssh_server_alive_count_max` | `ssh_client_server_alive_count_max` |
-| `config_ssh_ssh_server_alive_interval` | `ssh_client_server_alive_interval` |
-| `config_ssh_ssh_strict_host_key_checking` | `ssh_client_strict_host_key_checking` |
-| `config_ssh_service_name` | Removed, now an internal `vars/` value |
+Beta configuration-layout upgrades are unsupported. Adopt the complete server
+policy on a standard supported host; it does not merge custom policy. Apply
+`local_accounts` alongside this role to provide each Windows account's keys.
+Keys in the former shared administrator file no longer authorise logins under
+the role's policy. That legacy file remains untouched.

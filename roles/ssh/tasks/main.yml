@@ -3,10 +3,12 @@
   ansible.builtin.assert:
     that:
       - >-
-        ansible_facts.os_family == 'Windows'
-        or ansible_facts.distribution | default('') in
-        ['Debian', 'Fedora', 'Ubuntu']
-    fail_msg: 'ssh supports Debian, Ubuntu, Fedora, and Windows hosts only.'
+        ansible_facts.distribution | default('')
+        in ['Debian', 'Fedora', 'Ubuntu']
+        or ansible_facts.os_family | default('') == 'Windows'
+    fail_msg: >-
+      ssh supports Debian, Ubuntu, Fedora, and Windows meeting native OpenSSH
+      capability prerequisites only.
 
 - name: Configure SSH on Linux hosts
   ansible.builtin.include_tasks: 'linux/main.yml'

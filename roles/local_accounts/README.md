@@ -1,7 +1,7 @@
 # local_accounts
 
-Manage the full lifecycle of a set of local accounts: their account fields,
-authorised-key contents, Windows key ACLs, and Windows password policy. The
+Creates and updates local accounts, authorised keys, Windows key access control
+lists (ACLs), and Windows password policy. The
 name distinguishes local accounts from domain accounts. The role does not
 install or configure OpenSSH.
 
@@ -22,35 +22,30 @@ and Windows firewall rule.
 
 Linux and Windows hosts only.
 
-## Implementation map
-
-- `tasks/linux/accounts.yml`: local Linux account fields.
-- `tasks/linux/authorized_keys.yml`: additive Linux authorised-key entries.
-- `tasks/windows/accounts.yml`: Windows account creation with
-  `update_password: on_create`.
-- `tasks/windows/authorized_keys.yml`: Windows authoritative key files and
-  ACLs through `files/Set-AuthorizedKeyAcl.ps1`, which supports only
-  administrator and standard-user modes.
-- `tasks/windows/passwords.yml`: final Windows password policy.
-
 ## Interface
 
 - `local_accounts_enabled`: whether the host should have managed local
   accounts, defaulting to `true`.
 - `local_accounts_users`: list of account mappings, defaulting to `[]`.
-- `name`: required account name.
-- `password`: optional hashed password on Linux or plain password on Windows.
-  Omit it for a key-only account; it is not sent to either account module.
-- `append`: add supplied groups instead of replacing them, defaulting to
-  `false`.
-- `comment`: account description or Linux GECOS field.
-- `create_home`: Linux home-directory policy, defaulting to `true`.
-- `groups`: Linux groups or Windows local groups.
-- `password_never_expires`: Windows account policy.
-- `shell`: Linux login shell.
-- `ssh_authorized_keys`: list of public keys.
-- `update_password`: Windows final password-policy setting, defaulting to
-  `always`.
+
+Each mapping in `local_accounts_users` accepts:
+
+| Field | Default | Meaning |
+| --- | --- | --- |
+| `append` | `false` | Add supplied groups instead of replacing membership |
+| `comment` | Omitted | Account description |
+| `create_home` | `true` | Create a Linux home directory |
+| `groups` | Omitted | List of Linux groups or Windows local groups |
+| `name` | Required | Local account name |
+| `password` | Omitted | Linux password hash or Windows plain password |
+| `password_never_expires` | Omitted | Windows password expiry policy |
+| `shell` | Omitted | Linux login shell |
+| `ssh_authorized_keys` | Omitted | List of public keys, with platform-specific semantics below |
+| `update_password` | `'always'` | Windows final password policy: `always` or `on_create` |
+
+Omit `password` for a key-only account; the role does not pass it to the account
+module. Store supplied passwords through your external secret source.
+The role does not delete accounts omitted from the list.
 
 ## Enable behaviour
 
@@ -61,15 +56,21 @@ accounts an earlier run created.
 
 Linux keys are additive through `ansible.posix.authorized_key`. Windows treats
 each declared `ssh_authorized_keys` list as the complete content of that
-account's key file. Administrator accounts contribute to the complete
-`C:\ProgramData\ssh\administrators_authorized_keys` aggregate, so an empty
-declared list removes stale managed administrator keys.
+account's native profile `.ssh/authorized_keys`, including administrators.
+An empty list clears that account's file; an omitted list leaves it unmanaged.
 
-Windows disables inheritance. The administrator aggregate is owned by
-`S-1-5-32-544` and grants full control only to that SID and `S-1-5-18`
-(SYSTEM). Standard-user `.ssh` directories and key files are owned by the
-managed account SID and grant full control only to that account, Administrators,
-and SYSTEM.
+Windows disables inheritance. Per-user `.ssh` directories and key files are owned by the
+managed account's security identifier (SID). Full control is limited to that
+account, Administrators, and SYSTEM.
+
+Windows resolves the SID of each account with declared keys after applying
+account changes. Membership does not select a different key destination.
+Windows creates or reuses that SID's native user profile without relocating an
+existing profile. Key files and ACLs use the returned profile path, never a
+guessed `C:\Users\<name>` directory. Missing identity, inaccessible profile or
+failed ACL writes fail the role; an unchanged correct ACL reports no change.
+An empty account declaration or disabled role leaves key files untouched.
+The role does not manage `C:\ProgramData\ssh` or its former shared key file.
 
 ## Invariants
 
@@ -78,9 +79,28 @@ A bootstrap-password rotation requires reconnecting with the vaulted
 credentials before subsequent tasks. Key-only accounts skip the Windows
 password-policy task.
 
+The [Windows scenario](../../extensions/molecule/local_accounts/windows/README.md)
+checks identity-specific logins over disposable clones. Setup and commands live
+in the [Molecule guide](../../extensions/molecule/README.md).
+
+## Implementation map
+
+- `tasks/main.yml` checks the platform and dispatches enabled hosts.
+- `tasks/linux/main.yml` and `tasks/windows/main.yml` order platform tasks.
+- `tasks/linux/accounts.yml` manages local Linux account fields.
+- `tasks/linux/authorized_keys.yml` adds Linux key entries.
+- `tasks/windows/accounts.yml` creates accounts with `update_password: on_create`.
+- `tasks/windows/authorized_keys.yml` uses `files/Resolve-LocalAccount.ps1` and
+  `files/Set-AuthorizedKeyAcl.ps1` for native profiles and protected key ACLs.
+- `tasks/windows/passwords.yml` applies final password policy.
+
 ## Migration
 
-Replace the `jaythomasonprojects.sys_admin.create_user` role with
-`jaythomasonprojects.sys_admin.local_accounts`, and rename
-`create_user_accounts` to `local_accounts_users`. There are no aliases for the
-old role or variable. `password` is now optional.
+Apply the updated `ssh` role with this role to remove the administrator-group
+key-file override. Declare each account's keys explicitly. Keys in the former
+shared administrator file no longer authorise logins; remove that legacy file
+manually if required. The account role leaves it untouched.
+
+Upgrades from beta configurations are not supported. Supply the current
+`local_accounts_users` interface directly; no old-role or variable aliases
+are provided.

@@ -1,0 +1,16 @@
+---
+- name: Converge the stable Windows SMB mapping
+  hosts: all
+  gather_facts: true
+  tasks:
+    - name: Map the synthetic fixture under its configured account
+      ansible.builtin.include_role:
+        name: 'jaythomasonprojects.sys_admin.mount_network_share'
+      vars:
+        mount_network_share_shares:
+          - name: 'mapped'
+            mount_point: 'S'
+            server: 'localhost'
+            share: 'SysAdminSmbTest'
+            password: '{{ smb_test_password }}'
+            username: '{{ ansible_facts.hostname }}\smb_test_user'
