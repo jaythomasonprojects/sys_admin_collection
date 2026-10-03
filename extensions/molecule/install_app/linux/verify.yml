@@ -140,7 +140,7 @@
           - 'list'
           - '--global'
           - '--depth=0'
-          - 'is-number'
+          - '--json'
       register: install_app_npm_fixture
       changed_when: false
 
@@ -148,6 +148,14 @@
       ansible.builtin.assert:
         that:
           - install_app_npm_fixture.rc == 0
-          - install_app_npm_fixture.stdout is search('is-number@')
+          - >-
+            'is-number' in
+            (install_app_npm_fixture.stdout | from_json).dependencies
+          - >-
+            (install_app_npm_fixture.stdout | from_json).dependencies
+            ['is-odd'].version == '3.0.1'
+          - >-
+            (install_app_npm_fixture.stdout | from_json).dependencies
+            ['@colors/colors'].version == '1.6.0'
         fail_msg: >-
-          install_app did not install is-number globally through npm.
+          install_app did not install bare and versioned npm packages globally.

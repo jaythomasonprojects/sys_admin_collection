@@ -33,7 +33,9 @@ argument_specs:
         type: bool
         default: true
       install_app_npm_packages:
-        description: Bare npm package names to install globally on Linux hosts.
+        description: >-
+          npm package entries to install globally on Linux, passed unchanged to
+          community.general.npm. Bare names and versioned entries are accepted.
         type: list
         elements: str
         default: []

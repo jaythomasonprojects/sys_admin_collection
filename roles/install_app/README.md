@@ -52,16 +52,29 @@ consuming playbook repository, not from this collection.
 - `install_app_manage_flatpak_remote`: ensure Flathub is configured before
   installing Flatpak refs. Defaults to `true`.
 - `install_app_npm_packages`: npm package names to install globally on Linux
-  hosts. Defaults to `[]`. Entries must be bare package names, such as `eslint`
-  or `@scope/tool`.
+  hosts. Defaults to `[]`. Entries pass unchanged to `community.general.npm`,
+  including version suffixes:
+
+  ```yaml
+  install_app_npm_packages:
+    - 'is-number'
+    - 'is-odd@3.0.1'
+    - '@colors/colors@1.6.0'
+  ```
+
+  The role does not parse or validate package syntax. The npm module owns
+  installation and errors. Bare names and matching exact versions report no
+  changes on repeat runs. Partial versions and ranges use native module
+  behaviour and can report changes on every run.
 
 ## Invariants
 
 - Requested native packages and channel prerequisites use `state: present`.
 - Non-APT hosts skip `install_app_debs` without accessing package references.
 - Missing active APT references fail installation instead of silently skipping.
-- npm package requests reject versioned names and require a working executable
-  after prerequisite installation.
+- npm requests require a working executable after prerequisite installation.
+- Global npm installation uses task-level escalation. Already installed bare
+  packages and matching exact pins report no changes on repeat runs.
 
 ## Implementation map
 
@@ -69,8 +82,8 @@ consuming playbook repository, not from this collection.
 - `tasks/linux/main.yml` loads distribution data and selects package channels.
 - `tasks/linux/native_packages.yml` installs native packages and prerequisites.
 - `tasks/linux/debian_packages.yml` uses native APT for package paths or URLs.
-- `tasks/linux/npm.yml` validates bare names and installs global packages with
-  privilege escalation for the system-wide prefix.
+- `tasks/linux/npm.yml` checks npm and installs the supplied entries globally
+  with system-wide escalation.
 - `tasks/linux/flatpaks.yml` checks Flatpak and manages Flathub and requested refs.
 - `tasks/windows/main.yml` installs Chocolatey packages, bootstrapping Chocolatey
   through its native module if necessary.
@@ -79,3 +92,7 @@ consuming playbook repository, not from this collection.
 
 Beta dictionary-valued `install_app_debs` entries and beta configuration
 upgrades are unsupported. Supply string package references on fresh hosts.
+
+Versioned npm entries are accepted from `0.10.1`. Existing bare-name inputs and
+defaults are unchanged. Older releases reject versioned entries. Disabling the
+role does not remove installed packages.

@@ -1,6 +1,12 @@
 jaythomasonprojects.sys_admin changelog
 =======================================
 
+0.10.1
+------
+
+- Removed the bare-name-only validation for Linux npm packages so versioned
+  entries pass directly to the npm module.
+
 0.10.0
 ------
 

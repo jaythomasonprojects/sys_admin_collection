@@ -91,6 +91,8 @@
     install_app_manage_flatpak_remote: false
     install_app_npm_packages:
       - 'is-number'
+      - 'is-odd@3.0.1'
+      - '@colors/colors@1.6.0'
     install_app_packages:
       - 'jq'
   pre_tasks:
@@ -131,6 +133,8 @@
           - '/usr/local/src/unavailable-disabled-package.deb'
           - 'http://127.0.0.1:9/unavailable-disabled.deb'
         install_app_enabled: false
+        install_app_npm_packages:
+          - 'unavailable-disabled-npm-package@999.0.0'
         install_app_packages:
           - 'this-package-does-not-exist'
 
@@ -186,25 +190,3 @@
                 | map(attribute='msg')
                 | select('search', 'missing-install-app-fixture.deb')
                 | list | length > 0
-
-    - name: Reject versioned npm package requests
-      block:
-        - name: Request a versioned npm package
-          ansible.builtin.include_role:
-            name: 'jaythomasonprojects.sys_admin.install_app'
-          vars:
-            install_app_debs: []
-            install_app_flatpaks: []
-            install_app_npm_packages:
-              - 'is-number@7.0.0'
-            install_app_packages: []
-      rescue:
-        - name: Record versioned npm package rejection
-          ansible.builtin.set_fact:
-            install_app_versioned_npm_rejected: true
-
-    - name: Assert versioned npm package was rejected
-      ansible.builtin.assert:
-        that:
-          - >-
-            install_app_versioned_npm_rejected | default(false)
