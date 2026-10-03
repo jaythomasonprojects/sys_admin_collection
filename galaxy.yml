@@ -1,7 +1,7 @@
 ---
 namespace: jaythomasonprojects
 name: sys_admin
-version: '0.10.0'
+version: '0.11.0'
 readme: README.md
 authors:
   - Jay Thomason

@@ -15,14 +15,88 @@
   changed_when: ssh_host_keys.stdout | trim | length > 0
   register: ssh_host_keys
 
-- name: Validate and deploy complete SSH server configuration
-  ansible.builtin.template:
-    src: 'sshd_custom.conf.j2'
-    dest: '/etc/ssh/sshd_config'
-    mode: '0600'
-    validate: '/usr/sbin/sshd -t -f %s'
+# Validate what sshd actually uses, without inspecting the include layout.
+- name: Validate complete server configuration before policy mutation
+  ansible.builtin.command:
+    argv: ['/usr/sbin/sshd', '-t', '-f', '/etc/ssh/sshd_config']
   become: true
-  notify: Restart SSH service
+  changed_when: false
+  when: not ansible_check_mode
+
+- name: Inspect previous managed server policy
+  ansible.builtin.stat:
+    path: '/etc/ssh/sshd_config.d/99-sys-admin-sshd.conf'
+  become: true
+  register: ssh_server_previous
+
+- name: Deploy and validate managed server policy
+  become: true
+  block:
+    - name: Deploy managed server drop-in
+      ansible.builtin.template:
+        src: 'sshd_custom.conf.j2'
+        dest: '/etc/ssh/sshd_config.d/99-sys-admin-sshd.conf'
+        owner: 'root'
+        group: 'root'
+        mode: '0640'
+        backup: true
+      register: ssh_server_deployment
+
+    - name: Validate complete deployed server configuration
+      ansible.builtin.command:
+        argv: ['/usr/sbin/sshd', '-t', '-f', '/etc/ssh/sshd_config']
+      changed_when: ssh_server_deployment.changed
+      notify: Restart SSH service
+      when: not ansible_check_mode
+  rescue:
+    - name: Restore previous managed contents after rejection
+      ansible.builtin.copy:
+        src: '{{ ssh_server_deployment.backup_file }}'
+        dest: '/etc/ssh/sshd_config.d/99-sys-admin-sshd.conf'
+        owner: '{{ ssh_server_previous.stat.uid }}'
+        group: '{{ ssh_server_previous.stat.gid }}'
+        mode: '{{ ssh_server_previous.stat.mode }}'
+        remote_src: true
+      when:
+        - not ansible_check_mode
+        - ssh_server_previous.stat.exists
+        - ssh_server_deployment.backup_file is defined
+
+    - name: Restore previous managed metadata after rejection
+      ansible.builtin.file:
+        path: '/etc/ssh/sshd_config.d/99-sys-admin-sshd.conf'
+        owner: '{{ ssh_server_previous.stat.uid }}'
+        group: '{{ ssh_server_previous.stat.gid }}'
+        mode: '{{ ssh_server_previous.stat.mode }}'
+        state: file
+      when:
+        - not ansible_check_mode
+        - ssh_server_previous.stat.exists
+        - ssh_server_deployment.changed | default(false)
+
+    - name: Remove rejected first managed policy
+      ansible.builtin.file:
+        path: '/etc/ssh/sshd_config.d/99-sys-admin-sshd.conf'
+        state: absent
+      when:
+        - not ansible_check_mode
+        - not ssh_server_previous.stat.exists
+        - ssh_server_deployment.changed | default(false)
+
+    - name: Report original native deployment rejection
+      ansible.builtin.fail:
+        msg: >-
+          {{ ansible_failed_result.stderr |
+             default(ansible_failed_result.msg) }}
+  always:
+    - name: Remove only the role-created managed backup
+      ansible.builtin.file:
+        path: '{{ ssh_server_deployment.backup_file }}'
+        state: absent
+      changed_when: false
+      when:
+        - not ansible_check_mode
+        - ssh_server_deployment.backup_file is defined
 
 - name: Enable and start SSH service
   ansible.builtin.systemd_service:
@@ -30,3 +104,4 @@
     enabled: true
     state: started
   become: true
+  when: not ansible_check_mode

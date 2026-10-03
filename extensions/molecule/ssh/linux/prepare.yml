@@ -9,11 +9,13 @@
           - "!all"
           - "min"
 
+    # Removing a Debian package alone can leave a modified conffile behind.
     - name: Remove OpenSSH packages
       ansible.builtin.apt:
         name:
           - 'openssh-client'
           - 'openssh-server'
+        purge: true
         state: absent
         update_cache: true
       when: ansible_facts.distribution in ['Debian', 'Ubuntu']
@@ -26,6 +28,27 @@
         state: absent
       when: ansible_facts.distribution == 'Fedora'
 
+    - name: Remove stale main configuration from disposable containers
+      ansible.builtin.file:
+        path: '/etc/ssh/sshd_config'
+        state: absent
+
+    - name: Install packaged Debian-family configuration
+      ansible.builtin.apt:
+        name:
+          - 'openssh-client'
+          - 'openssh-server'
+        state: present
+      when: ansible_facts.distribution in ['Debian', 'Ubuntu']
+
+    - name: Install packaged Fedora configuration
+      ansible.builtin.dnf:
+        name:
+          - 'openssh-clients'
+          - 'openssh-server'
+        state: present
+      when: ansible_facts.distribution == 'Fedora'
+
     - name: Create SSH drop-in directories
       ansible.builtin.file:
         path: '{{ item }}'
@@ -35,13 +58,71 @@
         - '/etc/ssh/ssh_config.d'
         - '/etc/ssh/sshd_config.d'
 
+    # Keep a foreign include without masking the managed authentication policy.
     - name: Seed cloud-init SSHD drop-in
       ansible.builtin.copy:
         dest: '/etc/ssh/sshd_config.d/50-cloud-init.conf'
         content: |
-          PasswordAuthentication yes
-          PermitRootLogin yes
+          Banner none
         mode: '0644'
+
+    - name: Find packaged and unrelated server drop-ins
+      ansible.builtin.find:
+        paths: '/etc/ssh/sshd_config.d'
+        patterns: '*.conf'
+      register: ssh_prepared_dropins
+
+    - name: Create native validation runtime directory
+      ansible.builtin.file:
+        path: '/run/sshd'
+        state: directory
+        mode: '0755'
+
+    - name: Establish baseline host keys
+      ansible.builtin.command:
+        argv: ['ssh-keygen', '-A']
+      changed_when: ssh_prepared_keys.stdout | trim | length > 0
+      register: ssh_prepared_keys
+
+    - name: Find established host keys
+      ansible.builtin.find:
+        paths: '/etc/ssh'
+        patterns: 'ssh_host_*'
+      register: ssh_prepared_key_paths
+
+    # Host keys define server identity. Preserve them with the foreign files.
+    - name: Record files that must survive the complete role workflow
+      ansible.builtin.stat:
+        path: '{{ item }}'
+        checksum_algorithm: 'sha256'
+      loop: >-
+        {{ ['/etc/ssh/sshd_config'] +
+           (ssh_prepared_dropins.files | map(attribute='path') | sort | list) +
+           (ssh_prepared_key_paths.files | map(attribute='path') | sort | list)
+        }}
+      register: ssh_prepared_files
+
+    - name: Save preservation baseline for verification
+      ansible.builtin.copy:
+        content: >-
+          {{ ssh_prepared_files.results |
+             map(attribute='stat') | list | to_json }}
+        dest: '/var/tmp/ssh-preservation.json'
+        mode: '0600'
+
+    - name: Record packaged effective crypto policy
+      ansible.builtin.command:
+        argv: ['sshd', '-T']
+      changed_when: false
+      register: ssh_prepared_effective
+      when: ansible_facts.distribution == 'Fedora'
+
+    - name: Save packaged crypto baseline
+      ansible.builtin.copy:
+        content: '{{ ssh_prepared_effective.stdout }}'
+        dest: '/var/tmp/ssh-crypto-baseline'
+        mode: '0600'
+      when: ansible_facts.distribution == 'Fedora'
 
     - name: Create unprivileged SSH policy caller
       ansible.builtin.user:

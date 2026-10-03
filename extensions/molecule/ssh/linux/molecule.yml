@@ -44,6 +44,30 @@ provisioner:
   name: 'ansible'
   env:
     ANSIBLE_REMOTE_USER: 'root'
+  inventory:
+    group_vars:
+      all:
+        ssh_client_forward_agent: 'no'
+        ssh_client_host_overrides:
+          - host: 'github.com'
+            settings:
+              ConnectTimeout: '1m'
+              ForwardAgent: 'yes'
+              Port: 2222
+              User: 'git'
+          - host: 'special.example.invalid'
+            settings:
+              Port: 2223
+          - host: '*.example.invalid'
+            settings:
+              Port: 2201
+        ssh_client_strict_host_key_checking: 'no'
+        ssh_server_allow_users:
+          - 'molecule'
+        ssh_server_client_alive_count_max: 2
+        ssh_server_client_alive_interval: 30
+        ssh_server_password_authentication: 'no'
+        ssh_server_permit_root_login: 'prohibit-password'
 
 scenario:
   name: 'ssh/linux'
