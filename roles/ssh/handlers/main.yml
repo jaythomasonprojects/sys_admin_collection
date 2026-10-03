@@ -1,10 +1,23 @@
 ---
-- name: Restart SSH service
+- name: Validate SSH configuration immediately before restart
+  ansible.builtin.command:
+    argv: ['/usr/sbin/sshd', '-t', '-f', '/etc/ssh/sshd_config']
+  become: true
+  changed_when: false
+  listen: Restart SSH service
+  when:
+    - ansible_facts.os_family != 'Windows'
+    - not ansible_check_mode
+
+- name: Restart validated SSH service
   ansible.builtin.systemd_service:
     name: '{{ ssh_service_name }}'
     state: restarted
   become: true
-  when: ansible_facts.os_family != 'Windows'
+  listen: Restart SSH service
+  when:
+    - ansible_facts.os_family != 'Windows'
+    - not ansible_check_mode
 
 - name: Restart Windows SSH service
   ansible.windows.win_service:

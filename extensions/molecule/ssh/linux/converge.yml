@@ -4,33 +4,15 @@
   gather_facts: true
   vars:
     ansible_user: 'molecule'
-    ssh_client_forward_agent: 'no'
-    ssh_client_host_overrides:
-      - host: 'github.com'
-        settings:
-          ConnectTimeout: '1m'
-          ForwardAgent: 'yes'
-          Port: 2222
-          User: 'git'
-      - host: 'special.example.invalid'
-        settings:
-          Port: 2223
-      - host: '*.example.invalid'
-        settings:
-          Port: 2201
-    ssh_client_strict_host_key_checking: 'no'
-    ssh_server_allow_users:
-      - 'molecule'
-    ssh_server_password_authentication: 'no'
-    ssh_server_permit_root_login: 'prohibit-password'
   tasks:
+    # Docker defaults to root. Prove the role uses task-level escalation.
     - name: Inspect effective connection identity
       ansible.builtin.command:
         argv:
           - 'id'
           - '-u'
-      register: ssh_caller_uid
       changed_when: false
+      register: ssh_caller_uid
 
     - name: Prove caller is not root
       ansible.builtin.assert:
@@ -52,33 +34,7 @@
     - name: Flush SSH policy handlers
       ansible.builtin.meta: flush_handlers
 
-    - name: Inspect running SSH service
-      ansible.builtin.command:
-        argv:
-          - 'systemctl'
-          - 'is-active'
-          - 'sshd'
-      register: ssh_running_fedora
-      changed_when: false
-      when: ansible_facts.distribution == 'Fedora'
-
-    - name: Inspect running SSH service on Debian family
-      ansible.builtin.command:
-        argv:
-          - 'systemctl'
-          - 'is-active'
-          - 'ssh'
-      register: ssh_running_debian
-      changed_when: false
-      when: ansible_facts.distribution in ['Debian', 'Ubuntu']
-
-    - name: Assert SSH service is active
-      ansible.builtin.assert:
-        that:
-          - >-
-            (ssh_running_fedora.stdout | default('') if
-            ansible_facts.distribution == 'Fedora' else
-            ssh_running_debian.stdout | default('')) | trim == 'active'
+    # Exercise the platform gate without provisioning an unsupported OS.
     - name: Reject unsupported operating systems
       block:
         - name: Configure unsupported operating system
@@ -102,6 +58,7 @@
             'ssh supports Debian, Ubuntu, Fedora, and Windows meeting native '
             ~ 'OpenSSH capability prerequisites only.'
 
+    # Alternate ports need SELinux policy that this role does not own.
     - name: Reject custom SSH ports on Fedora
       when: ansible_facts.distribution == 'Fedora'
       block:

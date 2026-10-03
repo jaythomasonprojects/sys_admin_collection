@@ -5,18 +5,23 @@ access. Authorised keys belong to [`local_accounts`](../local_accounts/README.md
 
 ## Guarantee and ownership
 
-The role owns OpenSSH packages, Linux client policy, the complete server
-configuration, and service state. Server paths are `/etc/ssh/sshd_config` and
-`C:\ProgramData\ssh\sshd_config`. Windows also owns the `OpenSSH Server (sshd)`
+The role owns OpenSSH packages, Linux client policy, one Linux server policy
+drop-in, the complete Windows server configuration, and service state. Server
+paths are `/etc/ssh/sshd_config.d/99-sys-admin-sshd.conf` (root-owned, mode `0640`)
+and `C:\ProgramData\ssh\sshd_config`. Windows also owns the `OpenSSH Server (sshd)`
 TCP firewall rule and PowerShell as the default SSH shell. Linux firewall policy
 is outside this role.
 
-The role replaces the entire server main file, including custom settings and
-includes. Its Linux file does not include the general server drop-in directory.
-On Fedora it includes only the system crypto-policy file
-`/etc/crypto-policies/back-ends/opensshserver.config`, which supplies ciphers,
-MACs and key exchange.
-Foreign files remain on disk but are not merged or deleted.
+Linux preserves `/etc/ssh/sshd_config` and every unrelated server drop-in,
+including their ownership and modes. Distribution configuration owns baseline
+directives such as PAM and SFTP. Fedora's packaged `50-redhat.conf` loads
+`/etc/crypto-policies/back-ends/opensshserver.config`; the managed fragment does
+not duplicate that include. Windows still replaces its complete main file.
+
+Native OpenSSH precedence applies. Earlier values can win over the managed
+fragment, and some list directives accumulate. The `99-` filename does not
+override earlier policy. The role does not detect effective-policy conflicts,
+rewrite foreign configuration, or delete legacy and cloud-init drop-ins.
 
 ## Supported platforms and prerequisites
 
@@ -30,6 +35,12 @@ and its `win_capability` prerequisites. The installing account needs
 administrative access and the batch logon right. The role does not grant that
 right or provide a missing capability source. Installation may need an
 operator-managed reboot.
+
+Linux assumes the packaged main file already loads
+`/etc/ssh/sshd_config.d/*.conf` in global scope. This is an operator prerequisite,
+not a runtime layout check. The role does not inspect or repair custom include
+layouts. Native syntax validation can succeed when a custom main file ignores
+the managed drop-in; it does not prove that the policy was loaded.
 
 ## Interface
 
@@ -107,10 +118,19 @@ load it. Custom system and per-user client configuration remains your responsibi
 
 ## Validation and invariants
 
-Native `sshd -t -f` checks the complete candidate before replacement. Rejection
-preserves the installed server file and does not restart the service. A valid
-changed file notifies a restart; an unchanged repeat does not. Syntax validation
-does not prove every effective setting.
+Linux runs `/usr/sbin/sshd -t -f /etc/ssh/sshd_config` before policy mutation and
+after deployment, including all active foreign files. A rejected deployment
+restores the previous managed contents, ownership, and mode, or removes only the
+new managed file on first-write failure. Native errors remain visible, and the
+role cleans up its own backup. Service activation follows successful validation.
+A valid changed policy queues a restart; an unchanged repeat validates without
+changes or restart. The Linux handler validates again immediately before restart.
+
+An invalid candidate can briefly exist on disk before restoration. This is not
+an atomic multi-file transaction and does not protect against independent edits
+or reloads. Syntax validation does not prove every effective setting or access
+for every user and `Match` context. Linux check mode does not deploy policy,
+create rollback files, or restart SSH, and does not prove runtime acceptance.
 
 Linux establishes missing host keys before validation. Windows generates missing
 keys and restricts newly created private-key access control lists (ACLs).
@@ -129,12 +149,12 @@ Setup and commands are in the [Molecule guide](../../extensions/molecule/README.
 - `tasks/main.yml` checks the platform and dispatches enabled hosts.
 - `tasks/linux/main.yml` checks Fedora's port and installs distribution packages.
 - `tasks/linux/client.yml` manages and validates the client drop-in.
-- `tasks/linux/server.yml` establishes prerequisites and validates server policy.
+- `tasks/linux/server.yml` establishes host keys and deploys validated policy.
 - `tasks/windows/server.yml` manages the capability, candidate, firewall, and service.
 - `files/Initialize-WindowsSshHostKeys.ps1` generates and protects new host keys.
 - `handlers/main.yml` restarts services after changed server policy.
 - `vars/Debian.yml`, `vars/Fedora.yml`, and `vars/Ubuntu.yml` provide package and service
-  data; Fedora also names its crypto-policy include.
+  data.
 
 ## Migration
 
@@ -142,8 +162,37 @@ Setup and commands are in the [Molecule guide](../../extensions/molecule/README.
 `config_ssh_sshd_` with `ssh_server_` and `config_ssh_ssh_` with `ssh_client_`,
 keeping the suffix. Remove `config_ssh_service_name`; service names are internal.
 
-Beta configuration-layout upgrades are unsupported. Adopt the complete server
-policy on a standard supported host; it does not merge custom policy. Apply
-`local_accounts` alongside this role to provide each Windows account's keys.
+Version `0.11.0` restores Linux server drop-in ownership. Main files overwritten
+by earlier whole-file versions need independent operator recovery before this
+role runs. Deploying the drop-in or adding an include does not recover lost policy
+or resolve earlier-value conflicts. Reverting the collection alone is not a safe
+rollback: version `0.10.0` overwrites the main file again.
+
+Apply `local_accounts` alongside this role to provide each Windows account's keys.
 Keys in the former shared administrator file no longer authorise logins under
 the role's policy. That legacy file remains untouched.
+
+### Recover an overwritten Linux main file
+
+This procedure requires operator review and independent recovery access. It is
+not an automated role operation.
+
+1. Establish console or other independent recovery access. Keep existing SSH
+   sessions open. Preserve current SSH files and inventory assumptions for review.
+2. Restore `/etc/ssh/sshd_config` from a trusted pre-overwrite backup or matching
+   distribution configuration. Package reinstallation alone does not guarantee
+   replacement of a modified conffile.
+3. Restore lost site directives and includes deliberately. Review retained
+   cloud-init and legacy drop-ins; do not assume they are redundant or safe to delete.
+4. Confirm the active global `Include /etc/ssh/sshd_config.d/*.conf`. Remove obsolete
+   role policy from the main file only as part of reviewed recovery. Adding the
+   include alone does not restore lost configuration.
+5. Run `sudo /usr/sbin/sshd -t -f /etc/ssh/sshd_config` before service activation.
+   Inspect effective policy with `sudo /usr/sbin/sshd -T -C user=<user>,host=<host>,addr=<address>`
+   for representative connections. Review authentication, access restrictions,
+   listener settings, and Fedora crypto policy where applicable.
+6. Apply the role only after recovery. Verify new access through a separate SSH
+   session before closing existing sessions or recovery access.
+
+For rollback, restore reviewed configuration backups through independent access,
+then repeat native validation and separate-session access checks.

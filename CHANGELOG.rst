@@ -1,6 +1,23 @@
 jaythomasonprojects.sys_admin changelog
 =======================================
 
+0.11.0
+------
+
+- Breaking: restored Linux SSH server policy ownership to
+  ``/etc/ssh/sshd_config.d/99-sys-admin-sshd.conf``. Main files and unrelated
+  drop-ins are preserved and read with native OpenSSH precedence. Fedora's
+  packaged vendor include chain supplies system crypto policy again.
+- Assume the packaged main file loads server drop-ins; custom include layouts
+  remain the operator's responsibility. Validate the complete configuration
+  before policy mutation, after deployment, and immediately before restart.
+  Rejected updates restore only the managed file and do not activate invalid policy.
+- Previously overwritten Linux main files require manual recovery from a
+  trusted backup or matching distribution configuration, including lost site
+  policy and access checks. Adding an include or deploying the drop-in alone
+  does not recover lost policy. Windows behaviour and Linux client policy are
+  unchanged.
+
 0.10.1
 ------
 
