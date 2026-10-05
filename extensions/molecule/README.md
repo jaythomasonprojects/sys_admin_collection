@@ -68,7 +68,7 @@ dependencies; Ansible stays below version 14 for Docker driver compatibility.
 ```bash
 python3 -m venv .venv
 . .venv/bin/activate
-pip install -r requirements-test.txt
+pip install -r requirements.txt
 ansible-galaxy collection install -r requirements.yml -p ./.ansible/collections --force
 export ANSIBLE_CONFIG=ansible.cfg
 ```

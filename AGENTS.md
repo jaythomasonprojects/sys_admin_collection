@@ -2,27 +2,27 @@
 
 ## Scope and contracts
 
-- `jaythomasonprojects.sys_admin` ships capabilities; `../AnsiblePlaybooks` supplies site policy.
+- `jaythomasonprojects.sys_admin` ships capabilities; consuming playbooks supply environment policy.
   Keep account names, package selections, and shares out of collection defaults.
+- Keep public documentation and examples generic, without site-specific hosts or repository assumptions.
 - Ubuntu and Windows are primary; platform support varies by role. Read the affected role's
   README for its contract and its scenario README for acceptance limits.
-- Review one role at a time. Agree consequential edge cases before adding compatibility handling.
-- Use the `ansible-expert` skill for Ansible work. OpenSpec configuration lives in
-  `openspec/config.yaml`.
+- Planning policy lives in `openspec/config.yaml`.
 
 ## Local tools and worktrees
 
 - Use `python3 -m venv .venv`, then `. .venv/bin/activate` and
-  `pip install -r requirements-test.txt`. This is not a uv package project.
+  `pip install -r requirements.txt`. This is not a uv package project.
 - Keep `ansible <14`: ansible-core 2.21 removes registered `invocation` data used by the
   Molecule Docker driver's create playbook. The collection itself requires ansible-core >=2.18.
+- Keep `molecule-proxmox==1.2.1`. Test dependency constraints live in `requirements.txt`.
 - Run `uv run --no-project scripts/setup_worktree.py` in a new worktree, or the VS Code
   `Setup: worktree` task. It refuses tracked paths and existing conflicting destinations.
 - The helper shares `.venv`, `.env`, `openspec`, the Proxmox secrets file, CA bundle, and
   Windows public identity file. Dependency and OpenSpec edits affect all linked worktrees.
   `.ansible/` and Molecule lifecycle state must remain worktree-local.
-- Do not assume `.env` is loaded automatically. Windows tests require exported variables and
-  external credentials described in `extensions/molecule/README.md#set-up-windows-testing`.
+- Export test variables explicitly; `.env` is not loaded automatically. Before Windows setup,
+  read `extensions/molecule/README.md#set-up-windows-testing` for credentials and prerequisites.
 
 ## Verify the installed checkout
 
@@ -43,7 +43,7 @@ ANSIBLE_CONFIG=ansible.cfg molecule test -s local_accounts/linux
 - Substitute `<role>/linux` or `<role>/windows` for the focused scenario selector.
   Always set `ANSIBLE_CONFIG=ansible.cfg`; it selects the local collection but does not refresh it.
 - Run scenarios sequentially, including across worktrees: Linux scenarios reuse container names,
-  and Windows scenarios reserve fixed VMIDs. Read `extensions/molecule/README.md` before setup or recovery.
+  and Windows scenarios reserve VMIDs. Read `extensions/molecule/README.md` before test setup or recovery.
 - Before publishing, run the full gate, not just the affected scenario:
   `ANSIBLE_CONFIG=ansible.cfg MOLECULE_GLOB='extensions/molecule/**/molecule.yml' molecule test --all`.
 - Documentation-only changes need factual, link, example, lint, and archive checks, not infrastructure runs.
@@ -51,15 +51,13 @@ ANSIBLE_CONFIG=ansible.cfg molecule test -s local_accounts/linux
 
 ## Molecule pitfalls
 
-- Shared configuration is `extensions/molecule/config.yml`. Use `local_accounts/linux` as
-  the lightweight Docker reference; service tests need privileged containers and cgroup support.
-- Keep phases separate, with tasks inline unless reused by multiple includes or a loop.
-  Inputs belong in phase playbooks or `provisioner.inventory`, not `fixtures/`.
-  Do not add driver-output guards, Ansible-output scanners, or test-only capability opt-outs.
-- Assert supported-platform `fail_msg` verbatim. A role rename also changes the scenario path,
-  `scenario.name`, and assertions. Follow `extensions/molecule/README.md#maintain-scenarios`.
-- Windows uses Proxmox linked clones of template 100, not Docker or the retired VM 101 snapshot.
-  Never run fixture-mutating helpers against the template or an arbitrary workstation.
+- Shared configuration is `extensions/molecule/config.yml`. Linux needs Docker access;
+  service tests need privileged containers and cgroup support.
+- Before scenario edits, follow `extensions/molecule/README.md#maintain-scenarios`.
+  Use `local_accounts/linux` as the lightweight reference. Assert supported-platform `fail_msg`
+  verbatim; role renames also change the scenario path, `scenario.name`, and assertions.
+- Windows uses Proxmox linked clones of the configured template. Run fixture-mutating helpers
+  only against identified disposable clones, never the template or an arbitrary workstation.
 - Do not replay create against an existing Windows clone: the driver can return the source VMID.
   Local state deletion does not dispose of API resources. Confirm clone and disk disposal through
   the API, following `extensions/molecule/README.md#troubleshoot-and-recover`.
@@ -67,6 +65,7 @@ ANSIBLE_CONFIG=ansible.cfg molecule test -s local_accounts/linux
   DHCP address before correcting only its disposable connection record.
 - SSH and account-key scenarios use WinRM so SSH edits do not break management access.
   Reset the connection after credential rotation. Keep API TLS verification enabled.
+- Generated inventory and lifecycle records can contain secrets; do not print them in full or commit them.
 - Windows SMB refreshes stored passwords and reports changes honestly; its functional repeat
   replaces zero-change idempotence. Verify mappings under the configured user's SID and profile.
 
@@ -90,8 +89,9 @@ ANSIBLE_CONFIG=ansible.cfg molecule test -s local_accounts/linux
 - Task names use a capitalised action verb, no trailing full stop, and no role prefix.
   Task order: `name`, module and parameters, `loop`, alphabetised options, `tags`.
   Play order: `hosts`, alphabetised host options, `pre_tasks`, `roles`, `tasks`.
-- Keep each role README's guarantee, ownership, platforms, interface, enable behaviour,
-  implementation map, invariants, and migration notes current.
+- Each role README is the published variable reference on Galaxy. Keep its purpose, platforms,
+  full variable reference matching `meta/argument_specs.yml`, enable behaviour (including what
+  `false` undoes), and caveats current. Put migration notes in `CHANGELOG.rst`.
 
 ## Release and versioning
 
