@@ -1,18 +1,17 @@
 ---
-- name: Install OpenSSH Server capability
-  ansible.windows.win_capability:
-    name: 'OpenSSH.Server'
-    state: present
-  become: true
-
-- name: Create SSH server configuration directory
-  ansible.windows.win_file:
-    path: 'C:\ProgramData\ssh'
-    state: directory
-
-- name: Establish native Windows SSH host keys before validation
-  ansible.windows.win_powershell:
-    path: 'Initialize-WindowsSshHostKeys.ps1'
+- name: Validate the prepared native Windows SSH installation
+  ansible.windows.win_command:
+    argv:
+      - 'C:\Windows\System32\OpenSSH\sshd.exe'
+      - '-t'
+      - '-e'
+      - '-f'
+      - 'C:\ProgramData\ssh\sshd_config'
+  changed_when: false
+  # A native SSH child must not decode its grandparent's inherited handles.
+  environment:
+    c28fc6f98a2c44abbbd89d6a3037d0d9_POSIX_FD_STATE: ''
+  timeout: 60
   when: not ansible_check_mode
 
 - name: Validate and promote Windows SSH server configuration
@@ -25,13 +24,18 @@
       changed_when: false
 
     - name: Validate native Windows SSH server syntax
+      # Keep diagnostics on stderr rather than the Windows event-log sink.
       ansible.windows.win_command:
         argv:
           - 'C:\Windows\System32\OpenSSH\sshd.exe'
           - '-t'
+          - '-e'
           - '-f'
           - 'C:\ProgramData\ssh\sshd_config.sys-admin-candidate'
       changed_when: false
+      environment:
+        c28fc6f98a2c44abbbd89d6a3037d0d9_POSIX_FD_STATE: ''
+      timeout: 60
 
     - name: Promote validated Windows SSH server configuration
       ansible.windows.win_copy:
@@ -46,26 +50,41 @@
         state: absent
       changed_when: false
 
-- name: Create firewall rule for SSH port
+- name: Read the managed firewall ports before staging activation
+  ansible.windows.win_powershell:
+    script: |
+      $Ansible.Changed = $false
+      $rule = Get-NetFirewallRule -DisplayName 'OpenSSH Server (sshd)' `
+          -ErrorAction SilentlyContinue
+      $Ansible.Result = @()
+      if ($rule) {
+          $Ansible.Result = @($rule | Get-NetFirewallPortFilter |
+              Select-Object -ExpandProperty LocalPort)
+      }
+  register: ssh_windows_firewall_ports
+  timeout: 60
+
+# Keep the current transport open until the detached handler activates policy.
+- name: Stage firewall access for validated SSH activation
   community.windows.win_firewall_rule:
     action: allow
     direction: in
     enabled: true
-    localport: '{{ ssh_server_port }}'
+    localport: >-
+      {{ (ssh_windows_firewall_ports.result + [ssh_server_port | string])
+         | unique | join(',') }}
     name: 'OpenSSH Server (sshd)'
     protocol: 'TCP'
     state: present
+  changed_when: >-
+    ssh_windows_firewall_access.changed or
+    ssh_windows_firewall_ports.result | sort != [ssh_server_port | string]
+  notify: Restart Windows SSH service
+  register: ssh_windows_firewall_access
+  timeout: 60
 
 - name: Enable and start SSH service
   ansible.windows.win_service:
     name: 'sshd'
     start_mode: auto
     state: started
-
-- name: Set PowerShell as default SSH shell
-  ansible.windows.win_regedit:
-    data: 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe'
-    name: 'DefaultShell'
-    path: 'HKLM:\SOFTWARE\OpenSSH'
-    state: present
-    type: string

@@ -4,8 +4,8 @@
   become: true
   gather_facts: true
   vars:
-    ssh_test_service: >-
-      {{ 'sshd' if ansible_facts.distribution == 'Fedora' else 'ssh' }}
+    ansible_user: 'molecule'
+    ssh_test_service: 'ssh'
   tasks:
     - name: Read original managed policy
       ansible.builtin.slurp:
@@ -33,7 +33,6 @@
             search('(?m)^(Include|Subsystem|UsePAM|KbdInteractiveAuthentication|'
               ~ 'PrintMotd) ')
 
-    # Equal crypto values do not prove that Fedora's vendor include was read.
     - name: Query effective server policy and native include trace
       ansible.builtin.command:
         argv:
@@ -45,54 +44,22 @@
       changed_when: false
       register: ssh_effective_server
 
+    # Native releases print either name for the same key-only root policy.
     - name: Assert effective authentication and session policy
       ansible.builtin.assert:
         that:
           - "'passwordauthentication no' in ssh_effective_server.stdout_lines"
           - >-
-            ('permitrootlogin without-password'
-             if ansible_facts.distribution in ['Debian', 'Ubuntu']
-             else 'permitrootlogin prohibit-password')
-            in ssh_effective_server.stdout_lines
+            'permitrootlogin without-password' in
+            ssh_effective_server.stdout_lines or
+            'permitrootlogin prohibit-password' in
+            ssh_effective_server.stdout_lines
           - "'allowusers molecule' in ssh_effective_server.stdout_lines"
           - "'maxauthtries 3' in ssh_effective_server.stdout_lines"
           - "'clientaliveinterval 30' in ssh_effective_server.stdout_lines"
           - "'clientalivecountmax 2' in ssh_effective_server.stdout_lines"
           - "'permitemptypasswords no' in ssh_effective_server.stdout_lines"
           - "'pubkeyauthentication yes' in ssh_effective_server.stdout_lines"
-
-    - name: Verify Fedora retains the packaged crypto policy
-      when: ansible_facts.distribution == 'Fedora'
-      block:
-        - name: Read packaged crypto baseline
-          ansible.builtin.slurp:
-            src: '/var/tmp/ssh-crypto-baseline'
-          register: ssh_crypto_baseline
-
-        - name: Assert native vendor and crypto includes are active
-          ansible.builtin.assert:
-            that:
-              - >-
-                ssh_effective_server.stderr is
-                search('including /etc/ssh/sshd_config.d/50-redhat.conf')
-              - >-
-                ssh_effective_server.stderr is search('including '
-                  ~ '/etc/crypto-policies/back-ends/opensshserver.config')
-
-        - name: Assert effective crypto settings match the packaged baseline
-          ansible.builtin.assert:
-            that:
-              - >-
-                ssh_effective_server.stdout_lines |
-                select('match', item ~ ' ') | list ==
-                (ssh_crypto_baseline.content | b64decode).splitlines() |
-                select('match', item ~ ' ') | list
-          loop:
-            - 'ciphers'
-            - 'macs'
-            - 'kexalgorithms'
-            - 'hostkeyalgorithms'
-            - 'pubkeyacceptedalgorithms'
 
     # The client fragment alone does not prove system includes or Host ordering.
     - name: Query effective system client policy
@@ -552,3 +519,116 @@
           - >-
             ansible_facts.services[ssh_test_service ~ '.service'].status ==
             'enabled'
+
+    - name: Inspect account key ownership and directory protection
+      ansible.builtin.stat:
+        path: '{{ item }}'
+      loop:
+        - '/home/molecule/.ssh'
+        - '/home/molecule/.ssh/authorized_keys'
+      register: ssh_account_files
+
+    - name: Require account-owned protected key files
+      ansible.builtin.assert:
+        that:
+          - ssh_account_files.results[0].stat.pw_name == 'molecule'
+          - ssh_account_files.results[0].stat.mode == '0700'
+          - ssh_account_files.results[1].stat.pw_name == 'molecule'
+          - ssh_account_files.results[1].stat.mode == '0600'
+
+    - name: Read existing additive keys
+      ansible.builtin.slurp:
+        src: '/home/molecule/.ssh/authorized_keys'
+      register: ssh_account_keys_before
+
+    - name: Read the fixture public key
+      ansible.builtin.slurp:
+        src: '/var/tmp/ssh-fixture-key.pub'
+      register: ssh_fixture_public
+
+    - name: Reapply a subset without removing other Ubuntu keys
+      ansible.builtin.include_role:
+        name: 'jaythomasonprojects.sys_admin.ssh'
+      vars:
+        ssh_authorized_keys:
+          - keys:
+              - '{{ ssh_fixture_public.content | b64decode | trim }}'
+            name: 'molecule'
+
+    - name: Leave an omitted per-account key list unmanaged
+      ansible.builtin.include_role:
+        name: 'jaythomasonprojects.sys_admin.ssh'
+      vars:
+        ssh_authorized_keys:
+          - name: 'molecule'
+
+    - name: Add nothing for an explicitly empty Ubuntu key list
+      ansible.builtin.include_role:
+        name: 'jaythomasonprojects.sys_admin.ssh'
+      vars:
+        ssh_authorized_keys:
+          - keys: []
+            name: 'molecule'
+
+    - name: Skip disabled key changes
+      ansible.builtin.include_role:
+        name: 'jaythomasonprojects.sys_admin.ssh'
+      vars:
+        ssh_authorized_keys:
+          - keys:
+              - 'ssh-ed25519 AAAATESTDISABLED disabled@test'
+            name: 'molecule'
+        ssh_enabled: false
+
+    - name: Read retained additive keys
+      ansible.builtin.slurp:
+        src: '/home/molecule/.ssh/authorized_keys'
+      register: ssh_account_keys_after
+
+    - name: Assert key-list semantics and transferred account-key contents
+      ansible.builtin.assert:
+        that:
+          - ssh_account_keys_after.content == ssh_account_keys_before.content
+          - >-
+            ssh_fixture_public.content | b64decode | trim in
+            (ssh_account_keys_after.content | b64decode)
+          - >-
+            'molecule-second@test' in
+            (ssh_account_keys_after.content | b64decode)
+
+    - name: Replace only the disposable account password
+      ansible.builtin.user:
+        name: 'molecule'
+        password: >-
+          $6$sshfixture$KKB64WCuaPAhO5ZGSPiCnAo0rYhxV6SzakKRxsAhwPSLvtl5.7oxNkDUqFb.F2iHFGvyuN7/.LmIaCSQShK/E1
+        state: present
+        update_password: always
+      no_log: true
+
+    - name: Require fresh key access after restarts and password replacement
+      ansible.builtin.command:
+        argv:
+          - 'ssh'
+          - '-F'
+          - '/dev/null'
+          - '-o'
+          - 'BatchMode=yes'
+          - '-o'
+          - 'IdentitiesOnly=yes'
+          - '-o'
+          - 'StrictHostKeyChecking=no'
+          - '-o'
+          - 'UserKnownHostsFile=/dev/null'
+          - '-i'
+          - '/var/tmp/ssh-fixture-key'
+          - '-p'
+          - '{{ ssh_server_port | string }}'
+          - 'molecule@127.0.0.1'
+          - 'whoami'
+      changed_when: false
+      register: ssh_fresh_login
+
+    - name: Assert fresh session selected the configured account
+      ansible.builtin.assert:
+        that:
+          - ssh_fresh_login.stdout | trim == 'molecule'

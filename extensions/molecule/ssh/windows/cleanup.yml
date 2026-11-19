@@ -1,0 +1,12 @@
+---
+- name: Remove disposable controller login keys
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Remove only this scenario's generated keys
+      ansible.builtin.file:
+        path: >-
+          {{ lookup('ansible.builtin.env', 'MOLECULE_EPHEMERAL_DIRECTORY',
+                    default=undef())
+             ~ '/ssh-keys' }}
+        state: absent

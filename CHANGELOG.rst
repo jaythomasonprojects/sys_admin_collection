@@ -1,6 +1,94 @@
 jaythomasonprojects.sys_admin changelog
 =======================================
 
+0.13.0
+------
+
+Breaking changes
+~~~~~~~~~~~~~~~~
+
+- Remove ``mount_network_share`` from the collection. Workstation consumers
+  own default-user share mapping, runtime Windows logon and Samba credentials.
+  The consuming project provides its local role and workstation
+  integration acceptance. The other four collection roles are unchanged.
+- The frozen ``0.12.0`` integration candidate remains historical evidence, not
+  acceptance of this release. Build and verify the new archive before adoption
+  or publication.
+
+0.12.0
+------
+
+Breaking changes
+~~~~~~~~~~~~~~~~
+
+- Publish only ``ssh``, ``time_sync``, ``auto_updates``,
+  ``mount_network_share`` and ``install_app``. Move ``auto_login``,
+  ``desktop_layout``, ``power_policy``, ``disable_printer_discovery``,
+  ``disable_usb_storage`` and ``allow_ping`` to consuming-project roles.
+  No compatibility aliases are provided.
+- Remove ``local_accounts``. Consumers create accounts and own memberships
+  and password policy with native modules. Move each account's
+  ``ssh_authorized_keys`` to ``ssh_authorized_keys: [{name: ..., keys: [...]}]``
+  on ``ssh``, after account preparation. No account password is required for
+  key management. Ubuntu remains additive; Windows preserves native profiles,
+  protected per-account ACLs, replacement, clearing and omission semantics.
+- Support Ubuntu 24.04/26.04 and Windows only, subject to each role's platform contract.
+  Remove Fedora/DNF implementations, inputs and tests, and Debian/Enterprise
+  Linux platform claims. Drop Ubuntu 22.04 support and reject unsupported
+  releases before mutation. Pin an earlier release for excluded platforms or
+  upgrade to a supported Ubuntu release.
+- Windows shares require ``mount_network_share_windows_logon`` with a local
+  ``username`` and ``password`` for enabled, non-empty work. Each share's
+  existing ``username`` and ``password`` authenticate only to SMB. Configure
+  one local profile per invocation, using consistent SMB credentials for each
+  server within that profile. No account password is reset by this role.
+  Ubuntu credential files and removal retention are unchanged.
+- Make ``ssh`` configuration-only. Install and initialise OpenSSH, host keys and
+  initial access manually or through bootstrap before calling it. Windows also
+  requires PowerShell as its SSH default shell. The role retains policy, existing
+  account keys/profile ACLs, firewall access and service state; it does not install
+  packages/capabilities, generate host keys or provision WinRM.
+
+Minor changes
+~~~~~~~~~~~~~
+
+- Include the native SFTP subsystem in the complete Windows SSH configuration
+  so fresh key-only Ansible sessions can transfer managed files. Initial SSH
+  bootstrap access must already support file transfer.
+- Direct native Windows SSH validation diagnostics to stderr so invalid
+  candidates report their native errors during key-only remote configuration.
+  Clear inherited OpenSSH descriptor state for validator processes and bound
+  validation tasks so invalid candidates cannot hang remote configuration.
+- Stage Windows firewall port transitions before detached SSH activation, then
+  narrow the managed rule after restarting the listener without cutting off
+  the request that activates policy.
+- Retain SSH key/profile/ACL acceptance in the existing SSH scenarios and test
+  Windows SMB with two distinct non-admin profile/resource identities on one
+  disposable Windows VM, protected ACLs and native authentication controls.
+  Account lifecycle and relocated policy acceptance belong to
+  the consumer. Complete cross-project acceptance before publication or adoption.
+- Run retained Linux Molecule scenarios on disposable Ubuntu 24.04/26.04 Proxmox
+  VM clones rather than Docker targets, preserving native service conditions
+  and kernel safety checks.
+
+Upgrade guidance
+~~~~~~~~~~~~~~~~
+
+- Receive the removed role source and applicable tests in the consuming project
+  before upgrading. Replace removed FQCNs with local role calls; prepare accounts
+  before collection SSH key configuration. Protect both Windows logon and SMB
+  passwords through the consuming secret source.
+- Pin the exact tested archive/version after integration acceptance. Rollback
+  requires restoring the paired consuming interfaces and collection version,
+  not merely changing the collection pin. Preserve independent recovery access
+  while changing SSH policy or management credentials.
+
+0.11.1
+------
+
+- Run read-only GNOME schema queries in check mode for ``desktop_layout`` and
+  ``power_policy`` so previews do not falsely reject existing schemas.
+
 0.11.0
 ------
 

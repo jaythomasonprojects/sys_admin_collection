@@ -1,21 +1,8 @@
 ---
-- name: Skip Debian package installers on non-APT hosts
-  ansible.builtin.debug:
-    msg: >-
-      Skipping install_app_debs because this host uses
-      {{ ansible_facts.pkg_mgr }} rather than APT.
-  when:
-    - install_app_debs | length > 0
-    - ansible_facts.pkg_mgr is defined
-    - ansible_facts.pkg_mgr != 'apt'
-
 - name: Install Debian package references
   ansible.builtin.apt:
     deb: '{{ item }}'
     state: present
   loop: '{{ install_app_debs }}'
   become: true
-  when:
-    - install_app_debs | length > 0
-    - ansible_facts.pkg_mgr is defined
-    - ansible_facts.pkg_mgr == 'apt'
+  when: install_app_debs | length > 0

@@ -2,17 +2,12 @@
 galaxy_info:
   author: 'Jay Thomason'
   description: >-
-    Manage chrony time synchronisation policy on Debian, Ubuntu, and Fedora
+    Manage chrony time synchronisation policy on Ubuntu
   license: 'MIT'
   min_ansible_version: '2.18'
   platforms:
-    - name: 'Debian'
-      versions:
-        - 'all'
     - name: 'Ubuntu'
       versions:
-        - 'all'
-    - name: 'Fedora'
-      versions:
-        - 'all'
+        - 'noble'
+        - 'resolute'
 dependencies: []

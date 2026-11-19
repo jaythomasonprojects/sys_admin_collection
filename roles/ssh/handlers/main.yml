@@ -20,7 +20,10 @@
     - not ansible_check_mode
 
 - name: Restart Windows SSH service
-  ansible.windows.win_service:
-    name: 'sshd'
-    state: restarted
+  ansible.windows.win_powershell:
+    path: 'Activate-WindowsSsh.ps1'
+  async: 45
+  environment:
+    c28fc6f98a2c44abbbd89d6a3037d0d9_POSIX_FD_STATE: ''
+  poll: 0
   when: ansible_facts.os_family == 'Windows'

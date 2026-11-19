@@ -47,6 +47,6 @@ $shell = (Get-ItemProperty 'HKLM:\SOFTWARE\OpenSSH').DefaultShell
 $expectedShell = Join-Path 'C:\Windows\System32' `
     'WindowsPowerShell\v1.0\powershell.exe'
 if ($shell -ne $expectedShell) {
-    throw 'Default SSH shell does not match the requested policy'
+    throw 'Prepared SSH shell does not satisfy the PowerShell prerequisite'
 }
 'Windows SSH runtime policy verified'

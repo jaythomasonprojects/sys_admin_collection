@@ -14,7 +14,6 @@
       ansible.builtin.apt:
         name: 'npm'
         state: absent
-      when: inventory_hostname == 'ubuntu'
 
     - name: Check npm is unavailable before convergence
       ansible.builtin.command:
@@ -24,13 +23,11 @@
       register: install_app_npm_before
       changed_when: false
       failed_when: false
-      when: inventory_hostname == 'ubuntu'
 
     - name: Assert npm prerequisite is missing on Ubuntu
       ansible.builtin.assert:
         that:
           - install_app_npm_before.rc != 0
-      when: inventory_hostname == 'ubuntu'
 
     - name: Create unprivileged application caller
       ansible.builtin.user:
@@ -44,11 +41,14 @@
         dest: '/etc/sudoers.d/90-molecule'
         mode: '0440'
 
-    - name: Install python3-rpm for package_facts on DNF hosts
-      ansible.builtin.dnf:
-        name: 'python3-rpm'
+    - name: Authorise the controller key for the application caller
+      ansible.posix.authorized_key:
+        key: >-
+          {{ lookup('ansible.builtin.file',
+                    lookup('ansible.builtin.env',
+                           'MOLECULE_LINUX_IDENTITY_FILE', default=undef())) }}
         state: present
-      when: ansible_facts['pkg_mgr'] in ['dnf', 'dnf5']
+        user: 'molecule'
 
     - name: Create Debian package fixture directories
       ansible.builtin.file:

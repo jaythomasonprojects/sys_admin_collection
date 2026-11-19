@@ -8,6 +8,11 @@ $Ansible.Changed = $false
 $path = 'C:\ProgramData\ssh\sshd_config'
 $service = Get-CimInstance Win32_Service -Filter "Name='sshd'"
 $Ansible.Result = @{
+    FirewallPorts = @(
+        Get-NetFirewallRule -DisplayName 'OpenSSH Server (sshd)' |
+            Get-NetFirewallPortFilter |
+            Select-Object -ExpandProperty LocalPort
+    )
     Hash = (Get-FileHash -LiteralPath $path).Hash
     Keys = @(
         Get-ChildItem C:\ProgramData\ssh -Filter 'ssh_host_*_key' |

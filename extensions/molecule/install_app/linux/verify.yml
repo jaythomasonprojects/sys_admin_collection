@@ -13,18 +13,11 @@
       ansible.builtin.assert:
         that:
           - "expected_package_name in ansible_facts.packages"
-          - >-
-            'npm' in ansible_facts.packages
-            if ansible_facts['pkg_mgr'] == 'apt'
-            else ansible_facts.packages.keys()
-            | select('match', '^nodejs.*-npm$') | list | length > 0
+          - "'npm' in ansible_facts.packages"
           - "'flatpak' not in ansible_facts.packages"
-          - >-
-            ansible_facts['pkg_mgr'] == 'apt' or
-            'install-app-fixture' not in ansible_facts.packages
         fail_msg: >-
           install_app did not apply native and npm channels while skipping
-          unrequested Flatpak and unsupported Debian-installer channels.
+          the unrequested Flatpak channel.
 
     - name: Verify APT package installation
       when: ansible_facts["pkg_mgr"] == "apt"
@@ -105,33 +98,6 @@
               - >-
                 install_app_url_fixture_output.stdout ==
                 'install-app-url-fixture'
-
-    - name: Verify DNF package installation
-      when: ansible_facts["pkg_mgr"] in ["dnf", "dnf5"]
-      block:
-        - name: Query jq package status with rpm
-          ansible.builtin.command:
-            argv:
-              - "rpm"
-              - "-q"
-              - "{{ expected_package_name }}"
-          register: install_app_package_status
-          changed_when: false
-
-        - name: Run jq to prove the binary is available
-          ansible.builtin.command:
-            argv:
-              - "jq"
-              - "--version"
-          register: install_app_jq_version
-          changed_when: false
-
-        - name: Assert jq package installation on DNF hosts
-          ansible.builtin.assert:
-            that:
-              - "expected_package_name in ansible_facts.packages"
-              - "install_app_package_status.rc == 0"
-              - "install_app_jq_version.rc == 0"
 
     - name: Query globally installed npm fixture
       ansible.builtin.command:

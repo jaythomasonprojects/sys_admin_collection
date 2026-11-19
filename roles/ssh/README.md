@@ -1,22 +1,29 @@
 # ssh
 
-Installs and configures OpenSSH, starts its server, and manages Windows firewall
-access. Authorised keys belong to [`local_accounts`](../local_accounts/README.md).
+Configures installed OpenSSH, manages its service and Windows firewall access,
+and manages public keys for existing accounts without account passwords.
 
 ## Guarantee and ownership
 
-The role owns OpenSSH packages, Linux client policy, one Linux server policy
+The role owns Linux client policy, one Linux server policy
 drop-in, the complete Windows server configuration, and service state. Server
 paths are `/etc/ssh/sshd_config.d/99-sys-admin-sshd.conf` (root-owned, mode `0640`)
 and `C:\ProgramData\ssh\sshd_config`. Windows also owns the `OpenSSH Server (sshd)`
-TCP firewall rule and PowerShell as the default SSH shell. Linux firewall policy
+TCP firewall rule. Bootstrap owns the default SSH shell; Linux firewall policy
 is outside this role.
+
+Windows port transitions temporarily retain the managed rule's previous ports.
+Detached service activation then narrows that rule to the validated listener
+port. Callers must reconnect on the declared port after activation; interrupted
+activation can leave staged firewall ports until successful reapplication.
+
+The complete Windows configuration retains the native SFTP subsystem required
+by Ansible's SSH file transfers. Bootstrap access must already permit native
+file transfer before the role can upload its candidate configuration.
 
 Linux preserves `/etc/ssh/sshd_config` and every unrelated server drop-in,
 including their ownership and modes. Distribution configuration owns baseline
-directives such as PAM and SFTP. Fedora's packaged `50-redhat.conf` loads
-`/etc/crypto-policies/back-ends/opensshserver.config`; the managed fragment does
-not duplicate that include. Windows still replaces its complete main file.
+directives such as PAM and SFTP. Windows replaces its complete main file.
 
 Native OpenSSH precedence applies. Earlier values can win over the managed
 fragment, and some list directives accumulate. The `99-` filename does not
@@ -25,16 +32,19 @@ rewrite foreign configuration, or delete legacy and cloud-init drop-ins.
 
 ## Supported platforms and prerequisites
 
-- Debian and Ubuntu use `openssh-client`, `openssh-server`, and the native service.
-- Fedora uses `openssh-clients`, `openssh-server`, and `sshd`. Server port must be
-  `22`; this role does not manage alternate-port SELinux labels.
-- Windows uses the native OpenSSH Server capability and `sshd`.
+- Ubuntu 24.04/26.04 requires installed `openssh-client`, `openssh-server`,
+  native host keys, a valid packaged main file and a working SSH service.
+- Windows requires the installed native OpenSSH Server capability, host keys,
+  valid initial configuration, administrative key access and PowerShell as the
+  SSH default shell.
 
-Other platforms fail explicitly. Windows requires `ansible.windows >=3.6.0`
-and its `win_capability` prerequisites. The installing account needs
-administrative access and the batch logon right. The role does not grant that
-right or provide a missing capability source. Installation may need an
-operator-managed reboot.
+Other platforms/releases fail explicitly. Callers install and initialise SSH
+manually or through bootstrap/unattended setup before invoking this role.
+Missing prerequisites fail through native validation; there is no installation
+toggle, host-key generation or WinRM provisioning. Windows administrative key
+access needs no connection-account password for local policy work. Ubuntu
+requires sudo/root rights, including a sudo credential where policy requires it.
+The role does not establish first access or recover an already inaccessible host.
 
 Linux assumes the packaged main file already loads
 `/etc/ssh/sshd_config.d/*.conf` in global scope. This is an operator prerequisite,
@@ -49,6 +59,29 @@ removing packages, configuration, firewall access, or service state from earlier
 runs. It does not restore previous policy. Unsupported-platform validation
 still applies.
 
+### Existing-account keys
+
+`ssh_authorized_keys` defaults to `[]`. Each entry requires `name` and accepts
+an optional `keys` list of public-key strings. Create accounts first with native
+modules in the consuming playbook. The role neither creates accounts nor sets
+their passwords or memberships.
+
+```yaml
+ssh_authorized_keys:
+  - keys:
+      - '{{ example_public_key }}'
+    name: 'example_user'
+```
+
+Omitting per-account `keys` leaves that account unmanaged. An empty top-level
+list or disabled role leaves all key files untouched. Ubuntu adds declared keys,
+so an empty per-account list removes nothing. Windows replaces a declared list;
+an explicitly empty per-account list clears it. Unchanged declarations preserve
+idempotence. Windows resolves the SID and actual native profile, creates a native
+profile if needed, and protects the account-owned `.ssh` directory and key file
+with checked account/Administrators/SYSTEM ACLs. It does not guess the profile
+path from the account name or use a shared administrator file.
+
 Boolean-like OpenSSH settings below use quoted strings `'yes'` and `'no'`, not
 YAML Booleans. Types and choices are declared in
 [`meta/argument_specs.yml`](meta/argument_specs.yml).
@@ -57,6 +90,7 @@ YAML Booleans. Types and choices are declared in
 
 These configure both platforms. OpenSSH interprets patterns and values, and
 native validation reports invalid settings.
+Windows account/group patterns use native lowercase names.
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
@@ -74,7 +108,7 @@ native validation reports invalid settings.
 | `ssh_server_password_authentication` | `'yes'` | Permit password authentication |
 | `ssh_server_permit_empty_passwords` | `'no'` | Permit empty passwords |
 | `ssh_server_permit_root_login` | `'no'` | `yes`, `no`, or `prohibit-password` |
-| `ssh_server_port` | `22` | Server port; Fedora supports only `22` |
+| `ssh_server_port` | `22` | Server port |
 | `ssh_server_pubkey_authentication` | `'yes'` | Permit public-key authentication |
 | `ssh_server_use_dns` | `'no'` | Request reverse DNS lookup |
 | `ssh_server_x11_forwarding` | `'yes'` | Permit X11 forwarding |
@@ -132,29 +166,29 @@ or reloads. Syntax validation does not prove every effective setting or access
 for every user and `Match` context. Linux check mode does not deploy policy,
 create rollback files, or restart SSH, and does not prove runtime acceptance.
 
-Linux establishes missing host keys before validation. Windows generates missing
-keys and restricts newly created private-key access control lists (ACLs).
-Existing host keys are untouched. Windows validates and promotes its candidate
+Host-key generation belongs to bootstrap. Existing host keys are untouched.
+Windows validates and promotes its candidate
 outside check mode; check mode is not equivalent to runtime acceptance.
 
 The Windows firewall rule uses `ssh_server_port`. Linux service names come from
 distribution data; `ssh_service_name` is internal, not a public option.
 The [Windows scenario](../../extensions/molecule/ssh/windows/README.md) uses
-independent Windows Remote Management (WinRM) access while checking installation
-and policy transitions.
+key-only SSH on prepared clones and proves fresh access after policy transitions.
 Setup and commands are in the [Molecule guide](../../extensions/molecule/README.md).
 
 ## Implementation map
 
 - `tasks/main.yml` checks the platform and dispatches enabled hosts.
-- `tasks/linux/main.yml` checks Fedora's port and installs distribution packages.
+- `tasks/linux/main.yml` loads service data and dispatches policy/key work.
 - `tasks/linux/client.yml` manages and validates the client drop-in.
-- `tasks/linux/server.yml` establishes host keys and deploys validated policy.
-- `tasks/windows/server.yml` manages the capability, candidate, firewall, and service.
-- `files/Initialize-WindowsSshHostKeys.ps1` generates and protects new host keys.
+- `tasks/linux/server.yml` validates and deploys the owned policy fragment.
+- `tasks/windows/server.yml` manages the candidate, firewall and service.
+- `tasks/linux/authorized_keys.yml` adds keys for existing Ubuntu accounts.
+- `tasks/windows/authorized_keys.yml` resolves native profiles and manages keys.
+- `files/Resolve-LocalAccount.ps1` and `Set-AuthorizedKeyAcl.ps1` resolve Windows
+  SIDs and verify protected per-account permissions.
 - `handlers/main.yml` restarts services after changed server policy.
-- `vars/Debian.yml`, `vars/Fedora.yml`, and `vars/Ubuntu.yml` provide package and service
-  data.
+- `vars/Debian.yml` and `vars/Ubuntu.yml` provide Ubuntu package and service data.
 
 ## Migration
 
@@ -168,9 +202,15 @@ role runs. Deploying the drop-in or adding an include does not recover lost poli
 or resolve earlier-value conflicts. Reverting the collection alone is not a safe
 rollback: version `0.10.0` overwrites the main file again.
 
-Apply `local_accounts` alongside this role to provide each Windows account's keys.
-Keys in the former shared administrator file no longer authorise logins under
-the role's policy. That legacy file remains untouched.
+Version `0.12.0` moves authorised-key declarations to this role. Prepare existing
+accounts independently, then use `ssh_authorized_keys` with `name` and `keys`.
+Keys in the former shared administrator file do not authorise logins under this
+policy. That legacy file remains untouched. Full removal/input migration notes
+are in [CHANGELOG.rst](../../CHANGELOG.rst).
+
+It also requires preinstalled, initialised SSH on both platforms. Install and
+bootstrap access before calling the role; capability/package installation,
+Windows shell bootstrap and initial host-key creation are not role operations.
 
 ### Recover an overwritten Linux main file
 
@@ -190,7 +230,7 @@ not an automated role operation.
 5. Run `sudo /usr/sbin/sshd -t -f /etc/ssh/sshd_config` before service activation.
    Inspect effective policy with `sudo /usr/sbin/sshd -T -C user=<user>,host=<host>,addr=<address>`
    for representative connections. Review authentication, access restrictions,
-   listener settings, and Fedora crypto policy where applicable.
+    and listener settings.
 6. Apply the role only after recovery. Verify new access through a separate SSH
    session before closing existing sessions or recovery access.
 

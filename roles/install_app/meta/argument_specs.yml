@@ -3,6 +3,7 @@ argument_specs:
   main:
     short_description: Install applications through supported package channels
     description:
+      - Supports Ubuntu 24.04/26.04 and Windows.
       - Installs applications through native package, Debian installer, npm,
         Flatpak, and Chocolatey channels.
       - Application package lists are site data. Supply them from group_vars in

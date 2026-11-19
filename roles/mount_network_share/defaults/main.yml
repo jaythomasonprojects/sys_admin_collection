@@ -1,4 +1,0 @@
----
-mount_network_share_enabled: true
-mount_network_share_reload_remote_fs: false
-mount_network_share_shares: []

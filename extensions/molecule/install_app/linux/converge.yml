@@ -1,6 +1,6 @@
 ---
 - name: Verify npm prerequisite ownership
-  hosts: ubuntu
+  hosts: all
   gather_facts: true
   vars:
     ansible_user: 'molecule'
@@ -11,6 +11,30 @@
       - 'is-number'
     install_app_packages: []
   tasks:
+    - name: Reject Ubuntu 22.04 before package mutation
+      block:
+        - name: Apply application policy with unsupported Ubuntu release facts
+          ansible.builtin.include_role:
+            name: 'jaythomasonprojects.sys_admin.install_app'
+          vars:
+            ansible_facts:
+              distribution: 'Ubuntu'
+              distribution_version: '22.04'
+              os_family: 'Debian'
+              system: 'Linux'
+
+        - name: Fail if Ubuntu 22.04 was accepted
+          ansible.builtin.fail:
+            msg: 'Unsupported Ubuntu release was accepted'
+      rescue:
+        - name: Require the release-gate diagnostic
+          ansible.builtin.assert:
+            that:
+              - >-
+                ansible_failed_result.msg ==
+                'install_app supports Ubuntu 24.04/26.04 and Windows '
+                ~ 'hosts only.'
+
     - name: Inspect npm caller identity
       ansible.builtin.command:
         argv:
@@ -99,14 +123,8 @@
     - name: Set Debian package references
       ansible.builtin.set_fact:
         install_app_debs:
-          - >-
-            {{ '/usr/local/src/install-app-fixture.deb' if
-            ansible_facts.pkg_mgr == 'apt' else
-            '/usr/local/src/unavailable-install-app-fixture.deb' }}
-          - >-
-            {{ 'http://127.0.0.1:8765/install-app-url-fixture.deb' if
-            ansible_facts.pkg_mgr == 'apt' else
-            'http://127.0.0.1:9/unavailable.deb' }}
+          - '/usr/local/src/install-app-fixture.deb'
+          - 'http://127.0.0.1:8765/install-app-url-fixture.deb'
   tasks:
     - name: Inspect application caller identity
       ansible.builtin.command:
@@ -162,7 +180,7 @@
         that:
           - >-
             install_app_unsupported_platform_failure ==
-            'install_app supports Linux and Windows hosts only.'
+            'install_app supports Ubuntu 24.04/26.04 and Windows hosts only.'
 
     - name: Reject a missing Debian package reference on APT
       when: ansible_facts.pkg_mgr == 'apt'

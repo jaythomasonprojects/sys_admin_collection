@@ -3,6 +3,7 @@ argument_specs:
   main:
     short_description: Configure native automatic operating system updates
     description:
+      - Supports Ubuntu 24.04/26.04 and Windows.
       - Configures persistent automatic update schedules on Linux.
       - Installs available updates immediately on Windows.
     options:
@@ -24,44 +25,12 @@ argument_specs:
         type: list
         elements: str
         default: []
-      auto_updates_dnf_apply_updates:
-        description: Install downloaded updates with dnf-automatic.
-        type: bool
-        default: true
-      auto_updates_dnf_download_updates:
-        description: Download package updates with dnf-automatic.
-        type: bool
-        default: true
-      auto_updates_dnf_emit_via:
-        description: DNF update notification transport.
-        type: str
-        default: 'stdio'
-      auto_updates_dnf_random_sleep:
-        description: Maximum random delay before DNF starts.
-        type: int
-        default: 0
-      auto_updates_dnf_reboot:
-        description: DNF reboot policy.
-        type: str
-        choices:
-          - 'never'
-          - 'when-changed'
-          - 'when-needed'
-        default: 'never'
-      auto_updates_dnf_upgrade_type:
-        description: DNF upgrade type.
-        type: str
-        choices:
-          - 'default'
-          - 'security'
-        default: 'default'
       auto_updates_enabled:
         description:
           - Whether this host should have automatic updates configured.
           - >-
             Setting this to false converges Linux to a disabled schedule by
-            writing zeroed APT periodic counters and stopping the dnf-automatic
-            timer, rather than skipping the role.
+            writing zeroed APT periodic counters, rather than skipping the role.
           - >-
             Windows ignores this setting and installs available updates
             immediately.

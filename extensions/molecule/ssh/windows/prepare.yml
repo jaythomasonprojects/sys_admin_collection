@@ -1,79 +1,84 @@
 ---
-- name: Prove independent Windows management access
+- name: Prepare account-key fixtures over the clone's installed SSH
   hosts: all
   gather_facts: false
+  vars:
+    ansible_port: >-
+      {{ lookup('ansible.builtin.env', 'MOLECULE_WINDOWS_SSH_PORT') | int }}
   tasks:
-    - name: Require the WinRM transport override
+    - name: Require the identified disposable SSH scenario connection
       ansible.builtin.assert:
         that:
-          - ansible_connection == 'winrm'
-          - ansible_port | int == 5986
           - inventory_hostname == 'ssh-windows'
+          - ansible_host | length > 0
+          - ansible_user | lower not in ['sa_key_admin', 'sa_key_standard']
 
-    - name: Wait for the clone connection
+    - name: Wait for key-authenticated clone access
       ansible.builtin.wait_for_connection:
         timeout: 600
 
-    - name: Verify Windows module execution over WinRM
+    - name: Verify Windows module execution over key-only SSH
       ansible.windows.win_ping:
-
-    - name: Stop SSH without losing the management connection
-      ansible.windows.win_service:
-        name: 'sshd'
-        state: stopped
-
-    - name: Verify WinRM remains usable without SSH
-      ansible.windows.win_ping:
-
-    - name: Remove the preinstalled SSH capability
-      ansible.windows.win_capability:
-        name: 'OpenSSH.Server'
-        state: absent
-      become: true
-      register: windows_ssh_removed
-
-    - name: Reboot after capability removal when required
-      ansible.windows.win_reboot:
-      when: windows_ssh_removed.reboot_required
-
-    - name: Reset SSH files while preserving the native directory permissions
-      ansible.windows.win_powershell:
-        path: >-
-          {{ playbook_dir }}/files/Reset-WindowsSshFixture.ps1
-
-    - name: Assert the fresh fixture has no native SSH host keys
-      ansible.windows.win_powershell:
-        script: |
-          $Ansible.Changed = $false
-          $path = 'C:\ProgramData\ssh'
-          if (Test-Path -LiteralPath $path) {
-              $keys = @(Get-ChildItem $path -Filter 'ssh_host_*_key')
-              if ($keys.Count -ne 0) {
-                  throw 'Fresh-host fixture already contains SSH host keys'
-              }
-          }
 
     - name: Gather Windows facts for the disabled pass
       ansible.builtin.setup:
 
-    - name: Apply disabled SSH policy without installing the capability
+    - name: Apply disabled SSH policy without changing prepared access
       ansible.builtin.include_role:
         name: 'jaythomasonprojects.sys_admin.ssh'
       vars:
         ssh_enabled: false
 
-    - name: Inspect OpenSSH Server capability after disabled pass
-      ansible.windows.win_shell: |
-        $capability = @(Get-WindowsCapability -Online |
-          Where-Object { $_.Name -like 'OpenSSH.Server*' })
-        if ($capability.Count -ne 1) {
-          throw 'Expected exactly one OpenSSH Server capability'
-        }
-        $capability[0].State.ToString()
-      register: ssh_test_disabled_capability
-      changed_when: false
+    - name: Create the controller fixture-key directory
+      ansible.builtin.file:
+        mode: '0700'
+        path: '{{ ssh_fixture_keys }}'
+        state: directory
+      delegate_to: localhost
+      vars:
+        ansible_connection: 'local'
+        ansible_shell_type: 'sh'
 
-    - name: Assert disabled policy did not install OpenSSH
-      ansible.builtin.assert:
-        that:
-          - ssh_test_disabled_capability.stdout | trim == 'NotPresent'
+    - name: Generate distinct disposable login keys
+      ansible.builtin.command:
+        argv:
+          - 'ssh-keygen'
+          - '-q'
+          - '-t'
+          - 'ed25519'
+          - '-N'
+          - ''
+          - '-f'
+          - '{{ ssh_fixture_keys }}/{{ item }}'
+        creates: '{{ ssh_fixture_keys }}/{{ item }}'
+      delegate_to: localhost
+      vars:
+        ansible_connection: 'local'
+        ansible_shell_type: 'sh'
+      loop:
+        - 'admin'
+        - 'standard'
+        - 'shared'
+
+    - name: Create the administrative key fixture with native account policy
+      ansible.windows.win_user:
+        groups:
+          - 'S-1-5-32-544'
+        name: 'sa_key_admin'
+        password: 'Synthetic-Key-Fixture!2026'
+        state: present
+      no_log: true
+
+    - name: Create the standard key fixture with native account policy
+      ansible.windows.win_user:
+        name: 'sa_key_standard'
+        password: 'Synthetic-Key-Fixture!2026'
+        state: present
+      register: ssh_fixture_standard
+      no_log: true
+
+    - name: Create a native profile with a different directory name
+      ansible.windows.win_user_profile:
+        name: 'sa_key_alternate'
+        username: '{{ ssh_fixture_standard.sid }}'
+        state: present

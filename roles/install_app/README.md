@@ -1,16 +1,14 @@
 # install_app
 
 Installs applications through native package, Debian installer, npm, Flatpak,
-and Chocolatey channels. It supports Debian, Enterprise Linux, Fedora, Ubuntu,
-and Windows hosts.
+and Chocolatey channels. It supports Ubuntu 24.04/26.04 and Windows hosts.
 
 ## Guarantee and ownership
 
 On Linux, the role processes channels in this order: native packages, Debian
 package references, npm applications, then Flatpak applications. Native package
 installation owns required npm and Flatpak tools. Its first-found distribution
-data selects `npm` for Debian-family hosts and `nodejs-npm` for Red Hat-family
-hosts; Flatpak requests receive `flatpak`.
+data selects `npm` for Ubuntu; Flatpak requests receive `flatpak`.
 
 The role validates the npm and Flatpak executables after it installs their
 prerequisites. It configures Flathub before installing requested Flatpak refs
@@ -70,7 +68,6 @@ consuming playbook repository, not from this collection.
 ## Invariants
 
 - Requested native packages and channel prerequisites use `state: present`.
-- Non-APT hosts skip `install_app_debs` without accessing package references.
 - Missing active APT references fail installation instead of silently skipping.
 - npm requests require a working executable after prerequisite installation.
 - Global npm installation uses task-level escalation. Already installed bare

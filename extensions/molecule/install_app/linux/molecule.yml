@@ -1,16 +1,20 @@
 ---
 driver:
-  name: "docker"
+  name: 'molecule-proxmox'
+  options:
+    ssh_identity_file: '${MOLECULE_LINUX_IDENTITY_FILE}'
+    ssh_port: '${MOLECULE_LINUX_SSH_PORT}'
+    ssh_user: '${MOLECULE_LINUX_USER}'
 
 platforms:
-  - name: 'ubuntu'
-    command: 'sleep infinity'
-    image: 'docker.io/geerlingguy/docker-ubuntu2204-ansible:latest'
-    pre_build_image: true
-  - name: 'fedora'
-    command: 'sleep infinity'
-    image: 'docker.io/geerlingguy/docker-fedora44-ansible:latest'
-    pre_build_image: true
+  - name: 'ubuntu2404'
+    newid: '${MOLECULE_UBUNTU2404_VMID:-required-vmid}'
+    template_vmid: >-
+      ${MOLECULE_UBUNTU2404_TEMPLATE_VMID:-required-template-vmid}
+  - name: 'ubuntu2604'
+    newid: '${MOLECULE_UBUNTU2604_VMID:-required-vmid}'
+    template_vmid: >-
+      ${MOLECULE_UBUNTU2604_TEMPLATE_VMID:-required-template-vmid}
 
 scenario:
   name: 'install_app/linux'

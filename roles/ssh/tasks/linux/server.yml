@@ -1,20 +1,4 @@
 ---
-- name: Create SSH runtime directory
-  ansible.builtin.file:
-    path: '/run/sshd'
-    state: directory
-    mode: '0755'
-  become: true
-
-- name: Establish missing native SSH host keys
-  ansible.builtin.command:
-    argv:
-      - 'ssh-keygen'
-      - '-A'
-  become: true
-  changed_when: ssh_host_keys.stdout | trim | length > 0
-  register: ssh_host_keys
-
 # Validate what sshd actually uses, without inspecting the include layout.
 - name: Validate complete server configuration before policy mutation
   ansible.builtin.command:

@@ -6,11 +6,4 @@ auto_updates_apt_package_blacklist: []
 auto_updates_apt_auto_reboot: false
 auto_updates_apt_auto_reboot_time: "02:00"
 
-auto_updates_dnf_download_updates: true
-auto_updates_dnf_apply_updates: true
-auto_updates_dnf_random_sleep: 0
-auto_updates_dnf_upgrade_type: default
-auto_updates_dnf_reboot: never
-auto_updates_dnf_emit_via: stdio
-
 auto_updates_win_reboot: true

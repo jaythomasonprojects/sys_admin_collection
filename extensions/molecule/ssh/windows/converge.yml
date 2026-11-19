@@ -1,11 +1,64 @@
 ---
 - name: Converge Windows SSH with a non-default server port
   hosts: all
-  gather_facts: true
+  gather_facts: false
   vars:
+    ssh_authorized_keys:
+      - keys:
+          - >-
+            {{ lookup('ansible.builtin.file',
+                      ssh_fixture_keys ~ '/admin.pub') }}
+        name: 'sa_key_admin'
+      - keys:
+          - >-
+            {{ lookup('ansible.builtin.file',
+                      ssh_fixture_keys ~ '/standard.pub') }}
+        name: 'sa_key_standard'
     ssh_server_allow_users:
+      - "{{ lookup('ansible.builtin.env', 'MOLECULE_WINDOWS_USER') | lower }}"
+      - 'sa_key_admin'
+      - 'sa_key_standard'
       - 'ssh_test_allowed'
     ssh_server_password_authentication: 'no'
     ssh_server_port: 2222
-  roles:
-    - role: 'jaythomasonprojects.sys_admin.ssh'
+  pre_tasks:
+    - name: Probe the managed SSH port before selecting fixture access
+      ansible.builtin.wait_for:
+        host: '{{ ansible_host }}'
+        port: 2222
+        timeout: 3
+      changed_when: false
+      delegate_to: localhost
+      failed_when: false
+      register: ssh_managed_port
+      vars:
+        ansible_connection: 'local'
+        ansible_shell_type: 'sh'
+
+    - name: Select bootstrap access or the already configured SSH port
+      ansible.builtin.set_fact:
+        ansible_port: >-
+          {{ 2222 if ssh_managed_port.state | default('') == 'started'
+             else lookup('ansible.builtin.env',
+                         'MOLECULE_WINDOWS_SSH_PORT') | int }}
+
+    - name: Gather prepared Windows facts through SSH
+      ansible.builtin.setup:
+  tasks:
+    - name: Configure the prepared SSH installation
+      ansible.builtin.include_role:
+        name: 'jaythomasonprojects.sys_admin.ssh'
+
+    - name: Activate validated policy
+      ansible.builtin.meta: flush_handlers
+
+    - name: Select the configured port for fresh connections
+      ansible.builtin.set_fact:
+        ansible_port: 2222
+
+    - name: Close the old SSH control session
+      ansible.builtin.meta: reset_connection
+
+    - name: Require fresh key-only management access
+      ansible.builtin.wait_for_connection:
+        timeout: 120

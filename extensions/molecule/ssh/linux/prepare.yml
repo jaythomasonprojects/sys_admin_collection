@@ -1,6 +1,7 @@
 ---
 - name: Prepare SSH scenario
   hosts: all
+  become: true
   gather_facts: false
   tasks:
     - name: Gather minimal facts
@@ -9,45 +10,10 @@
           - "!all"
           - "min"
 
-    # Removing a Debian package alone can leave a modified conffile behind.
-    - name: Remove OpenSSH packages
-      ansible.builtin.apt:
-        name:
-          - 'openssh-client'
-          - 'openssh-server'
-        purge: true
-        state: absent
-        update_cache: true
-      when: ansible_facts.distribution in ['Debian', 'Ubuntu']
-
-    - name: Remove Fedora OpenSSH packages
-      ansible.builtin.dnf:
-        name:
-          - 'openssh-clients'
-          - 'openssh-server'
-        state: absent
-      when: ansible_facts.distribution == 'Fedora'
-
-    - name: Remove stale main configuration from disposable containers
-      ansible.builtin.file:
-        path: '/etc/ssh/sshd_config'
-        state: absent
-
-    - name: Install packaged Debian-family configuration
-      ansible.builtin.apt:
-        name:
-          - 'openssh-client'
-          - 'openssh-server'
-        state: present
-      when: ansible_facts.distribution in ['Debian', 'Ubuntu']
-
-    - name: Install packaged Fedora configuration
-      ansible.builtin.dnf:
-        name:
-          - 'openssh-clients'
-          - 'openssh-server'
-        state: present
-      when: ansible_facts.distribution == 'Fedora'
+    - name: Validate the prepared native SSH installation
+      ansible.builtin.command:
+        argv: ['/usr/sbin/sshd', '-t', '-f', '/etc/ssh/sshd_config']
+      changed_when: false
 
     - name: Create SSH drop-in directories
       ansible.builtin.file:
@@ -68,21 +34,10 @@
 
     - name: Find packaged and unrelated server drop-ins
       ansible.builtin.find:
+        excludes: '99-sys-admin-sshd.conf'
         paths: '/etc/ssh/sshd_config.d'
         patterns: '*.conf'
       register: ssh_prepared_dropins
-
-    - name: Create native validation runtime directory
-      ansible.builtin.file:
-        path: '/run/sshd'
-        state: directory
-        mode: '0755'
-
-    - name: Establish baseline host keys
-      ansible.builtin.command:
-        argv: ['ssh-keygen', '-A']
-      changed_when: ssh_prepared_keys.stdout | trim | length > 0
-      register: ssh_prepared_keys
 
     - name: Find established host keys
       ansible.builtin.find:
@@ -110,24 +65,11 @@
         dest: '/var/tmp/ssh-preservation.json'
         mode: '0600'
 
-    - name: Record packaged effective crypto policy
-      ansible.builtin.command:
-        argv: ['sshd', '-T']
-      changed_when: false
-      register: ssh_prepared_effective
-      when: ansible_facts.distribution == 'Fedora'
-
-    - name: Save packaged crypto baseline
-      ansible.builtin.copy:
-        content: '{{ ssh_prepared_effective.stdout }}'
-        dest: '/var/tmp/ssh-crypto-baseline'
-        mode: '0600'
-      when: ansible_facts.distribution == 'Fedora'
-
     - name: Create unprivileged SSH policy caller
       ansible.builtin.user:
         create_home: true
         name: 'molecule'
+        shell: '/bin/bash'
         state: present
 
     - name: Permit unprivileged caller to escalate without a password
@@ -135,3 +77,25 @@
         content: "molecule ALL=(ALL) NOPASSWD: ALL\n"
         dest: '/etc/sudoers.d/90-molecule'
         mode: '0440'
+
+    - name: Authorise the controller key for the unprivileged connection
+      ansible.posix.authorized_key:
+        key: >-
+          {{ lookup('ansible.builtin.file',
+                    lookup('ansible.builtin.env',
+                           'MOLECULE_LINUX_IDENTITY_FILE', default=undef())) }}
+        state: present
+        user: 'molecule'
+
+    - name: Generate disposable key for fresh SSH sessions
+      ansible.builtin.command:
+        argv:
+          - 'ssh-keygen'
+          - '-q'
+          - '-t'
+          - 'ed25519'
+          - '-N'
+          - ''
+          - '-f'
+          - '/var/tmp/ssh-fixture-key'
+        creates: '/var/tmp/ssh-fixture-key'

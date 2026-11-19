@@ -1,0 +1,308 @@
+---
+- name: Check disposable clone allocations before native creation
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tags:
+    - preflight
+  vars:
+    molecule_ephemeral_directory: >-
+      {{ lookup('ansible.builtin.env', 'MOLECULE_EPHEMERAL_DIRECTORY') }}
+    options: '{{ molecule_yml.driver.options }}'
+  module_defaults:
+    community.proxmox.proxmox_vm_info:
+      api_host: '{{ api_host }}'
+      api_timeout: 60
+      api_token_id: '{{ api_token_id }}'
+      api_token_secret: '{{ api_token_secret }}'
+      api_user: '{{ api_user }}'
+      node: '{{ options.node }}'
+      validate_certs: true
+  tasks:
+    - name: Load private API credentials
+      ansible.builtin.include_vars: '{{ options.proxmox_secrets }}'
+      no_log: true
+
+    - name: Inspect read access needed for independent pool ownership checks
+      ansible.builtin.uri:
+        ca_path: >-
+          {{ lookup('ansible.builtin.env', 'REQUESTS_CA_BUNDLE') |
+             default(omit, true) }}
+        headers:
+          Authorization: >-
+            PVEAPIToken={{ api_user }}!{{ api_token_id }}={{ api_token_secret }}
+        return_content: true
+        url: >-
+          https://{{ api_host }}:8006/api2/json/access/permissions?path={{
+          ('/pool/' ~ options.pool) | urlencode }}
+        validate_certs: true
+      register: molecule_pool_permissions
+      no_log: true
+
+    # Permission values encode propagation; a non-propagating grant has value 0.
+    - name: Require independent API visibility of the test pool
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - >-
+            'Pool.Audit' in
+            (molecule_pool_permissions.json.data['/pool/' ~ options.pool] |
+             default({}))
+        fail_msg: >-
+          API credentials require Pool.Audit on the configured test pool
+          to verify clone ownership independently before guest or deletion work.
+          Provision read-only pool inspection before creating test clones.
+
+    - name: Require distinct externally reserved clone allocations
+      ansible.builtin.assert:
+        that:
+          - options.clone_vmid_min | int > 0
+          - options.clone_vmid_max | int >= options.clone_vmid_min | int
+          - >-
+            molecule_yml.platforms | map(attribute='newid') | unique | length
+            == molecule_yml.platforms | length
+          - item.newid | int >= options.clone_vmid_min | int
+          - item.newid | int <= options.clone_vmid_max | int
+          - item.template_vmid | int > 0
+          - >-
+            item.template_vmid | int < options.clone_vmid_min | int or
+            item.template_vmid | int > options.clone_vmid_max | int
+          - >-
+            item.keys() | intersect(
+              ['ciuser', 'cipassword', 'citype', 'ipconfig', 'nameservers',
+               'searchdomains', 'sshkeys']) | length == 0
+        fail_msg: >-
+          Source/build and disposable clone allocations must be disjoint.
+      loop: '{{ molecule_yml.platforms }}'
+      loop_control:
+        label: '{{ item.name }}'
+
+    - name: Inspect API inventory before allocation
+      community.proxmox.proxmox_vm_info:
+      register: molecule_before
+      no_log: true
+
+    - name: Refuse occupied clone allocations
+      ansible.builtin.assert:
+        that:
+          - >-
+            molecule_before.proxmox_vms |
+            selectattr('vmid', 'equalto', item.newid | int) | length == 0
+        fail_msg: >-
+          Clone allocation is occupied; native create must not be replayed.
+      loop: '{{ molecule_yml.platforms }}'
+      loop_control:
+        label: '{{ item.name }}'
+
+    - name: Inspect source configurations through the verified API
+      community.proxmox.proxmox_vm_info:
+        config: current
+        vmid: '{{ item.template_vmid | int }}'
+      loop: '{{ molecule_yml.platforms }}'
+      register: molecule_sources
+      no_log: true
+
+    - name: Require stopped templates and declared source protection
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - item.proxmox_vms | length == 1
+          - item.proxmox_vms[0].status == 'stopped'
+          - item.proxmox_vms[0].template | default(false) | bool
+          - >-
+            not item.item.source_protection_required |
+              default(options.full) | bool or
+            item.proxmox_vms[0].config.protection | default(false) | bool
+        fail_msg: >-
+          Sources must be stopped templates with their declared deletion
+          protection policy. Prepare sources separately.
+      loop: '{{ molecule_sources.results }}'
+      loop_control:
+        label: '{{ item.item.name }}'
+
+    - name: Save source configuration fingerprints for disposal verification
+      ansible.builtin.copy:
+        content: |
+          {% for source in molecule_sources.results %}
+          - vmid: {{ source.item.template_vmid | int }}
+            sha256: {{
+              source.proxmox_vms[0].config |
+              to_json(sort_keys=True) | hash('sha256') }}
+          {% endfor %}
+        dest: '{{ molecule_ephemeral_directory }}/source-fingerprints.yml'
+        mode: '0600'
+
+- name: Create clones with the installed native Proxmox driver
+  ansible.builtin.import_playbook: >-
+    {{ native_driver_directory }}/playbooks/create.yml
+  vars:
+    native_driver_directory: >-
+      {{ lookup('ansible.builtin.pipe', ansible_playbook_python ~
+         ' -c "import os,molecule_proxmox;'
+         ~ ' print(os.path.dirname(molecule_proxmox.__file__))"') }}
+
+- name: Verify created identities and pin their native SSH host keys
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    molecule_ephemeral_directory: >-
+      {{ lookup('ansible.builtin.env', 'MOLECULE_EPHEMERAL_DIRECTORY') }}
+    options: '{{ molecule_yml.driver.options }}'
+    instances: >-
+      {{ lookup('ansible.builtin.file', molecule_instance_config) | from_yaml }}
+  module_defaults:
+    community.proxmox.proxmox_vm_info:
+      api_host: '{{ api_host }}'
+      api_timeout: 60
+      api_token_id: '{{ api_token_id }}'
+      api_token_secret: '{{ api_token_secret }}'
+      api_user: '{{ api_user }}'
+      node: '{{ options.node }}'
+      validate_certs: true
+  tasks:
+    - name: Check native results against the requested clone identities
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - instances | length == molecule_yml.platforms | length
+          - item.vmid | int == item.rc.p.newid | int
+          - item.vmid | int != item.rc.p.template_vmid | int
+        fail_msg: >-
+          Native driver returned a source or unexpected instance identity.
+      loop: '{{ proxmox_qemu_agent.results }}'
+      loop_control:
+        label: '{{ item.rc.p.name }}'
+      tags:
+        - identity
+
+    - name: Require native receipts for new clones in the selected test pool
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - item.changed
+          - item.vmid | int == item.p.newid | int
+          - item.invocation.module_args.pool == options.pool
+      loop: '{{ proxmox_clone.results }}'
+      loop_control:
+        label: '{{ item.p.name }}'
+
+    - name: Inspect independent clone identity and settled DHCP
+      community.proxmox.proxmox_vm_info:
+        config: current
+        network: true
+        vmid: '{{ item.vmid | int }}'
+      loop: '{{ instances }}'
+      register: molecule_created
+      until: >-
+        molecule_created.proxmox_vms | length == 1 and
+        molecule_created.proxmox_vms[0].network | default([]) |
+        map(attribute='ip-addresses', default=[]) | flatten |
+        selectattr('ip-address-type', 'equalto', 'ipv4') |
+        map(attribute='ip-address') |
+        reject('match', '^(127\.|169\.254\.)') | list | length > 0
+      retries: 30
+      delay: 10
+      no_log: true
+
+    - name: Require API-observed disposable clone names and owned disks
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - item.proxmox_vms[0].name == item.item.instance
+          - item.proxmox_vms[0].node == options.node
+          - item.proxmox_vms[0].pool | default('') == options.pool
+          - not item.proxmox_vms[0].template | default(false) | bool
+          - molecule_clone_volumes | length > 0
+          - >-
+            molecule_clone_volumes |
+            reject('match', '^' ~ (options.storage | regex_escape) ~
+              ':([^,]*/)?vm-' ~ item.item.vmid ~ '-disk-') |
+            list | length == 0
+        fail_msg: >-
+          API name, node, pool or disk ownership does not match the test clone.
+          API credentials must permit independent pool inspection.
+      loop: '{{ molecule_created.results }}'
+      loop_control:
+        label: '{{ item.item.instance }}'
+      vars:
+        molecule_clone_volumes: >-
+          {{ item.proxmox_vms[0].config | dict2items |
+             selectattr('key', 'match',
+               '^(ide|sata|scsi|virtio|efidisk|tpmstate|unused)[0-9]+$') |
+             rejectattr('value', 'search', '(^|,)media=cdrom(,|$)') |
+             map(attribute='value') | list }}
+
+    - name: Record only API-observed DHCP addresses for the disposable clones
+      ansible.builtin.copy:
+        content: |
+          {% for result in molecule_created.results %}
+          {% set addresses = result.proxmox_vms[0].network |
+             map(attribute='ip-addresses', default=[]) | flatten |
+             selectattr('ip-address-type', 'equalto', 'ipv4') |
+             map(attribute='ip-address') |
+             reject('match', '^(127\.|169\.254\.)') | list %}
+          {% set platform = molecule_yml.platforms |
+             selectattr('name', 'equalto', result.item.instance) | first %}
+          {{ [result.item | combine({
+              'address': addresses[0],
+              'identity_file': platform.ssh_identity_file |
+                default(result.item.identity_file),
+              'port': platform.ssh_port | default(result.item.port),
+              'user': platform.ssh_user | default(result.item.user)})] |
+              to_nice_yaml }}
+          {% endfor %}
+        dest: '{{ molecule_instance_config }}'
+        mode: '0600'
+
+    # Socket-activated SSH generates host keys on the first TCP connection.
+    - name: Probe prepared SSH sockets before independent key discovery
+      ansible.builtin.wait_for:
+        host: '{{ item.address }}'
+        port: '{{ item.port | int }}'
+        timeout: 180
+      loop: '{{ instances }}'
+      loop_control:
+        label: '{{ item.instance }}'
+
+    - name: Read clone host public keys through the verified guest-agent API
+      ansible.builtin.uri:
+        ca_path: >-
+          {{ lookup('ansible.builtin.env', 'REQUESTS_CA_BUNDLE') |
+             default(omit, true) }}
+        headers:
+          Authorization: >-
+            PVEAPIToken={{ api_user }}!{{ api_token_id }}={{ api_token_secret }}
+        return_content: true
+        url: >-
+          https://{{ api_host }}:8006/api2/json/nodes/{{ options.node
+          }}/qemu/{{ item.vmid }}/agent/file-read?file={{
+          molecule_platform.ssh_host_public_key_path |
+          default(options.ssh_host_public_key_path) | urlencode }}
+        validate_certs: true
+      loop: '{{ instances }}'
+      register: molecule_host_keys
+      until: molecule_host_keys.status | default(-1) == 200
+      retries: 24
+      delay: 5
+      vars:
+        molecule_platform: >-
+          {{ molecule_yml.platforms |
+             selectattr('name', 'equalto', item.instance) | first }}
+      no_log: true
+
+    - name: Pin API-observed host keys for management and transition ports
+      ansible.builtin.copy:
+        content: |
+          {% for result in molecule_host_keys.results %}
+          {% set value = result.json.data.content | trim %}
+          {% set key = value if value.startswith('ssh-ed25519 ')
+             else value | b64decode | trim %}
+          {% for port in ([result.item.port | int] +
+                          options.ssh_extra_ports | default([])) | unique %}
+          {{ result.item.address if port | int == 22
+             else '[' ~ result.item.address ~ ']:' ~ port }} {{ key }}
+          {% endfor %}
+          {% endfor %}
+        dest: '{{ molecule_ephemeral_directory }}/known_hosts'
+        mode: '0600'

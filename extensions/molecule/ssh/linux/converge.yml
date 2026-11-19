@@ -4,8 +4,45 @@
   gather_facts: true
   vars:
     ansible_user: 'molecule'
+    ssh_authorized_keys:
+      - keys:
+          - '{{ ssh_fixture_public.content | b64decode | trim }}'
+          - >-
+            ssh-ed25519
+            AAAAC3NzaC1lZDI1NTE5AAAAIKsIYhl725LLJoPLD114F8CbnMD4HzyBbs6k8ZZrVSu3
+            molecule-second@test
+        name: 'molecule'
+  pre_tasks:
+    - name: Read the disposable public key
+      ansible.builtin.slurp:
+        src: '/var/tmp/ssh-fixture-key.pub'
+      register: ssh_fixture_public
   tasks:
-    # Docker defaults to root. Prove the role uses task-level escalation.
+    - name: Reject Ubuntu 22.04 before policy mutation
+      block:
+        - name: Apply SSH policy with unsupported Ubuntu release facts
+          ansible.builtin.include_role:
+            name: 'jaythomasonprojects.sys_admin.ssh'
+          vars:
+            ansible_facts:
+              distribution: 'Ubuntu'
+              distribution_version: '22.04'
+              os_family: 'Debian'
+              system: 'Linux'
+
+        - name: Fail if Ubuntu 22.04 was accepted
+          ansible.builtin.fail:
+            msg: 'Unsupported Ubuntu release was accepted'
+      rescue:
+        - name: Require the release-gate diagnostic
+          ansible.builtin.assert:
+            that:
+              - >-
+                ansible_failed_result.msg ==
+                'ssh supports Ubuntu 24.04/26.04 and Windows meeting '
+                ~ 'native OpenSSH capability prerequisites only.'
+
+    # A real SSH caller proves escalation without a root transport.
     - name: Inspect effective connection identity
       ansible.builtin.command:
         argv:
@@ -34,6 +71,13 @@
     - name: Flush SSH policy handlers
       ansible.builtin.meta: flush_handlers
 
+    - name: Close the original SSH control connection after activation
+      ansible.builtin.meta: reset_connection
+
+    - name: Require a fresh controller connection to the active SSH policy
+      ansible.builtin.wait_for_connection:
+        timeout: 120
+
     # Exercise the platform gate without provisioning an unsupported OS.
     - name: Reject unsupported operating systems
       block:
@@ -55,28 +99,5 @@
         that:
           - >-
             ssh_unsupported_platform_failure ==
-            'ssh supports Debian, Ubuntu, Fedora, and Windows meeting native '
+            'ssh supports Ubuntu 24.04/26.04 and Windows meeting native '
             ~ 'OpenSSH capability prerequisites only.'
-
-    # Alternate ports need SELinux policy that this role does not own.
-    - name: Reject custom SSH ports on Fedora
-      when: ansible_facts.distribution == 'Fedora'
-      block:
-        - name: Configure Fedora with a custom SSH port
-          ansible.builtin.include_role:
-            name: 'jaythomasonprojects.sys_admin.ssh'
-          vars:
-            ssh_server_port: 2222
-      rescue:
-        - name: Record Fedora custom-port rejection
-          ansible.builtin.set_fact:
-            ssh_fedora_custom_port_failure: >-
-              {{ ansible_failed_result.msg | default('') }}
-
-    - name: Assert Fedora custom SSH port was rejected
-      ansible.builtin.assert:
-        that:
-          - >-
-            ssh_fedora_custom_port_failure ==
-            'ssh_server_port must be 22 on Fedora hosts.'
-      when: ansible_facts.distribution == 'Fedora'

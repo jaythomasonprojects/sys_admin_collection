@@ -1,0 +1,195 @@
+---
+- name: Check API identity before native clone destruction
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    options: '{{ molecule_yml.driver.options }}'
+    instances: >-
+      {{ lookup('ansible.builtin.file', molecule_instance_config,
+                errors='ignore') | default('[]', true) | from_yaml }}
+  module_defaults:
+    community.proxmox.proxmox_kvm:
+      api_host: '{{ api_host }}'
+      api_timeout: 60
+      api_token_id: '{{ api_token_id }}'
+      api_token_secret: '{{ api_token_secret }}'
+      api_user: '{{ api_user }}'
+      node: '{{ options.node }}'
+      validate_certs: true
+    community.proxmox.proxmox_vm_info:
+      api_host: '{{ api_host }}'
+      api_timeout: 60
+      api_token_id: '{{ api_token_id }}'
+      api_token_secret: '{{ api_token_secret }}'
+      api_user: '{{ api_user }}'
+      node: '{{ options.node }}'
+      validate_certs: true
+  tasks:
+    - name: Load private API credentials
+      ansible.builtin.include_vars: '{{ options.proxmox_secrets }}'
+      no_log: true
+
+    - name: Require recorded identities to match external clone reservations
+      ansible.builtin.assert:
+        that:
+          - item.vmid | int >= options.clone_vmid_min | int
+          - item.vmid | int <= options.clone_vmid_max | int
+          - >-
+            item.vmid | int not in
+            molecule_yml.platforms | map(attribute='template_vmid') |
+            map('int') | list
+          - >-
+            molecule_yml.platforms |
+            selectattr('name', 'equalto', item.instance) |
+            map(attribute='newid') | map('int') | list == [item.vmid | int]
+        fail_msg: 'Lifecycle record is not an owned disposable clone.'
+      loop: '{{ instances }}'
+      loop_control:
+        label: '{{ item.instance }}'
+
+    - name: Inspect recorded clones through the API
+      community.proxmox.proxmox_vm_info:
+        config: current
+        vmid: '{{ item.vmid | int }}'
+      loop: '{{ instances }}'
+      register: molecule_disposing
+      no_log: true
+
+    - name: Refuse source or unrelated VM destruction
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - item.proxmox_vms[0].name == item.item.instance
+          - item.proxmox_vms[0].node == options.node
+          - item.proxmox_vms[0].pool | default('') == options.pool
+          - not item.proxmox_vms[0].template | default(false) | bool
+          - molecule_clone_volumes | length > 0
+          - >-
+            molecule_clone_volumes |
+            reject('match', '^' ~ (options.storage | regex_escape) ~
+              ':([^,]*/)?vm-' ~ item.item.vmid ~ '-disk-') |
+            list | length == 0
+        fail_msg: >-
+          API name, node, pool or owned disks do not match the recorded clone.
+          API credentials must permit independent pool inspection.
+      loop: '{{ molecule_disposing.results }}'
+      loop_control:
+        label: '{{ item.item.instance }}'
+      vars:
+        molecule_clone_volumes: >-
+          {{ item.proxmox_vms[0].config | dict2items |
+             selectattr('key', 'match',
+               '^(ide|sata|scsi|virtio|efidisk|tpmstate|unused)[0-9]+$') |
+             rejectattr('value', 'search', '(^|,)media=cdrom(,|$)') |
+             map(attribute='value') | list }}
+      when: item.proxmox_vms | length > 0
+
+    # Proxmox copies source deletion protection into full clones.
+    - name: Clear inherited protection only on verified disposable clones
+      community.proxmox.proxmox_kvm:
+        protection: false
+        state: present
+        update: true
+        vmid: '{{ item.item.vmid | int }}'
+      loop: '{{ molecule_disposing.results }}'
+      loop_control:
+        label: '{{ item.item.instance }}'
+      when:
+        - item.proxmox_vms | length == 1
+        - item.proxmox_vms[0].config.protection | default(false) | bool
+      no_log: true
+
+- name: Destroy clones with the installed native Proxmox driver
+  ansible.builtin.import_playbook: >-
+    {{ native_driver_directory }}/playbooks/destroy.yml
+  vars:
+    native_driver_directory: >-
+      {{ lookup('ansible.builtin.pipe', ansible_playbook_python ~
+         ' -c "import os,molecule_proxmox;'
+         ~ ' print(os.path.dirname(molecule_proxmox.__file__))"') }}
+
+- name: Confirm clone disposal and preserved sources
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    molecule_ephemeral_directory: >-
+      {{ lookup('ansible.builtin.env', 'MOLECULE_EPHEMERAL_DIRECTORY') }}
+    options: '{{ molecule_yml.driver.options }}'
+  module_defaults:
+    community.proxmox.proxmox_vm_info:
+      api_host: '{{ api_host }}'
+      api_timeout: 60
+      api_token_id: '{{ api_token_id }}'
+      api_token_secret: '{{ api_token_secret }}'
+      api_user: '{{ api_user }}'
+      node: '{{ options.node }}'
+      validate_certs: true
+  tasks:
+    - name: Inspect API inventory after destruction
+      community.proxmox.proxmox_vm_info:
+      register: molecule_after
+      no_log: true
+
+    - name: Confirm clone allocations are absent
+      ansible.builtin.assert:
+        that:
+          - >-
+            molecule_after.proxmox_vms |
+            selectattr('vmid', 'equalto', item.newid | int) | length == 0
+      loop: '{{ molecule_yml.platforms }}'
+      loop_control:
+        label: '{{ item.name }}'
+
+    - name: Confirm clone disks are absent from the configured datastore
+      ansible.builtin.uri:
+        ca_path: >-
+          {{ lookup('ansible.builtin.env', 'REQUESTS_CA_BUNDLE') |
+             default(omit, true) }}
+        headers:
+          Authorization: >-
+            PVEAPIToken={{ api_user }}!{{ api_token_id }}={{ api_token_secret }}
+        return_content: true
+        url: >-
+          https://{{ api_host }}:8006/api2/json/nodes/{{ options.node
+          }}/storage/{{ options.storage }}/content?vmid={{ item.newid | int }}
+        validate_certs: true
+      loop: '{{ molecule_yml.platforms }}'
+      register: molecule_disposed_disks
+      failed_when: >-
+        molecule_disposed_disks.status != 200 or
+        molecule_disposed_disks.json.data | length > 0
+      no_log: true
+
+    - name: Read source fingerprint baseline
+      ansible.builtin.stat:
+        path: '{{ molecule_ephemeral_directory }}/source-fingerprints.yml'
+      register: molecule_source_baseline
+
+    - name: Inspect source configurations after destruction
+      community.proxmox.proxmox_vm_info:
+        config: current
+        vmid: '{{ item.vmid | int }}'
+      loop: >-
+        {{ lookup('ansible.builtin.file',
+                  molecule_ephemeral_directory ~ '/source-fingerprints.yml',
+                  errors='ignore') | default('[]', true) | from_yaml }}
+      register: molecule_preserved_sources
+      when: molecule_source_baseline.stat.exists
+      no_log: true
+
+    - name: Require stopped templates with unchanged source configurations
+      ansible.builtin.assert:
+        quiet: true
+        that:
+          - item.proxmox_vms | length == 1
+          - item.proxmox_vms[0].status == 'stopped'
+          - item.proxmox_vms[0].template | default(false) | bool
+          - >-
+            item.proxmox_vms[0].config | to_json(sort_keys=True) |
+            hash('sha256') == item.item.sha256
+      loop: '{{ molecule_preserved_sources.results | default([]) }}'
+      loop_control:
+        label: '{{ item.item.vmid }}'
+      when: not item.skipped | default(false)

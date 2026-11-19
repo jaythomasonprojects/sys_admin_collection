@@ -9,6 +9,29 @@
     - role: 'jaythomasonprojects.sys_admin.time_sync'
 
   tasks:
+    - name: Reject Ubuntu 22.04 before time policy mutation
+      block:
+        - name: Apply time policy with unsupported Ubuntu release facts
+          ansible.builtin.include_role:
+            name: 'jaythomasonprojects.sys_admin.time_sync'
+          vars:
+            ansible_facts:
+              distribution: 'Ubuntu'
+              distribution_version: '22.04'
+              os_family: 'Debian'
+              system: 'Linux'
+
+        - name: Fail if Ubuntu 22.04 was accepted
+          ansible.builtin.fail:
+            msg: 'Unsupported Ubuntu release was accepted'
+      rescue:
+        - name: Require the release-gate diagnostic
+          ansible.builtin.assert:
+            that:
+              - >-
+                ansible_failed_result.msg ==
+                'time_sync supports Ubuntu 24.04/26.04 hosts only.'
+
     - name: Apply disabled time synchronisation
       ansible.builtin.include_role:
         name: 'jaythomasonprojects.sys_admin.time_sync'
@@ -39,4 +62,4 @@
         that:
           - >-
             time_sync_unsupported_platform_failure ==
-            'time_sync supports Debian, Ubuntu, and Fedora hosts only.'
+            'time_sync supports Ubuntu 24.04/26.04 hosts only.'

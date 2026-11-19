@@ -1,37 +1,20 @@
 ---
 driver:
-  name: "docker"
+  name: 'molecule-proxmox'
+  options:
+    ssh_identity_file: '${MOLECULE_LINUX_IDENTITY_FILE}'
+    ssh_port: '${MOLECULE_LINUX_SSH_PORT}'
+    ssh_user: '${MOLECULE_LINUX_USER}'
 
 platforms:
-  - name: "ubuntu"
-    command: '/usr/sbin/init'
-    cgroupns_mode: 'host'
-    env:
-      container: 'docker'
-    image: "docker.io/geerlingguy/docker-ubuntu2204-ansible:latest"
-    pre_build_image: true
-    privileged: true
-    tty: true
-    user: "root"
-    volumes:
-      - '/sys/fs/cgroup:/sys/fs/cgroup:rw'
-  - name: "fedora"
-    image: "docker.io/geerlingguy/docker-fedora44-ansible:latest"
-    pre_build_image: true
-    user: "root"
-    privileged: true
-    command: "/usr/sbin/init"
-    tty: true
-    env:
-      container: "docker"
-    cgroupns_mode: "host"
-    volumes:
-      - "/sys/fs/cgroup:/sys/fs/cgroup:rw"
-
-provisioner:
-  name: "ansible"
-  env:
-    ANSIBLE_REMOTE_USER: "root"
+  - name: 'ubuntu2404'
+    newid: '${MOLECULE_UBUNTU2404_VMID:-required-vmid}'
+    template_vmid: >-
+      ${MOLECULE_UBUNTU2404_TEMPLATE_VMID:-required-template-vmid}
+  - name: 'ubuntu2604'
+    newid: '${MOLECULE_UBUNTU2604_VMID:-required-vmid}'
+    template_vmid: >-
+      ${MOLECULE_UBUNTU2604_TEMPLATE_VMID:-required-template-vmid}
 
 scenario:
   name: 'auto_updates/linux'

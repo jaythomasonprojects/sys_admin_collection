@@ -1,0 +1,70 @@
+---
+- name: Resolve configured Windows account identities
+  ansible.windows.win_powershell:
+    path: 'Resolve-LocalAccount.ps1'
+    parameters:
+      UserName: '{{ item.name }}'
+  loop: '{{ ssh_authorized_keys }}'
+  register: ssh_windows_resolved
+  when: >-
+    'keys' in item
+  no_log: true
+
+- name: Ensure account profiles exist
+  ansible.windows.win_user_profile:
+    username: '{{ item.result.Sid }}'
+    state: present
+  loop: '{{ ssh_windows_resolved.results }}'
+  register: ssh_windows_profiles
+  when: not item.skipped | default(false)
+  no_log: true
+
+- name: Create account SSH directories
+  ansible.windows.win_file:
+    path: '{{ item.path }}\.ssh'
+    state: directory
+  loop: '{{ ssh_windows_profiles.results }}'
+  when: not item.skipped | default(false)
+  no_log: true
+
+- name: Write account authorised keys
+  ansible.windows.win_copy:
+    content: |
+      {% for key in item.item.item['keys'] -%}
+      {{ key }}
+      {% endfor -%}
+    dest: '{{ item.path }}\.ssh\authorized_keys'
+  loop: '{{ ssh_windows_profiles.results }}'
+  when:
+    - not item.skipped | default(false)
+    - item.item.item['keys'] | length > 0
+  no_log: true
+
+- name: Clear account authorised keys
+  ansible.windows.win_powershell:
+    script: |
+      param ([String] $Path)
+      $ErrorActionPreference = 'Stop'
+      $Ansible.Changed = $false
+      if (-not (Test-Path -LiteralPath $Path) -or
+          [IO.File]::ReadAllText($Path) -ne '') {
+          [IO.File]::WriteAllText($Path, '')
+          $Ansible.Changed = $true
+      }
+    parameters:
+      Path: '{{ item.path }}\.ssh\authorized_keys'
+  loop: '{{ ssh_windows_profiles.results }}'
+  when:
+    - not item.skipped | default(false)
+    - item.item.item['keys'] | length == 0
+  no_log: true
+
+- name: Set account SSH ACLs
+  ansible.windows.win_powershell:
+    path: 'Set-AuthorizedKeyAcl.ps1'
+    parameters:
+      AccountSid: '{{ item.item.result.Sid }}'
+      ProfilePath: '{{ item.path }}'
+  loop: '{{ ssh_windows_profiles.results }}'
+  when: not item.skipped | default(false)
+  no_log: true

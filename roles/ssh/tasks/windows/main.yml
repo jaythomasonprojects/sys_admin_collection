@@ -1,3 +1,7 @@
 ---
 - name: Configure SSH server
   ansible.builtin.include_tasks: 'server.yml'
+
+- name: Configure account authorised keys
+  ansible.builtin.include_tasks: 'authorized_keys.yml'
+  when: ssh_authorized_keys | length > 0

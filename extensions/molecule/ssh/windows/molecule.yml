@@ -2,12 +2,18 @@
 driver:
   name: 'molecule-proxmox'
   options:
-    full: false
+    # Guest-agent API calls can outlast the HTTP default during Windows boot.
+    api_timeout: 60
+    full: true
     node: '${MOLECULE_PROXMOX_NODE}'
     pool: '${MOLECULE_PROXMOX_POOL}'
     proxmox_secrets: '${MOLECULE_PROXMOX_SECRETS}'
     sethostname: false
     ssh_identity_file: '${MOLECULE_WINDOWS_IDENTITY_FILE}'
+    ssh_extra_ports:
+      - 2222
+      - 2223
+    ssh_host_public_key_path: 'C:/ProgramData/ssh/ssh_host_ed25519_key.pub'
     ssh_port: '${MOLECULE_WINDOWS_SSH_PORT}'
     ssh_user: '${MOLECULE_WINDOWS_USER}'
     timeout: 1200
@@ -20,18 +26,16 @@ platforms:
 
 provisioner:
   connection_options:
-    ansible_become_method: 'ansible.builtin.runas'
-    ansible_become_password: >-
-      {{ lookup('ansible.builtin.env', 'MOLECULE_WINDOWS_PASSWORD') }}
-    ansible_become_user: '${MOLECULE_WINDOWS_USER}'
-    ansible_connection: 'winrm'
-    ansible_password: >-
-      {{ lookup('ansible.builtin.env', 'MOLECULE_WINDOWS_PASSWORD') }}
-    ansible_port: 5986
+    ansible_connection: 'ssh'
+    ansible_password: ''
     ansible_shell_type: 'powershell'
-    ansible_winrm_scheme: 'https'
-    ansible_winrm_server_cert_validation: 'ignore'
-    ansible_winrm_transport: 'ntlm'
+  inventory:
+    group_vars:
+      all:
+        ssh_fixture_keys: >-
+          {{ lookup('ansible.builtin.env', 'MOLECULE_EPHEMERAL_DIRECTORY',
+                    default=undef())
+             ~ '/ssh-keys' }}
 
 scenario:
   name: 'ssh/windows'

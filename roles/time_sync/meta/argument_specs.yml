@@ -3,6 +3,7 @@ argument_specs:
   main:
     short_description: Configure chrony time synchronisation
     description:
+      - Supports Ubuntu 24.04/26.04 only.
       - Installs chrony, points it at a single upstream pool, comments out
         unmanaged pool entries, and runs the service.
     options:

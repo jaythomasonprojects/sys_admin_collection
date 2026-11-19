@@ -7,20 +7,15 @@ collections:
 galaxy_info:
   author: 'Jay Thomason'
   description: >-
-    Install OpenSSH and own client policy, server policy, firewall access, and
-    service state
+    Configure installed OpenSSH policy, account keys, firewall access and
+    services
   license: 'MIT'
   min_ansible_version: '2.18'
   platforms:
-    - name: 'Debian'
-      versions:
-        - 'all'
     - name: 'Ubuntu'
       versions:
-        - 'all'
-    - name: 'Fedora'
-      versions:
-        - 'all'
+        - 'noble'
+        - 'resolute'
     - name: 'Windows'
       versions:
         - 'all'

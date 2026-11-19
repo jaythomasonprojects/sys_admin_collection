@@ -1,21 +1,48 @@
 ---
-# Shared Molecule defaults for this collection.
-#
-# Role/platform scenarios load this project-level config.
-# Keep per-scenario molecule.yml files focused on the driver and guest
-# runtime they need, and centralise the common execution flow here.
 dependency:
-  name: "galaxy"
+  name: 'galaxy'
   options:
     requirements-file: '${MOLECULE_PROJECT_DIRECTORY}/requirements.yml'
 
+driver:
+  name: 'molecule-proxmox'
+  options:
+    api_timeout: 60
+    clone_vmid_max: '${MOLECULE_CLONE_VMID_MAX}'
+    clone_vmid_min: '${MOLECULE_CLONE_VMID_MIN}'
+    full: false
+    node: '${MOLECULE_PROXMOX_NODE}'
+    pool: '${MOLECULE_PROXMOX_POOL}'
+    proxmox_secrets: '${MOLECULE_PROXMOX_SECRETS}'
+    sethostname: false
+    ssh_host_public_key_path: '/etc/ssh/ssh_host_ed25519_key.pub'
+    storage: '${MOLECULE_PROXMOX_STORAGE}'
+    timeout: 1200
+    validate_certs: true
+  ssh_connection_options:
+    - '-o StrictHostKeyChecking=yes'
+    - '-o UserKnownHostsFile=${MOLECULE_EPHEMERAL_DIRECTORY}/known_hosts'
+    - '-o IdentitiesOnly=yes'
+
 provisioner:
-  name: "ansible"
+  name: 'ansible'
+  inventory:
+    host_vars:
+      ubuntu2604:
+        # sudo-rs custom prompts are incompatible with this controller line.
+        ansible_become_exe: '/usr/bin/sudo.ws'
+  playbooks:
+    create: '${MOLECULE_PROJECT_DIRECTORY}/extensions/molecule/create.yml'
+    destroy: '${MOLECULE_PROJECT_DIRECTORY}/extensions/molecule/destroy.yml'
   env:
     ANSIBLE_COLLECTIONS_PATH: >-
       ${MOLECULE_PROJECT_DIRECTORY}/.ansible/collections
 
 scenario:
+  # Identity and DHCP must be verified before fixture preparation.
+  create_sequence:
+    - dependency
+    - create
   test_sequence:
     - dependency
     - create
@@ -29,4 +56,4 @@ scenario:
 shared_state: false
 
 verifier:
-  name: "ansible"
+  name: 'ansible'

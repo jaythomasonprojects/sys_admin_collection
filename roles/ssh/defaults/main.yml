@@ -1,4 +1,5 @@
 ---
+ssh_authorized_keys: []
 ssh_client_compression: 'no'
 ssh_client_connect_timeout: 0
 ssh_client_forward_agent: 'no'

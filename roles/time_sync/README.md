@@ -1,6 +1,6 @@
 # time_sync
 
-Manages chrony time synchronisation policy on Debian, Ubuntu, and Fedora hosts.
+Manages chrony time synchronisation policy on Ubuntu hosts.
 
 ## Guarantee
 
@@ -10,13 +10,17 @@ enables and starts its service.
 ## Ownership
 
 - Package: `chrony`.
-- Debian and Ubuntu: `/etc/chrony/chrony.conf` pool entries and the `chrony`
+- Ubuntu: `/etc/chrony/chrony.conf` pool entries and the `chrony`
   service.
-- Fedora: `/etc/chrony.conf` pool entries and the `chronyd` service.
 
 ## Supported platforms
 
-Linux hosts running Debian, Ubuntu, or Fedora.
+Ubuntu 24.04/26.04 only. Windows is not supported by this role.
+
+Ubuntu 26.04's packaged chrony service excludes ordinary containers through
+native systemd conditions. Use a VM or bare-metal host for service acceptance;
+the role does not override those conditions or disable clock discipline to make
+container checks pass.
 
 ## Interface
 
@@ -42,7 +46,7 @@ remove `server` entries or reconcile configuration included from other files.
 - `tasks/main.yml` checks the platform and dispatches enabled hosts.
 - `tasks/linux/main.yml` loads distribution data and manages package,
   configuration, and service state.
-- `vars/Debian.yml`, `vars/Ubuntu.yml`, and `vars/Fedora.yml` define package,
+- `vars/Debian.yml` and `vars/Ubuntu.yml` define Ubuntu package,
   configuration-path, and service data.
 - `handlers/main.yml` restarts chrony after changed pool configuration.
 
