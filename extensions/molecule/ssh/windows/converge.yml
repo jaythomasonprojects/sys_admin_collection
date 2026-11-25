@@ -44,6 +44,12 @@
 
     - name: Gather prepared Windows facts through SSH
       ansible.builtin.setup:
+
+    - name: Inspect managed SSH policy and service before reapplication
+      ansible.windows.win_powershell:
+        path: '{{ playbook_dir }}/files/Inspect-WindowsSshPolicy.ps1'
+      register: ssh_policy_before
+      when: ssh_managed_port.state | default('') == 'started'
   tasks:
     - name: Configure the prepared SSH installation
       ansible.builtin.include_role:
@@ -62,3 +68,20 @@
     - name: Require fresh key-only management access
       ansible.builtin.wait_for_connection:
         timeout: 120
+
+    - name: Inspect managed SSH policy and service after activation
+      ansible.windows.win_powershell:
+        path: '{{ playbook_dir }}/files/Inspect-WindowsSshPolicy.ps1'
+      register: ssh_policy_after
+
+    - name: Assert unchanged SSH policy did not restart the service
+      ansible.builtin.assert:
+        that:
+          - ssh_policy_after.result.Pid | int > 0
+          - ssh_policy_before.result.Pid == ssh_policy_after.result.Pid
+      when:
+        - ssh_policy_before is not skipped
+        - ssh_policy_before.result.Hash == ssh_policy_after.result.Hash
+        - >-
+          ssh_policy_before.result.FirewallPorts ==
+          ssh_policy_after.result.FirewallPorts

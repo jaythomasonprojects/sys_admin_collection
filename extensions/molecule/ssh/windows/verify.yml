@@ -4,6 +4,17 @@
   gather_facts: true
   vars:
     ansible_port: 2222
+    ssh_fixture_accounts:
+      - keys:
+          - >-
+            {{ lookup('ansible.builtin.file',
+                      ssh_fixture_keys ~ '/admin.pub') }}
+        name: 'sa_key_admin'
+      - keys:
+          - >-
+            {{ lookup('ansible.builtin.file',
+                      ssh_fixture_keys ~ '/standard.pub') }}
+        name: 'sa_key_standard'
     ssh_server_port: 2222
   tasks:
     - name: Check configured SSH port is reachable from the controller
@@ -98,10 +109,51 @@
         that:
           - not ssh_validation_temp.stat.exists
 
-    - name: Apply a valid Windows SSH port transition
+    - name: Inspect native profiles and protected keys before the empty-list run
+      ansible.windows.win_powershell:
+        path: '{{ playbook_dir }}/files/Inspect-PerUserKeys.ps1'
+        parameters:
+          ExpectedJson: '{{ ssh_fixture_accounts | to_json }}'
+
+    - name: Register an independent key-only administrative connection
+      ansible.builtin.add_host:
+        name: 'ssh-key-check'
+        ansible_become_password: ''
+        ansible_connection: 'ssh'
+        ansible_host: '{{ ansible_host }}'
+        ansible_password: ''
+        ansible_port: 2222
+        ansible_shell_type: 'powershell'
+        ansible_ssh_args: '-o ControlMaster=no -o ControlPath=none'
+        ansible_ssh_common_args: >-
+          -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes
+          -o UserKnownHostsFile={{ lookup('ansible.builtin.env',
+          'MOLECULE_EPHEMERAL_DIRECTORY') }}/known_hosts -o ControlMaster=no
+        ansible_ssh_private_key_file: '{{ ssh_fixture_keys }}/admin'
+        ansible_user: 'sa_key_admin'
+
+    - name: Replace the administrative fixture password through management SSH
+      ansible.windows.win_user:
+        name: 'sa_key_admin'
+        password: 'Synthetic-Key-Replaced!2026'
+        state: present
+        update_password: always
+      no_log: true
+
+    - name: Verify a fresh key-only Windows module connection after replacement
+      ansible.windows.win_ping:
+      delegate_to: 'ssh-key-check'
+      vars:
+        ansible_port: 2222
+
+    - name: Apply a valid port transition without passwords or key management
       ansible.builtin.include_role:
         name: 'jaythomasonprojects.sys_admin.ssh'
+        apply:
+          delegate_to: 'ssh-key-check'
       vars:
+        ansible_port: 2222
+        ssh_authorized_keys: []
         ssh_server_port: 2223
 
     - name: Flush handler after valid SSH transition
@@ -136,28 +188,6 @@
           - >-
             ssh_validation_transition.result.Hash !=
             ssh_validation_before.result.Hash
-
-    - name: Reapply unchanged transitioned Windows SSH policy
-      ansible.builtin.include_role:
-        name: 'jaythomasonprojects.sys_admin.ssh'
-      vars:
-        ssh_server_port: 2223
-
-    - name: Flush any repeat SSH handler
-      ansible.builtin.meta: flush_handlers
-
-    - name: Inspect service process after unchanged SSH repeat
-      ansible.windows.win_powershell:
-        script: |
-          $service = Get-CimInstance Win32_Service -Filter "Name='sshd'"
-          $Ansible.Changed = $false
-          $Ansible.Result = $service.ProcessId
-      register: ssh_validation_repeat
-
-    - name: Assert unchanged repeat did not restart SSH
-      ansible.builtin.assert:
-        that:
-          - ssh_validation_repeat.result == ssh_validation_transition.result.Pid
 
     - name: Seed a key only in the obsolete shared file
       ansible.windows.win_copy:
@@ -245,63 +275,11 @@
         - key: 'shared'
           user: 'sa_key_admin'
 
-    - name: Inspect native profiles and protected account key ACLs
+    - name: Inspect preserved profiles and protected keys after transition
       ansible.windows.win_powershell:
         path: '{{ playbook_dir }}/files/Inspect-PerUserKeys.ps1'
         parameters:
           ExpectedJson: '{{ ssh_fixture_accounts | to_json }}'
-      vars:
-        ssh_fixture_accounts:
-          - keys:
-              - >-
-                {{ lookup('ansible.builtin.file',
-                          ssh_fixture_keys ~ '/admin.pub') }}
-            name: 'sa_key_admin'
-          - keys:
-              - >-
-                {{ lookup('ansible.builtin.file',
-                          ssh_fixture_keys ~ '/standard.pub') }}
-            name: 'sa_key_standard'
-
-    - name: Register an independent key-only administrative connection
-      ansible.builtin.add_host:
-        name: 'ssh-key-check'
-        ansible_become_password: ''
-        ansible_connection: 'ssh'
-        ansible_host: '{{ ansible_host }}'
-        ansible_password: ''
-        ansible_port: 2223
-        ansible_shell_type: 'powershell'
-        ansible_ssh_args: '-o ControlMaster=no -o ControlPath=none'
-        ansible_ssh_common_args: >-
-          -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes
-          -o UserKnownHostsFile={{ lookup('ansible.builtin.env',
-          'MOLECULE_EPHEMERAL_DIRECTORY') }}/known_hosts -o ControlMaster=no
-        ansible_ssh_private_key_file: '{{ ssh_fixture_keys }}/admin'
-        ansible_user: 'sa_key_admin'
-
-    - name: Reapply SSH policy over keys without account passwords
-      ansible.builtin.include_role:
-        name: 'jaythomasonprojects.sys_admin.ssh'
-        apply:
-          delegate_to: 'ssh-key-check'
-      vars:
-        ansible_port: 2223
-        ssh_server_port: 2223
-
-    - name: Replace the administrative fixture password through management SSH
-      ansible.windows.win_user:
-        name: 'sa_key_admin'
-        password: 'Synthetic-Key-Replaced!2026'
-        state: present
-        update_password: always
-      no_log: true
-
-    - name: Verify a fresh key-only Windows module connection after replacement
-      ansible.windows.win_ping:
-      delegate_to: 'ssh-key-check'
-      vars:
-        ansible_port: 2223
 
     - name: Replace only the administrator key
       ansible.builtin.include_role:
@@ -352,13 +330,6 @@
         ssh_authorized_keys:
           - keys: []
             name: 'sa_key_standard'
-
-    - name: Leave keys unmanaged with an empty top-level declaration
-      ansible.builtin.include_role:
-        name: 'jaythomasonprojects.sys_admin.ssh'
-      vars:
-        ssh_authorized_keys: []
-        ssh_server_port: 2223
 
     - name: Inspect cleared administrator and untouched standard-user keys
       ansible.windows.win_powershell:
