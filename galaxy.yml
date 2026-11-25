@@ -25,6 +25,7 @@ dependencies:
   community.windows: "*"
 build_ignore:
   - '.config'
+  - '.openchamber'
   - '.ruff_cache'
   - '.vscode'
   - 'dist'

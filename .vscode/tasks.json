@@ -45,6 +45,42 @@
       "problemMatcher": []
     },
     {
+      "label": "Test: auto_updates/linux",
+      "type": "shell",
+      "command": "source .envrc && molecule test -s auto_updates/linux",
+      "problemMatcher": []
+    },
+    {
+      "label": "Test: install_app/linux",
+      "type": "shell",
+      "command": "source .envrc && molecule test -s install_app/linux",
+      "problemMatcher": []
+    },
+    {
+      "label": "Test: install_app/windows",
+      "type": "shell",
+      "command": "source .envrc && molecule test -s install_app/windows",
+      "problemMatcher": []
+    },
+    {
+      "label": "Test: ssh/linux",
+      "type": "shell",
+      "command": "source .envrc && molecule test -s ssh/linux",
+      "problemMatcher": []
+    },
+    {
+      "label": "Test: ssh/windows",
+      "type": "shell",
+      "command": "source .envrc && molecule test -s ssh/windows",
+      "problemMatcher": []
+    },
+    {
+      "label": "Test: time_sync/linux",
+      "type": "shell",
+      "command": "source .envrc && molecule test -s time_sync/linux",
+      "problemMatcher": []
+    },
+    {
       "label": "Galaxy: build",
       "type": "shell",
       "command": ".venv/bin/ansible-galaxy collection build --force --output-path dist",
