@@ -1,13 +1,11 @@
 ---
-- name: Check disposable clone allocations before native creation
+- name: Check sources and clone names before native creation
   hosts: localhost
   connection: local
   gather_facts: false
   tags:
     - preflight
   vars:
-    molecule_ephemeral_directory: >-
-      {{ lookup('ansible.builtin.env', 'MOLECULE_EPHEMERAL_DIRECTORY') }}
     options: '{{ molecule_yml.driver.options }}'
   module_defaults:
     community.proxmox.proxmox_vm_info:
@@ -53,43 +51,41 @@
           to verify clone ownership independently before guest or deletion work.
           Provision read-only pool inspection before creating test clones.
 
-    - name: Require distinct externally reserved clone allocations
+    - name: Validate source and platform declarations
       ansible.builtin.assert:
         that:
-          - options.clone_vmid_min | int > 0
-          - options.clone_vmid_max | int >= options.clone_vmid_min | int
           - >-
-            molecule_yml.platforms | map(attribute='newid') | unique | length
+            molecule_yml.platforms | map(attribute='name') | unique | length
             == molecule_yml.platforms | length
-          - item.newid | int >= options.clone_vmid_min | int
-          - item.newid | int <= options.clone_vmid_max | int
+          - item.name | length > 0
+          - item.newid is not defined
           - item.template_vmid | int > 0
-          - >-
-            item.template_vmid | int < options.clone_vmid_min | int or
-            item.template_vmid | int > options.clone_vmid_max | int
           - >-
             item.keys() | intersect(
               ['ciuser', 'cipassword', 'citype', 'ipconfig', 'nameservers',
                'searchdomains', 'sshkeys']) | length == 0
         fail_msg: >-
-          Source/build and disposable clone allocations must be disjoint.
+          Use distinct clone names and explicit source templates.
+          Proxmox selects clone IDs; management access must already exist.
       loop: '{{ molecule_yml.platforms }}'
       loop_control:
         label: '{{ item.name }}'
 
-    - name: Inspect API inventory before allocation
+    # A clone name on another node can also collide with the driver's lookup.
+    - name: Inspect API inventory before creation
       community.proxmox.proxmox_vm_info:
+        node: '{{ omit }}'
       register: molecule_before
       no_log: true
 
-    - name: Refuse occupied clone allocations
+    - name: Refuse existing clone names
       ansible.builtin.assert:
         that:
           - >-
             molecule_before.proxmox_vms |
-            selectattr('vmid', 'equalto', item.newid | int) | length == 0
+            selectattr('name', 'equalto', item.name) | length == 0
         fail_msg: >-
-          Clone allocation is occupied; native create must not be replayed.
+          Clone name already exists; native create must not be replayed.
       loop: '{{ molecule_yml.platforms }}'
       loop_control:
         label: '{{ item.name }}'
@@ -120,18 +116,6 @@
       loop_control:
         label: '{{ item.item.name }}'
 
-    - name: Save source configuration fingerprints for disposal verification
-      ansible.builtin.copy:
-        content: |
-          {% for source in molecule_sources.results %}
-          - vmid: {{ source.item.template_vmid | int }}
-            sha256: {{
-              source.proxmox_vms[0].config |
-              to_json(sort_keys=True) | hash('sha256') }}
-          {% endfor %}
-        dest: '{{ molecule_ephemeral_directory }}/source-fingerprints.yml'
-        mode: '0600'
-
 - name: Create clones with the installed native Proxmox driver
   ansible.builtin.import_playbook: >-
     {{ native_driver_directory }}/playbooks/create.yml
@@ -161,13 +145,19 @@
       node: '{{ options.node }}'
       validate_certs: true
   tasks:
-    - name: Check native results against the requested clone identities
+    - name: Check native results against recorded clone identities
       ansible.builtin.assert:
         quiet: true
         that:
           - instances | length == molecule_yml.platforms | length
-          - item.vmid | int == item.rc.p.newid | int
-          - item.vmid | int != item.rc.p.template_vmid | int
+          - item.vmid | int == item.rc.vmid | int
+          - >-
+            item.vmid | int not in
+            molecule_yml.platforms | map(attribute='template_vmid') |
+            map('int') | list
+          - >-
+            instances | selectattr('instance', 'equalto', item.rc.p.name) |
+            map(attribute='vmid') | map('int') | list == [item.vmid | int]
         fail_msg: >-
           Native driver returned a source or unexpected instance identity.
       loop: '{{ proxmox_qemu_agent.results }}'
@@ -181,7 +171,15 @@
         quiet: true
         that:
           - item.changed
-          - item.vmid | int == item.p.newid | int
+          - item.vmid | int > 0
+          - >-
+            item.vmid | int not in
+            molecule_before.proxmox_vms | map(attribute='vmid') |
+            map('int') | list
+          - >-
+            item.vmid | int not in
+            molecule_yml.platforms | map(attribute='template_vmid') |
+            map('int') | list
           - item.invocation.module_args.pool == options.pool
       loop: '{{ proxmox_clone.results }}'
       loop_control:
@@ -306,3 +304,41 @@
           {% endfor %}
         dest: '{{ molecule_ephemeral_directory }}/known_hosts'
         mode: '0600'
+
+    - name: Select verified clones with pinned management identities
+      ansible.builtin.add_host:
+        name: '{{ item.instance }}'
+        ansible_host: '{{ item.address }}'
+        ansible_port: '{{ item.port | int }}'
+        ansible_shell_type: >-
+          {{ hostvars[item.instance].ansible_shell_type |
+             default('sh') }}
+        ansible_ssh_common_args: >-
+          {{ molecule_yml.driver.ssh_connection_options | join(' ') }}
+        ansible_ssh_private_key_file: '{{ item.identity_file }}'
+        ansible_user: '{{ item.user }}'
+        groups: molecule_created_guests
+      loop: '{{ instances }}'
+      loop_control:
+        label: '{{ item.instance }}'
+
+- name: Install disposable Ubuntu DHCP release prerequisites
+  hosts: molecule_created_guests
+  gather_facts: false
+  tasks:
+    - name: Inspect the prepared Linux distribution
+      ansible.builtin.setup:
+        gather_subset: ['!all', min]
+      when: ansible_shell_type | default('sh') != 'powershell'
+
+    - name: Install the native DHCP client for Ubuntu 24.04 teardown
+      ansible.builtin.apt:
+        cache_valid_time: 3600
+        name: udhcpc
+        state: present
+        update_cache: true
+      become: true
+      when:
+        - ansible_shell_type | default('sh') != 'powershell'
+        - ansible_facts.distribution == 'Ubuntu'
+        - ansible_facts.distribution_version == '24.04'

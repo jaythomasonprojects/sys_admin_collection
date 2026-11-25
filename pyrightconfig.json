@@ -1,0 +1,8 @@
+{
+  "pythonVersion": "3.12",
+  "typeCheckingMode": "standard",
+  "reportMissingModuleSource": "none",
+  "reportPrivateUsage": "none",
+  "reportUnknownMemberType": "none",
+  "include": ["scripts"]
+}

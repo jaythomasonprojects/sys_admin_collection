@@ -29,6 +29,9 @@ passwordless sudo rather than play-wide escalation.
 
 Fixtures are restored in `always` blocks. The full test sequence destroys all
 two disposable instances and their clone-owned disks.
+Before destruction, `cleanup.yml` restores the prepared management account and
+port and checks a fresh connection. Shared destroy then releases DHCP over that
+connection before deleting the clones.
 
 ## Why these checks remain
 

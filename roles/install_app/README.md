@@ -13,7 +13,7 @@ data selects `npm` for Ubuntu; Flatpak requests receive `flatpak`.
 The role validates the npm and Flatpak executables after it installs their
 prerequisites. It configures Flathub before installing requested Flatpak refs
 unless `install_app_manage_flatpak_remote` is `false`. Windows owns Chocolatey
-package installation through `install_app_packages`.
+package installation through `install_app_choco_packages`.
 
 Each managed application belongs to one requested channel. The role does not
 install Node.js versions, manage other Flatpak remotes, or apply Linux-only
@@ -27,13 +27,15 @@ consuming playbook repository, not from this collection.
 - `install_app_enabled`: whether this host should have its requested
   applications installed. Defaults to `true`. Setting it to `false` skips the
   role and does not remove applications installed by an earlier run.
-- `install_app_packages`: native Linux package names or Windows Chocolatey
-  package names to install. Defaults to `[]`.
-- `install_app_debs`: list of absolute package paths on the managed APT host
-  or HTTP(S) package URLs. Defaults to `[]`. For example:
+- `install_app_apt_packages`: Ubuntu APT package names to install.
+  Defaults to `[]`. Windows ignores this list.
+- `install_app_choco_packages`: Windows Chocolatey package names to install.
+  Defaults to `[]`. Ubuntu ignores this list.
+- `install_app_deb_packages`: list of HTTP(S) Debian package URLs. Absolute package
+  paths on the managed APT host are also accepted. Defaults to `[]`. For example:
 
   ```yaml
-  install_app_debs:
+  install_app_deb_packages:
     - '/usr/local/src/example.deb'
     - 'https://packages.example.invalid/example_1.2.3_all.deb'
   ```
@@ -86,6 +88,17 @@ consuming playbook repository, not from this collection.
   through its native module if necessary.
 
 ## Migration
+
+For 0.16.0, replace `deb_package_urls` with `install_app_deb_packages`. The
+string-list format, URLs and managed-host paths are unchanged. No compatibility
+alias is provided.
+
+For 0.15.0, replace `install_app_debs` with `deb_package_urls`; the string-list
+format and support for managed-host paths are unchanged.
+
+For 0.14.0, replace `install_app_packages` with `install_app_apt_packages`
+on Ubuntu or `install_app_choco_packages` on Windows. Mixed-platform groups
+can set both lists directly.
 
 Beta dictionary-valued `install_app_debs` entries and beta configuration
 upgrades are unsupported. Supply string package references on fresh hosts.

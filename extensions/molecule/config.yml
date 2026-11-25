@@ -1,4 +1,6 @@
 ---
+prerun: false
+
 dependency:
   name: 'galaxy'
   options:
@@ -8,14 +10,16 @@ driver:
   name: 'molecule-proxmox'
   options:
     api_timeout: 60
-    clone_vmid_max: '${MOLECULE_CLONE_VMID_MAX}'
-    clone_vmid_min: '${MOLECULE_CLONE_VMID_MIN}'
     full: false
     node: '${MOLECULE_PROXMOX_NODE}'
     pool: '${MOLECULE_PROXMOX_POOL}'
-    proxmox_secrets: '${MOLECULE_PROXMOX_SECRETS}'
+    proxmox_secrets: >-
+      ${MOLECULE_PROJECT_DIRECTORY}/.config/molecule/proxmox.yml
     sethostname: false
     ssh_host_public_key_path: '/etc/ssh/ssh_host_ed25519_key.pub'
+    ssh_identity_file: '${MOLECULE_LINUX_IDENTITY_FILE}'
+    ssh_port: '${MOLECULE_LINUX_SSH_PORT}'
+    ssh_user: '${MOLECULE_LINUX_USER}'
     storage: '${MOLECULE_PROXMOX_STORAGE}'
     timeout: 1200
     validate_certs: true
@@ -35,8 +39,12 @@ provisioner:
     create: '${MOLECULE_PROJECT_DIRECTORY}/extensions/molecule/create.yml'
     destroy: '${MOLECULE_PROJECT_DIRECTORY}/extensions/molecule/destroy.yml'
   env:
-    ANSIBLE_COLLECTIONS_PATH: >-
-      ${MOLECULE_PROJECT_DIRECTORY}/.ansible/collections
+    ANSIBLE_COLLECTIONS_PATH: '${ANSIBLE_COLLECTIONS_PATH}'
+    ANSIBLE_COLLECTIONS_SCAN_SYS_PATH: 'false'
+    MOLECULE_LINUX_IDENTITY_FILE: '${MOLECULE_LINUX_IDENTITY_FILE}'
+    MOLECULE_WINDOWS_SSH_PORT: '${MOLECULE_WINDOWS_SSH_PORT}'
+    MOLECULE_WINDOWS_USER: '${MOLECULE_WINDOWS_USER}'
+    REQUESTS_CA_BUNDLE: '${REQUESTS_CA_BUNDLE}'
 
 scenario:
   # Identity and DHCP must be verified before fixture preparation.

@@ -63,19 +63,30 @@ dependencies; the controller remains below Ansible 14 during the VM migration.
 python3 -m venv .venv
 . .venv/bin/activate
 pip install -r requirements.txt
-export ANSIBLE_LIBRARY="$(python3 -c 'import os,molecule_proxmox; print(os.path.join(os.path.dirname(molecule_proxmox.__file__), "modules"))')"
-ansible-galaxy collection install -r requirements.yml -p ./.ansible/collections --force
-export ANSIBLE_CONFIG=ansible.cfg
-export MOLECULE_PROXMOX_NODE=example-node
-export MOLECULE_PROXMOX_POOL=molecule
-export MOLECULE_PROXMOX_SECRETS="$PWD/.config/molecule/proxmox.yml"
-export MOLECULE_PROXMOX_STORAGE=example-storage
-export MOLECULE_CLONE_VMID_MIN=8500
-export MOLECULE_CLONE_VMID_MAX=8599
+cp .env.yml.example .env.yml
 ```
 
-Activate `.venv` in each new shell. Keep `ANSIBLE_CONFIG=ansible.cfg` set for
-Molecule commands. The scenario playbooks use fully qualified collection names
+Edit `.env.yml` for this controller. Use the stopped source template IDs,
+Proxmox location, management accounts and public identity paths from your setup.
+Keep API credentials in the separate private Proxmox secrets file.
+
+Activate this checkout's test environment once in each shell, then install
+collections when first setting up or changing requirements:
+
+```bash
+source .envrc
+ansible-galaxy collection install -r requirements.yml -p .ansible/collections --force
+```
+
+`.envrc` selects this checkout's `.venv`, Ansible configuration and native module
+path. Its private Ansible home is `.cache/molecule`, local to each worktree.
+It links `.ansible/development/ansible_collections/jaythomasonprojects/sys_admin`
+to this checkout and searches it before dependencies in `.ansible/collections`.
+Edits are visible without rebuilding or reinstalling. Molecule's implicit local
+installation (`prerun`) and Python-path collection discovery are disabled so
+they cannot silently select another copy.
+Molecule reads `.env.yml` automatically. No environment loader or test runner
+is required. The scenario playbooks use fully qualified collection names
 (FQCNs), such as `jaythomasonprojects.sys_admin.ssh`.
 
 Both platforms need Proxmox API access with verified TLS and guest SSH keys.
@@ -89,26 +100,14 @@ For Windows prerequisites, see [Set up Windows testing](#set-up-windows-testing)
 
 This example creates and deletes disposable Ubuntu 24.04 and 26.04 VM clones.
 Configure [Linux testing](#set-up-linux-testing) first. Run scenarios sequentially
-across repositories: Linux scenarios reuse the configured clone allocations.
-Acquire the shared test window and confirm clone allocations are free first.
+across repositories within an approved shared test window. Proxmox selects
+the next available clone ID. Confirm that each requested clone name is absent
+before creation.
 
-First, build and install this checkout into the repo-local collection path:
-
-```bash
-ansible-galaxy collection build --force --output-path dist
-version=$(sed -n "s/^version: '\(.*\)'/\1/p" galaxy.yml)
-ansible-galaxy collection install "dist/jaythomasonprojects-sys_admin-${version}.tar.gz" \
-  -p ./.ansible/collections --force
-```
-
-`ANSIBLE_CONFIG` selects that installed path. It does not copy changed role
-files into it. Repeat the build and installation after editing role code,
-or you may test an older copy.
-
-Run the scenario:
+After shell activation, run the scenario directly against the checkout:
 
 ```bash
-ANSIBLE_CONFIG=ansible.cfg molecule test -s time_sync/linux
+molecule test -s time_sync/linux
 ```
 
 Expect phase headings, Ansible task output, and play recaps for both VMs.
@@ -125,13 +124,13 @@ or driver operation is not an optional-hook notice.
 
 ## Run the affected scenario
 
-For a role change, refresh the installed checkout as above, then run lint and
-the scenario that covers the change:
+For a role change, use the activated shell to run lint and the scenario that
+covers the change:
 
 ```bash
-ansible-lint .
+ansible-lint --offline .
 yamllint .
-ANSIBLE_CONFIG=ansible.cfg molecule test -s ssh/linux
+molecule test -s ssh/linux
 ```
 
 Use `<role>/linux` or `<role>/windows` as the selector. Run affected scenarios
@@ -141,8 +140,9 @@ lint, and package checks rather than another infrastructure run.
 
 ## Commands and files
 
-All commands below use `-s <role>/<platform>`. Set `ANSIBLE_CONFIG=ansible.cfg`
-and activate `.venv` first.
+All commands below use `-s <role>/<platform>`. Source `.envrc` in this checkout
+first. Use current setup instructions for reruns; retained reports record
+historical commands and results.
 
 | Command | What it does |
 | --- | --- |
@@ -160,9 +160,9 @@ The collection's recursive discovery finds `extensions/molecule/**/molecule.yml`
 For a Linux debugging session:
 
 ```bash
-ANSIBLE_CONFIG=ansible.cfg molecule converge -s time_sync/linux
-ANSIBLE_CONFIG=ansible.cfg molecule verify -s time_sync/linux
-ANSIBLE_CONFIG=ansible.cfg molecule destroy -s time_sync/linux
+molecule converge -s time_sync/linux
+molecule verify -s time_sync/linux
+molecule destroy -s time_sync/linux
 ```
 
 `converge` is not only a role rerun; its sequence includes creation. Do not use
@@ -197,21 +197,12 @@ Do not convert or modify source
 VMs as part of a scenario.
 
 Use the [API configuration](#api-credentials-and-permissions) and trust settings
-below for both platforms. Supply these external inputs before Linux scenarios:
+below for both platforms. Set Linux source IDs, management access and public
+identity paths in `.env.yml`. `.env.yml.example` defines the required fields.
 
-```bash
-export MOLECULE_UBUNTU2404_TEMPLATE_VMID=8000
-export MOLECULE_UBUNTU2604_TEMPLATE_VMID=8001
-export MOLECULE_UBUNTU2404_VMID=8500
-export MOLECULE_UBUNTU2604_VMID=8501
-export MOLECULE_LINUX_USER=example_admin
-export MOLECULE_LINUX_SSH_PORT=22
-export MOLECULE_LINUX_IDENTITY_FILE="$PWD/.cache/linux-admin.pub"
-```
-
-These are placeholders, not reserved site allocations. Select disjoint source/
-build and test ranges, agree ownership with other projects and inspect actual
-API inventory before creation. Never reuse a source VMID as a clone ID.
+The example's template IDs are placeholders, not site defaults. Inspect actual
+API inventory before creation. Omit `newid` from platforms so Proxmox selects
+clone IDs. Keep source templates stopped and unchanged.
 
 `MOLECULE_LINUX_IDENTITY_FILE` is a public identity file selecting an agent-held
 key already authorised in each source. Preparation authorises that public key
@@ -228,19 +219,36 @@ prompts (Ansible issue [86849](https://github.com/ansible/ansible/issues/86849))
 This leaves system alternatives, packages and sudo permissions unchanged.
 
 Shared `create.yml` and `destroy.yml` wrap the installed native driver's
-playbooks. They enforce the externally reserved clone range, reject occupied
-allocations, inspect actual API identities before preparation, pin guest host
-keys read through the verified API, and check disposal/source preservation.
+playbooks. They reject existing clone names, verify native creation receipts
+and recorded IDs, inspect API identities before preparation, pin guest host
+keys read through the verified API, and check clone/disk disposal and stopped
+source eligibility. Routine tests trust the prepared template. They do not read
+an approved-settings record or compare full source configurations. Source
+templates must remain unchanged, but a passing run does not certify full settings
+equality. Inspect the private approved record manually when a failure gives
+reason to suspect source settings.
 The configured datastore must contain every clone-owned disk; inspect API
 storage after failed lifecycle operations rather than deleting local state.
 Socket-activated SSH may generate host keys only after a first TCP connection.
 The wrapper probes that socket before independently reading and pinning its
 public key; it does not alter source key-generation policy.
 
+Before deletion, shared destroy asks each running verified guest to release
+DHCP over SSH. Ubuntu fixtures use NetworkManager; Windows uses `ipconfig`.
+Create installs `udhcpc` in disposable Ubuntu 24.04 guests because their
+NetworkManager lacks release-on-disconnect control. That client requests the
+current address with the same MAC client identity and releases it on exit.
+Its no-op configuration hook leaves network settings with NetworkManager.
+Ubuntu 24.04 fixtures must use NetworkManager's default MAC-based DHCP client ID.
+The release is the last guest operation. A bounded controller check waits for
+SSH to disconnect, but does not prove the DHCP server received the release.
+Unreachable guests produce a warning and still proceed to native disposal.
+SSH scenarios restore prepared management access in their own cleanup phase.
+
 Native chrony service checks run on independent guest kernels without changing
 packaged container conditions. Missing fixtures or failed service checks leave
 acceptance incomplete. Ubuntu 22.04 is unsupported, not an optional third target.
-Transferred USB policy and its unchanged guest-kernel guard remain consumer-owned.
+USB policy and its guest-kernel acceptance remain consumer-owned.
 
 ## Set up Windows testing
 
@@ -249,7 +257,7 @@ disposable VM with its own disks. The prepared source is not a
 test target. Routine lifecycle operations use the HTTPS API, not root SSH to
 the hypervisor.
 
-### Template and reserved identities
+### Template and clone identities
 
 Use one stopped, deletion-protected Windows template prepared from the current
 canonical unattended installation and its basic access bootstrap. Record the
@@ -272,22 +280,15 @@ Select a test node, full-clone-capable storage, bridge, pool and Windows 11
 source in your own environment. The source's SSH port must match
 `MOLECULE_WINDOWS_SSH_PORT`. Never alter the source template during tests.
 
-The reserved allocations are:
+The `ssh/windows` scenario uses clone name `ssh-windows` and SSH.
+Proxmox selects its VM identifier (VMID). Keep that name absent before creation.
+The native driver records the returned ID for cleanup.
 
-| Scenario | VMID input | Clone name | Guest connection |
-| --- | --- | --- | --- |
-| `ssh/windows` | `MOLECULE_SSH_WINDOWS_VMID` | `ssh-windows` | SSH |
-
-Transferred coverage owns separate consumer allocations. Confirm receipt and
-single ownership during integration; source/build allocations are never test
-allocations, even when historical test records reused those numbers. Run both
-repositories sequentially. Share acceptance belongs to the consuming project.
-Retired share allocations require explicit reassignment before reuse.
-
-Confirm each reserved VM identifier (VMID) is unused before creating a clone.
-Run Windows scenarios sequentially. Never delete a VM based only on its number.
+Run both repositories sequentially within the approved test window.
+Share acceptance belongs to the consuming project.
+Never delete a VM based only on its number.
 Full clones inherit deletion protection. The shared destroy playbook clears it
-only after API checks confirm the clone's reservation, name, node, pool and owned
+only after API checks confirm the recorded ID, name, node, pool and owned
 disks. Source protection is never cleared. Source shutdown/restart wrappers are
 not part of normal tests.
 
@@ -328,24 +329,15 @@ guest-agent discovery, and deletion of test VMs and disks. Provision grants
 through the operator's Proxmox administration workflow.
 
 Keep API `validate_certs: true`. If the endpoint needs a custom trust bundle,
-set `REQUESTS_CA_BUNDLE`. The local `.cache/proxmox-api-ca.pem` combines trusted
+set `REQUESTS_CA_BUNDLE` in `.env.yml`. An empty value uses system trust.
+The local `.cache/proxmox-api-ca.pem` combines trusted
 roots and an independently verified missing issuer chain. Refresh it when the
 endpoint chain changes; do not disable API TLS verification.
 
 ### Guest authentication and environment
 
-Supply environment-specific values through your external test configuration.
-These examples are placeholders, not provisioned defaults:
-
-```bash
-export ANSIBLE_CONFIG=ansible.cfg
-export REQUESTS_CA_BUNDLE="$PWD/.cache/proxmox-api-ca.pem"
-export MOLECULE_WINDOWS_TEMPLATE_VMID=9000
-export MOLECULE_WINDOWS_USER=example_admin
-export MOLECULE_WINDOWS_SSH_PORT=4022
-export MOLECULE_WINDOWS_IDENTITY_FILE="$PWD/.cache/windows-admin.pub"
-export MOLECULE_SSH_WINDOWS_VMID=8502
-```
+Set the Windows source ID, management user, port and public identity path in
+`.env.yml`. Use `.env.yml.example` as the field reference.
 
 The retained SSH scenario manages an already prepared clone through the source's
 administrative SSH key. It requires no external Windows guest password and does
@@ -366,11 +358,11 @@ change the controller's pinned management transport.
 
 ## Run Windows tests
 
-Refresh the installed checkout, configure authentication, then run each
+Activate the checkout, configure authentication, then run each
 scenario sequentially:
 
 ```bash
-ANSIBLE_CONFIG=ansible.cfg molecule test -s ssh/windows
+molecule test -s ssh/windows
 ```
 
 Each scenario README states what its assertions prove. Windows helpers require
@@ -386,9 +378,11 @@ Read the first failing task and its native error. A create or connection failure
 before convergence is not evidence of a role defect. A wrong effective value
 or failed verification is not a successful test just because idempotence passed.
 
-If changes appear to have no effect, check that you rebuilt and installed the
-checkout. If VM service tests fail, inspect the native unit, journal and guest
-prerequisites rather than overriding service conditions.
+If changes appear to have no effect, check the task path with `molecule -vv`
+and confirm it resolves through this checkout's `.ansible/development` link.
+An archive-selected shell intentionally ignores checkout edits. If VM service
+tests fail, inspect the native unit, journal and guest prerequisites rather than
+overriding service conditions.
 
 For Windows address discovery, inspect the clone through the API or Proxmox UI.
 An address beginning with `169.254.` is APIPA, not a usable DHCP lease. Confirm
@@ -401,13 +395,14 @@ address. If state is incomplete, use the recovery procedure below.
 If creation fails before the driver writes instance state, `destroy` may have no
 VMID to remove. Deleting local state does not delete the clone or its disks.
 
-1. Inspect the reserved VMID through the authenticated API or Proxmox UI.
-   Confirm the clone name, test-pool membership, and owned clone disks.
+1. Inspect the recorded VMID through the authenticated API or Proxmox UI.
+   If no record exists, find the scenario's clone name in the test pool.
+   Confirm its ID, name, node, pool and owned clone disks. Never guess the ID.
 2. Stop and delete that exact test clone and its owned disks through the API or
    UI. Do not delete template disks or unrelated VMs.
 3. Inspect API inventory and storage to confirm both the clone and its disks
    are absent. Confirm the template remains.
-4. Run `ANSIBLE_CONFIG=ansible.cfg molecule destroy -s <role>/<platform>` to clear
+4. Run `molecule destroy -s <role>/<platform>` to clear
    remaining local lifecycle state. Then rerun the scenario.
 
 Do not replay driver create against an existing clone. The evaluated driver
@@ -474,14 +469,36 @@ coverage limitation, not a silently skipped result.
 
 ## Release gate
 
-Before publishing, build and install the checkout, configure both platform
-fixtures in Proxmox, then run lint and every scenario sequentially:
+Development tests, including an ordinary `molecule test --all`, use the checkout.
+They are not release acceptance. Before publishing, configure both platform
+fixtures and agree an exclusive window. Build once, record the archive's digest,
+and install those exact bytes in the worktree-local candidate path:
 
 ```bash
+source .envrc
+ansible-galaxy collection build --force --output-path dist
+version=$(sed -n "s/^version: '\(.*\)'/\1/p" galaxy.yml)
+candidate="$PWD/dist/jaythomasonprojects-sys_admin-${version}.tar.gz"
+sha256sum "$candidate"
+ansible-galaxy collection install "$candidate" -p .ansible/collections --force
 ansible-lint .
 yamllint .
-ANSIBLE_CONFIG=ansible.cfg MOLECULE_GLOB='extensions/molecule/**/molecule.yml' molecule test --all
+(
+  export ANSIBLE_COLLECTIONS_PATH="$PWD/.ansible/collections"
+  cmp <(tar -xOf "$candidate" FILES.json) \
+    .ansible/collections/ansible_collections/jaythomasonprojects/sys_admin/FILES.json &&
+  ansible-galaxy collection verify jaythomasonprojects.sys_admin --offline &&
+  molecule -vv test --all
+)
 ```
+
+The subshell excludes the development link and keeps the activated shell ready
+for subsequent development. Dependencies must be installed in the same selected
+collection root. The manifest comparison and offline integrity check establish
+that the installed files match the selected archive; a missing candidate stops
+the gate. Keep the verbose task paths as evidence that role execution used that
+installation, not the source or a global copy. `Test: all` makes the same explicit
+selection and integrity checks against the existing versioned archive.
 
 The full run includes Windows acceptance; do not repeat a separate Windows
 suite for the same gate. Report unrelated failures with their reason rather

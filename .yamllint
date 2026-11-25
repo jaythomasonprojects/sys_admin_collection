@@ -1,9 +1,21 @@
 ---
 extends: default
 
+rules:
+  braces:
+    max-spaces-inside: 1
+  comments:
+    min-spaces-from-content: 1
+  comments-indentation: false
+  octal-values:
+    forbid-explicit-octal: true
+    forbid-implicit-octal: true
+
 ignore: |
   .ansible/
   .cache/
   .venv/
   .molecule/
+  dist/
+  openspec/**/.openspec.yaml
   openspec/retired/

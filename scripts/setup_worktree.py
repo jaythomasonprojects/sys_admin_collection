@@ -17,7 +17,7 @@ SHARED_PATHS: list[Path] = [
     Path(".cache/proxmox-api-ca.pem"),
     Path(".cache/windows-admin.pub"),
     Path(".config/molecule/proxmox.yml"),
-    Path(".env"),
+    Path(".env.yml"),
     Path(".venv"),
     Path("openspec"),
 ]
@@ -33,15 +33,11 @@ def git(root: Path, *args: str) -> str:
 
 
 def main() -> None:
-    root = Path(
-        git(Path(__file__).resolve().parent, "rev-parse", "--show-toplevel").strip()
-    )
+    root = Path(git(Path(__file__).resolve().parent, "rev-parse", "--show-toplevel").strip())
     # Git lists the main checkout first; -z preserves spaces and unusual names.
     entries = git(root, "worktree", "list", "--porcelain", "-z").split("\0")
     if "bare" in entries[: entries.index("")]:
-        raise ValueError(
-            "A main checkout is required; bare repositories are unsupported."
-        )
+        raise ValueError("A main checkout is required; bare repositories are unsupported.")
     main_root = Path(entries[0].removeprefix("worktree ")).resolve()
     root = root.resolve()
     if root == main_root:
@@ -56,17 +52,9 @@ def main() -> None:
     }
     links: list[tuple[Path, Path]] = []
     for path in SHARED_PATHS:
-        if (
-            path.is_absolute()
-            or not path.parts
-            or ".." in path.parts
-            or ".git" in path.parts
-        ):
+        if path.is_absolute() or not path.parts or ".." in path.parts or ".git" in path.parts:
             raise ValueError(f"Not a safe repository-relative path: {path}")
-        if any(
-            path == item or path in item.parents or item in path.parents
-            for item in tracked
-        ):
+        if any(path == item or path in item.parents or item in path.parents for item in tracked):
             raise ValueError(f"Refusing to share a tracked path: {path}")
         source = main_root / path
         destination = root / path
@@ -81,8 +69,7 @@ def main() -> None:
             print(f"Missing in main checkout, skipped: {path}")
             continue
         if any(
-            path == other or path in other.parents or other in path.parents
-            for other, _ in links
+            path == other or path in other.parents or other in path.parents for other, _ in links
         ):
             raise ValueError(f"Overlapping shared paths: {path}")
         links.append((path, source))

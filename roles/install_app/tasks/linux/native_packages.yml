@@ -15,16 +15,17 @@
       become: true
       when:
         - >-
-          (install_app_packages + install_app_channel_packages) | unique
+          (install_app_apt_packages + install_app_channel_packages) | unique
           | length > 0
         - ansible_facts.pkg_mgr | default('') == 'apt'
 
     - name: Install native packages
       ansible.builtin.package:
         name: >-
-          {{ (install_app_packages + install_app_channel_packages) | unique }}
+          {{ (install_app_apt_packages + install_app_channel_packages)
+             | unique }}
         state: present
       when: >-
-        (install_app_packages + install_app_channel_packages) | unique
+        (install_app_apt_packages + install_app_channel_packages) | unique
         | length > 0
       become: true

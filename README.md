@@ -21,7 +21,7 @@ ansible-galaxy collection install jaythomasonprojects.sys_admin
 
 Galaxy installs the latest published release, which may differ from the version
 in this checkout's `galaxy.yml`. Consult the documentation for the version you
-install. To test unreleased source, use the local build and installation steps
+install. To test unreleased source directly, use the checkout setup and focused test steps
 in the [Molecule guide](extensions/molecule/README.md#run-your-first-linux-test).
 
 ## Use a role
@@ -34,7 +34,7 @@ group. The role owns package installation and privilege escalation:
 - name: Install workstation applications
   hosts: linux_workstations
   vars:
-    install_app_packages:
+    install_app_apt_packages:
       - 'jq'
   roles:
     - role: 'jaythomasonprojects.sys_admin.install_app'

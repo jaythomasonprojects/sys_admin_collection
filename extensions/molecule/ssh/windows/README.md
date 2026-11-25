@@ -17,7 +17,9 @@ placement, protected ACLs, replacement, clearing and omission checks. Ordinary
 idempotence covers unchanged key declarations. Administrative key-only SSH also
 reapplies configuration without account passwords, then reconnects
 after a deliberate fixture-password change without the replacement password.
-The cleanup phase removes the generated controller keys. Account lifecycle
-acceptance belongs to the consumer, not this scenario.
+The cleanup phase restores the prepared management port and account, checks a
+fresh connection, then removes the generated controller keys. Shared destroy
+releases DHCP over the restored connection before deleting the clone.
+Account lifecycle acceptance belongs to the consumer, not this scenario.
 Follow the [Molecule guide](../../README.md#set-up-windows-testing) and use
 selector `ssh/windows`.

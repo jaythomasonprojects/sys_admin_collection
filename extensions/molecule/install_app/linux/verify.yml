@@ -4,7 +4,7 @@
   become: true
   gather_facts: true
   vars:
-    expected_package_name: "jq"
+    expected_package_name: 'jq'
   tasks:
     - name: Gather package facts
       ansible.builtin.package_facts:
@@ -12,7 +12,9 @@
     - name: Assert channel prerequisites and skips
       ansible.builtin.assert:
         that:
-          - "expected_package_name in ansible_facts.packages"
+          - expected_package_name in ansible_facts.packages
+          - "'install-app-fixture' in ansible_facts.packages"
+          - "'install-app-url-fixture' in ansible_facts.packages"
           - "'npm' in ansible_facts.packages"
           - "'flatpak' not in ansible_facts.packages"
         fail_msg: >-
@@ -20,68 +22,32 @@
           the unrequested Flatpak channel.
 
     - name: Verify APT package installation
-      when: ansible_facts["pkg_mgr"] == "apt"
+      when: ansible_facts.pkg_mgr == 'apt'
       block:
-        - name: Query jq package status with dpkg-query
-          ansible.builtin.command:
-            argv:
-              - "dpkg-query"
-              - "-W"
-              - "-f=${Status}"
-              - "{{ expected_package_name }}"
-          register: install_app_package_status
-          changed_when: false
-
         - name: Run jq to prove the binary is available
           ansible.builtin.command:
             argv:
-              - "jq"
-              - "--version"
+              - 'jq'
+              - '--version'
           register: install_app_jq_version
           changed_when: false
 
         - name: Assert jq package installation on APT hosts
           ansible.builtin.assert:
             that:
-              - "expected_package_name in ansible_facts.packages"
-              - "install_app_package_status.stdout == 'install ok installed'"
-              - "install_app_jq_version.rc == 0"
-
-        - name: Query local Debian fixture package status with dpkg-query
-          ansible.builtin.command:
-            argv:
-              - "dpkg-query"
-              - "-W"
-              - "-f=${Status}"
-              - "install-app-fixture"
-          register: install_app_fixture_package_status
-          changed_when: false
+              - install_app_jq_version.stdout is match('jq-')
 
         - name: Run local Debian fixture executable
           ansible.builtin.command:
             argv:
-              - "install-app-fixture"
+              - 'install-app-fixture'
           register: install_app_fixture_output
           changed_when: false
 
         - name: Assert local Debian package installation on APT hosts
           ansible.builtin.assert:
             that:
-              - "'install-app-fixture' in ansible_facts.packages"
-              - >-
-                install_app_fixture_package_status.stdout ==
-                'install ok installed'
               - "install_app_fixture_output.stdout == 'install-app-fixture'"
-
-        - name: Query URL Debian fixture package status
-          ansible.builtin.command:
-            argv:
-              - 'dpkg-query'
-              - '-W'
-              - '-f=${Status}'
-              - 'install-app-url-fixture'
-          register: install_app_url_fixture_status
-          changed_when: false
 
         - name: Run URL Debian fixture executable
           ansible.builtin.command:
@@ -93,8 +59,6 @@
         - name: Assert URL Debian package installation
           ansible.builtin.assert:
             that:
-              - "'install-app-url-fixture' in ansible_facts.packages"
-              - install_app_url_fixture_status.stdout == 'install ok installed'
               - >-
                 install_app_url_fixture_output.stdout ==
                 'install-app-url-fixture'
@@ -125,3 +89,83 @@
             ['@colors/colors'].version == '1.6.0'
         fail_msg: >-
           install_app did not install bare and versioned npm packages globally.
+
+- name: Verify install_app input rejection as the unprivileged caller
+  hosts: all
+  gather_facts: true
+  vars:
+    ansible_user: 'molecule'
+    install_app_apt_packages: []
+    install_app_deb_packages: []
+    install_app_flatpaks: []
+    install_app_manage_flatpak_remote: false
+    install_app_npm_packages: []
+  tasks:
+    - name: Reject Ubuntu 22.04 before package mutation
+      block:
+        - name: Apply application policy with unsupported Ubuntu release facts
+          ansible.builtin.include_role:
+            name: 'jaythomasonprojects.sys_admin.install_app'
+          vars:
+            ansible_facts:
+              distribution: 'Ubuntu'
+              distribution_version: '22.04'
+              os_family: 'Debian'
+              system: 'Linux'
+
+        - name: Fail if Ubuntu 22.04 was accepted
+          ansible.builtin.fail:
+            msg: 'Unsupported Ubuntu release was accepted'
+      rescue:
+        - name: Require the release-gate diagnostic
+          ansible.builtin.assert:
+            that:
+              - >-
+                ansible_failed_result.msg ==
+                'install_app supports Ubuntu 24.04/26.04 and Windows '
+                ~ 'hosts only.'
+
+    - name: Reject unsupported operating systems
+      block:
+        - name: Configure unsupported operating system
+          ansible.builtin.include_role:
+            name: 'jaythomasonprojects.sys_admin.install_app'
+          vars:
+            ansible_facts:
+              os_family: 'Darwin'
+              system: 'Darwin'
+      rescue:
+        - name: Record unsupported operating system rejection
+          ansible.builtin.set_fact:
+            install_app_unsupported_platform_failure: >-
+              {{ ansible_failed_result.msg | default('') }}
+
+    - name: Assert unsupported operating system was rejected
+      ansible.builtin.assert:
+        that:
+          - >-
+            install_app_unsupported_platform_failure ==
+            'install_app supports Ubuntu 24.04/26.04 and Windows hosts only.'
+
+    - name: Reject a missing Debian package reference on APT
+      when: ansible_facts.pkg_mgr == 'apt'
+      block:
+        - name: Run install_app with a missing Debian package path
+          ansible.builtin.include_role:
+            name: 'jaythomasonprojects.sys_admin.install_app'
+          vars:
+            install_app_deb_packages:
+              - '/usr/local/src/missing-install-app-fixture.deb'
+
+        - name: Fail if a missing Debian package was accepted
+          ansible.builtin.fail:
+            msg: 'Missing Debian reference was silently accepted.'
+      rescue:
+        - name: Assert APT rejected the missing package path
+          ansible.builtin.assert:
+            that:
+              - >-
+                ansible_failed_result.results | default([])
+                | map(attribute='msg')
+                | select('search', 'missing-install-app-fixture.deb')
+                | list | length > 0

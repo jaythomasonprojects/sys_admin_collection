@@ -1,0 +1,14 @@
+---
+- name: Verify Windows package installation
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Inspect installed Chocolatey packages
+      chocolatey.chocolatey.win_chocolatey_facts:
+
+    - name: Require the requested package
+      ansible.builtin.assert:
+        that:
+          - >-
+            ansible_chocolatey.packages |
+            selectattr('package', 'equalto', '7zip') | list | length == 1

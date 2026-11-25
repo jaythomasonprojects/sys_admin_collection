@@ -1,0 +1,9 @@
+---
+- name: Install a Windows application
+  hosts: all
+  gather_facts: true
+  vars:
+    install_app_choco_packages:
+      - '7zip'
+  roles:
+    - role: 'jaythomasonprojects.sys_admin.install_app'

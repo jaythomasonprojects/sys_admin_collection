@@ -24,3 +24,4 @@ extensions/molecule/**/.molecule/
 .config/molecule/proxmox.yml
 .env
 .env.*
+!.env.yml.example

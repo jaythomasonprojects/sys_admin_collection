@@ -3,6 +3,6 @@
 # need a separate bootstrap task.
 - name: Install Chocolatey packages
   chocolatey.chocolatey.win_chocolatey:
-    name: '{{ install_app_packages }}'
+    name: '{{ install_app_choco_packages }}'
     state: present
-  when: install_app_packages | length > 0
+  when: install_app_choco_packages | length > 0

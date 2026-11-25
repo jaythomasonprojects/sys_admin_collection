@@ -1,7 +1,7 @@
 ---
 namespace: jaythomasonprojects
 name: sys_admin
-version: '0.13.0'
+version: '0.16.0'
 readme: README.md
 authors:
   - Jay Thomason
@@ -31,6 +31,7 @@ build_ignore:
   - 'scripts'
   - '.env'
   - '.env.*'
+  - '.envrc'
   - ".opencode"
   - ".ansible"
   - ".cache"

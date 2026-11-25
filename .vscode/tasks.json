@@ -10,32 +10,38 @@
     {
       "label": "Lint: check",
       "type": "shell",
-      "command": ".venv/bin/ansible-lint .",
+      "command": "source .envrc && ansible-lint --offline .",
       "problemMatcher": []
     },
     {
       "label": "Lint: format",
       "type": "shell",
-      "command": ".venv/bin/yamllint .",
+      "command": "source .envrc && yamllint .",
       "problemMatcher": []
     },
     {
       "label": "Lint: fix",
       "type": "shell",
-      "command": ".venv/bin/ansible-lint . --fix",
+      "command": "source .envrc && ansible-lint --offline . --fix",
+      "problemMatcher": []
+    },
+    {
+      "label": "Lint: Python",
+      "type": "shell",
+      "command": "uvx ruff check scripts",
+      "problemMatcher": []
+    },
+    {
+      "label": "Type: check",
+      "type": "shell",
+      "command": "uvx pyright",
       "problemMatcher": []
     },
     {
       "label": "Test: all",
       "type": "shell",
-      "command": ".venv/bin/molecule test --all",
-      "options": {
-        "env": {
-          "ANSIBLE_CONFIG": "ansible.cfg",
-          "MOLECULE_GLOB": "extensions/molecule/**/molecule.yml",
-          "PATH": "${workspaceFolder}/.venv/bin:${env:PATH}"
-        }
-      },
+      "command": "source .envrc && version=$(sed -n \"s/^version: '\\(.*\\)'/\\1/p\" galaxy.yml) && candidate=\"$PWD/dist/jaythomasonprojects-sys_admin-${version}.tar.gz\" && export ANSIBLE_COLLECTIONS_PATH=\"$PWD/.ansible/collections\" && cmp <(tar -xOf \"$candidate\" FILES.json) .ansible/collections/ansible_collections/jaythomasonprojects/sys_admin/FILES.json && ansible-galaxy collection verify jaythomasonprojects.sys_admin --offline && molecule -vv test --all",
+      "detail": "Release gate against the existing versioned archive installation only. Build and install first; verify exact contents, then run all scenarios sequentially. The development link is excluded.",
       "problemMatcher": []
     },
     {
@@ -65,6 +71,10 @@
     }
   ],
   "options": {
-    "cwd": "${workspaceFolder}"
+    "cwd": "${workspaceFolder}",
+    "shell": {
+      "executable": "/bin/bash",
+      "args": ["-c"]
+    }
   }
 }

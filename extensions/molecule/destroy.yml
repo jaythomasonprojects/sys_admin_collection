@@ -30,11 +30,13 @@
       ansible.builtin.include_vars: '{{ options.proxmox_secrets }}'
       no_log: true
 
-    - name: Require recorded identities to match external clone reservations
+    - name: Require recorded identities to match scenario platforms
       ansible.builtin.assert:
         that:
-          - item.vmid | int >= options.clone_vmid_min | int
-          - item.vmid | int <= options.clone_vmid_max | int
+          - item.vmid | int > 0
+          - >-
+            instances | map(attribute='vmid') | map('int') | unique | length
+            == instances | length
           - >-
             item.vmid | int not in
             molecule_yml.platforms | map(attribute='template_vmid') |
@@ -42,7 +44,7 @@
           - >-
             molecule_yml.platforms |
             selectattr('name', 'equalto', item.instance) |
-            map(attribute='newid') | map('int') | list == [item.vmid | int]
+            list | length == 1
         fail_msg: 'Lifecycle record is not an owned disposable clone.'
       loop: '{{ instances }}'
       loop_control:
@@ -100,6 +102,97 @@
         - item.proxmox_vms[0].config.protection | default(false) | bool
       no_log: true
 
+    - name: Select running verified clones for guest DHCP release
+      ansible.builtin.add_host:
+        name: '{{ item.item.instance }}'
+        groups: molecule_disposing_guests
+      loop: '{{ molecule_disposing.results }}'
+      loop_control:
+        label: '{{ item.item.instance }}'
+      when:
+        - item.proxmox_vms | length == 1
+        - item.proxmox_vms[0].status == 'running'
+
+- name: Release guest DHCP before native destruction
+  hosts: molecule_disposing_guests
+  gather_facts: false
+  ignore_unreachable: true
+  tasks:
+    # Let Ansible return the async job receipt before removing its SSH address.
+    - name: Release Ubuntu NetworkManager DHCP connections
+      ansible.builtin.shell: |
+        sleep 2
+        set -euo pipefail
+        for connection in $(nmcli -g UUID connection show --active); do
+          method=$(nmcli -g ipv4.method connection show uuid "$connection")
+          if [ "$method" = auto ]; then
+            device=$(nmcli -g GENERAL.DEVICES connection show \
+              uuid "$connection")
+            if nmcli -g ipv4.dhcp-send-release connection show \
+                uuid "$connection" >/dev/null 2>&1; then
+              nmcli connection modify uuid "$connection" \
+                ipv4.dhcp-send-release yes
+              nmcli device reapply "$device"
+            else
+              address=$(nmcli -g IP4.ADDRESS device show "$device" | head -n 1)
+              # Reuse the NetworkManager MAC client ID and current address.
+              # The no-op hook leaves interface ownership with NetworkManager.
+              # SIGTERM releases a bound lease; udhcpc -q exits before BOUND.
+              timeout --preserve-status --kill-after=2s 10s \
+                udhcpc -f -n -R -t 3 -T 2 -i "$device" \
+                  -r "${address%/*}" -s /bin/true
+            fi
+            nmcli device disconnect "$device"
+          fi
+        done
+      args:
+        executable: /bin/bash
+      async: 30
+      become: true
+      changed_when: true
+      failed_when: false
+      poll: 0
+      register: molecule_linux_release
+      when: ansible_shell_type | default('sh') != 'powershell'
+
+    - name: Release Windows DHCP connections
+      ansible.windows.win_shell: |
+        Start-Sleep -Seconds 2
+        ipconfig.exe /release
+        exit $LASTEXITCODE
+      async: 30
+      changed_when: true
+      failed_when: false
+      poll: 0
+      register: molecule_windows_release
+      when: ansible_shell_type | default('sh') == 'powershell'
+
+    - name: Wait for the released management address to stop accepting SSH
+      ansible.builtin.wait_for:
+        host: '{{ hostvars[inventory_hostname].ansible_host }}'
+        port: >-
+          {{ hostvars[inventory_hostname].ansible_port | default(22) | int }}
+        state: stopped
+        timeout: 35
+      delegate_to: localhost
+      failed_when: false
+      register: molecule_release_disconnect
+      vars:
+        ansible_connection: local
+        ansible_shell_type: sh
+      when: >-
+        molecule_linux_release.ansible_job_id is defined or
+        molecule_windows_release.ansible_job_id is defined
+
+    - name: Report an unconfirmed DHCP release without blocking clone disposal
+      ansible.builtin.debug:
+        msg: >-
+          WARNING: DHCP release was not confirmed for {{ inventory_hostname }}.
+          The guest may be unreachable or its release command may have failed.
+          Continue disposing the verified clone.
+          Its lease may remain until expiry.
+      when: molecule_release_disconnect.state | default('') != 'stopped'
+
 - name: Destroy clones with the installed native Proxmox driver
   ansible.builtin.import_playbook: >-
     {{ native_driver_directory }}/playbooks/destroy.yml
@@ -109,14 +202,15 @@
          ' -c "import os,molecule_proxmox;'
          ~ ' print(os.path.dirname(molecule_proxmox.__file__))"') }}
 
-- name: Confirm clone disposal and preserved sources
+- name: Confirm clone disposal and stopped source templates
   hosts: localhost
   connection: local
   gather_facts: false
   vars:
-    molecule_ephemeral_directory: >-
-      {{ lookup('ansible.builtin.env', 'MOLECULE_EPHEMERAL_DIRECTORY') }}
     options: '{{ molecule_yml.driver.options }}'
+    instances: >-
+      {{ lookup('ansible.builtin.file', molecule_instance_config,
+                errors='ignore') | default('[]', true) | from_yaml }}
   module_defaults:
     community.proxmox.proxmox_vm_info:
       api_host: '{{ api_host }}'
@@ -129,18 +223,33 @@
   tasks:
     - name: Inspect API inventory after destruction
       community.proxmox.proxmox_vm_info:
+        node: '{{ omit }}'
       register: molecule_after
       no_log: true
 
-    - name: Confirm clone allocations are absent
+    - name: Confirm scenario clone names are absent from the configured pool
       ansible.builtin.assert:
         that:
           - >-
             molecule_after.proxmox_vms |
-            selectattr('vmid', 'equalto', item.newid | int) | length == 0
-      loop: '{{ molecule_yml.platforms }}'
+            selectattr('pool', 'defined') |
+            selectattr('pool', 'equalto', options.pool) |
+            map(attribute='name') |
+            intersect(molecule_yml.platforms | map(attribute='name') | list) |
+            length == 0
+        fail_msg: >-
+          Scenario clones remain in the configured pool.
+          Verify their ownership and recover them before another create.
+
+    - name: Confirm recorded clones are absent
+      ansible.builtin.assert:
+        that:
+          - >-
+            molecule_after.proxmox_vms |
+            selectattr('vmid', 'equalto', item.vmid | int) | length == 0
+      loop: '{{ instances }}'
       loop_control:
-        label: '{{ item.name }}'
+        label: '{{ item.instance }}'
 
     - name: Confirm clone disks are absent from the configured datastore
       ansible.builtin.uri:
@@ -153,33 +262,24 @@
         return_content: true
         url: >-
           https://{{ api_host }}:8006/api2/json/nodes/{{ options.node
-          }}/storage/{{ options.storage }}/content?vmid={{ item.newid | int }}
+          }}/storage/{{ options.storage }}/content?vmid={{ item.vmid | int }}
         validate_certs: true
-      loop: '{{ molecule_yml.platforms }}'
+      loop: '{{ instances }}'
       register: molecule_disposed_disks
       failed_when: >-
         molecule_disposed_disks.status != 200 or
         molecule_disposed_disks.json.data | length > 0
       no_log: true
 
-    - name: Read source fingerprint baseline
-      ansible.builtin.stat:
-        path: '{{ molecule_ephemeral_directory }}/source-fingerprints.yml'
-      register: molecule_source_baseline
-
-    - name: Inspect source configurations after destruction
+    - name: Inspect source template eligibility after destruction
       community.proxmox.proxmox_vm_info:
         config: current
-        vmid: '{{ item.vmid | int }}'
-      loop: >-
-        {{ lookup('ansible.builtin.file',
-                  molecule_ephemeral_directory ~ '/source-fingerprints.yml',
-                  errors='ignore') | default('[]', true) | from_yaml }}
+        vmid: '{{ item.template_vmid | int }}'
+      loop: '{{ molecule_yml.platforms }}'
       register: molecule_preserved_sources
-      when: molecule_source_baseline.stat.exists
       no_log: true
 
-    - name: Require stopped templates with unchanged source configurations
+    - name: Require stopped templates and declared source protection
       ansible.builtin.assert:
         quiet: true
         that:
@@ -187,9 +287,9 @@
           - item.proxmox_vms[0].status == 'stopped'
           - item.proxmox_vms[0].template | default(false) | bool
           - >-
-            item.proxmox_vms[0].config | to_json(sort_keys=True) |
-            hash('sha256') == item.item.sha256
-      loop: '{{ molecule_preserved_sources.results | default([]) }}'
+            not item.item.source_protection_required |
+              default(options.full) | bool or
+            item.proxmox_vms[0].config.protection | default(false) | bool
+      loop: '{{ molecule_preserved_sources.results }}'
       loop_control:
-        label: '{{ item.item.vmid }}'
-      when: not item.skipped | default(false)
+        label: '{{ item.item.name }}'

@@ -1,6 +1,43 @@
 jaythomasonprojects.sys_admin changelog
 =======================================
 
+0.16.0
+------
+
+Breaking changes
+~~~~~~~~~~~~~~~~
+
+- Rename ``deb_package_urls`` to ``install_app_deb_packages``. Update inventories
+  and role invocations to use the new name; no compatibility alias is provided.
+  The string-list format, HTTP(S) URLs and absolute managed-host package paths
+  remain supported.
+
+0.15.0
+------
+
+Breaking changes
+~~~~~~~~~~~~~~~~
+
+- Rename ``install_app_debs`` to ``deb_package_urls``. Update inventories and
+  role invocations to use the new name; no compatibility alias is provided.
+  HTTP(S) URLs and absolute managed-host package paths remain supported.
+
+0.14.0
+------
+
+Breaking changes
+~~~~~~~~~~~~~~~~
+
+- Replace ``install_app_packages`` with ``install_app_apt_packages`` on Ubuntu
+  and ``install_app_choco_packages`` on Windows. Both default to empty lists;
+  mixed-platform inventories can supply both without conversion variables.
+
+Tests
+~~~~~
+
+- Add Windows Chocolatey acceptance using a disposable Proxmox clone:
+  install 7-Zip, verify its presence and require unchanged repeat convergence.
+
 0.13.0
 ------
 

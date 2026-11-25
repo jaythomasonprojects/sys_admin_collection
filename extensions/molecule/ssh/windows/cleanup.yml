@@ -1,4 +1,69 @@
 ---
+- name: Restore prepared management access after Windows SSH transitions
+  hosts: all
+  gather_facts: false
+  vars:
+    instances: >-
+      {{ lookup('ansible.builtin.file', molecule_instance_config,
+                errors='ignore') | default('[]', true) | from_yaml }}
+    options: '{{ molecule_yml.driver.options }}'
+  tasks:
+    - name: Restore access on recorded SSH fixtures
+      when:
+        - inventory_hostname in instances | map(attribute='instance') | list
+        - >-
+          (lookup('ansible.builtin.file',
+                  lookup('ansible.builtin.env', 'MOLECULE_STATE_FILE')) |
+           from_yaml).prepared | default(false) | bool
+      block:
+        - name: Inspect the scenario's prepared and tested SSH listeners
+          ansible.builtin.wait_for:
+            host: '{{ ansible_host }}'
+            port: '{{ item | int }}'
+            timeout: 3
+          delegate_to: localhost
+          failed_when: false
+          loop: '{{ [options.ssh_port | int, 2222, 2223] | unique }}'
+          register: ssh_cleanup_ports
+          vars:
+            ansible_connection: local
+            ansible_shell_type: sh
+
+        - name: Select the active scenario SSH port
+          ansible.builtin.set_fact:
+            ansible_port: >-
+              {{ ssh_cleanup_ports.results |
+                 selectattr('state', 'defined') |
+                 selectattr('state', 'equalto', 'started') |
+                 map(attribute='item') | first }}
+
+        - name: Gather facts through the active SSH listener
+          ansible.builtin.setup:
+            gather_subset: ['!all', min]
+
+        - name: Restore the prepared management port and account
+          ansible.builtin.include_role:
+            name: jaythomasonprojects.sys_admin.ssh
+          vars:
+            ssh_authorized_keys: []
+            ssh_server_allow_users: ['{{ options.ssh_user | lower }}']
+            ssh_server_password_authentication: 'no'
+            ssh_server_port: '{{ options.ssh_port | int }}'
+
+        - name: Activate the restored management policy
+          ansible.builtin.meta: flush_handlers
+
+        - name: Select the prepared management port
+          ansible.builtin.set_fact:
+            ansible_port: '{{ options.ssh_port | int }}'
+
+        - name: Close the transitioned SSH connection
+          ansible.builtin.meta: reset_connection
+
+        - name: Require fresh prepared management access
+          ansible.builtin.wait_for_connection:
+            timeout: 120
+
 - name: Remove disposable controller login keys
   hosts: localhost
   gather_facts: false

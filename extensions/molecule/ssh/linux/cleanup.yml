@@ -1,0 +1,44 @@
+---
+- name: Restore prepared management access after the Linux SSH scenario
+  hosts: all
+  gather_facts: false
+  vars:
+    ansible_user: molecule
+    instances: >-
+      {{ lookup('ansible.builtin.file', molecule_instance_config,
+                errors='ignore') | default('[]', true) | from_yaml }}
+    options: '{{ molecule_yml.driver.options }}'
+  tasks:
+    - name: Restore access on recorded SSH fixtures
+      when:
+        - inventory_hostname in instances | map(attribute='instance') | list
+        - >-
+          (lookup('ansible.builtin.file',
+                  lookup('ansible.builtin.env', 'MOLECULE_STATE_FILE')) |
+           from_yaml).prepared | default(false) | bool
+      block:
+        - name: Gather facts through the scenario account
+          ansible.builtin.setup:
+            gather_subset: ['!all', min]
+
+        - name: Restore the prepared management account and port
+          ansible.builtin.include_role:
+            name: jaythomasonprojects.sys_admin.ssh
+          vars:
+            ssh_authorized_keys: []
+            ssh_server_allow_users: ['{{ options.ssh_user }}']
+            ssh_server_port: '{{ options.ssh_port | int }}'
+
+        - name: Activate the restored management policy
+          ansible.builtin.meta: flush_handlers
+
+        - name: Select the prepared management account
+          ansible.builtin.set_fact:
+            ansible_user: '{{ options.ssh_user }}'
+
+        - name: Close the scenario SSH connection
+          ansible.builtin.meta: reset_connection
+
+        - name: Require fresh prepared management access
+          ansible.builtin.wait_for_connection:
+            timeout: 120

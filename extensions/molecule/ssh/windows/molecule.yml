@@ -1,14 +1,7 @@
 ---
 driver:
-  name: 'molecule-proxmox'
   options:
-    # Guest-agent API calls can outlast the HTTP default during Windows boot.
-    api_timeout: 60
     full: true
-    node: '${MOLECULE_PROXMOX_NODE}'
-    pool: '${MOLECULE_PROXMOX_POOL}'
-    proxmox_secrets: '${MOLECULE_PROXMOX_SECRETS}'
-    sethostname: false
     ssh_identity_file: '${MOLECULE_WINDOWS_IDENTITY_FILE}'
     ssh_extra_ports:
       - 2222
@@ -16,12 +9,9 @@ driver:
     ssh_host_public_key_path: 'C:/ProgramData/ssh/ssh_host_ed25519_key.pub'
     ssh_port: '${MOLECULE_WINDOWS_SSH_PORT}'
     ssh_user: '${MOLECULE_WINDOWS_USER}'
-    timeout: 1200
-    validate_certs: true
 
 platforms:
   - name: 'ssh-windows'
-    newid: '${MOLECULE_SSH_WINDOWS_VMID:-required-vmid}'
     template_vmid: '${MOLECULE_WINDOWS_TEMPLATE_VMID:-required-template-vmid}'
 
 provisioner:

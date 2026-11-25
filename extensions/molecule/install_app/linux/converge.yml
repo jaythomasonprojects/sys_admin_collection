@@ -4,37 +4,13 @@
   gather_facts: true
   vars:
     ansible_user: 'molecule'
-    install_app_debs: []
+    install_app_deb_packages: []
     install_app_flatpaks: []
     install_app_manage_flatpak_remote: false
     install_app_npm_packages:
       - 'is-number'
-    install_app_packages: []
+    install_app_apt_packages: []
   tasks:
-    - name: Reject Ubuntu 22.04 before package mutation
-      block:
-        - name: Apply application policy with unsupported Ubuntu release facts
-          ansible.builtin.include_role:
-            name: 'jaythomasonprojects.sys_admin.install_app'
-          vars:
-            ansible_facts:
-              distribution: 'Ubuntu'
-              distribution_version: '22.04'
-              os_family: 'Debian'
-              system: 'Linux'
-
-        - name: Fail if Ubuntu 22.04 was accepted
-          ansible.builtin.fail:
-            msg: 'Unsupported Ubuntu release was accepted'
-      rescue:
-        - name: Require the release-gate diagnostic
-          ansible.builtin.assert:
-            that:
-              - >-
-                ansible_failed_result.msg ==
-                'install_app supports Ubuntu 24.04/26.04 and Windows '
-                ~ 'hosts only.'
-
     - name: Inspect npm caller identity
       ansible.builtin.command:
         argv:
@@ -117,12 +93,12 @@
       - 'is-number'
       - 'is-odd@3.0.1'
       - '@colors/colors@1.6.0'
-    install_app_packages:
+    install_app_apt_packages:
       - 'jq'
   pre_tasks:
     - name: Set Debian package references
       ansible.builtin.set_fact:
-        install_app_debs:
+        install_app_deb_packages:
           - '/usr/local/src/install-app-fixture.deb'
           - 'http://127.0.0.1:8765/install-app-url-fixture.deb'
   tasks:
@@ -147,64 +123,11 @@
       ansible.builtin.include_role:
         name: 'jaythomasonprojects.sys_admin.install_app'
       vars:
-        install_app_debs:
+        install_app_deb_packages:
           - '/usr/local/src/unavailable-disabled-package.deb'
           - 'http://127.0.0.1:9/unavailable-disabled.deb'
         install_app_enabled: false
         install_app_npm_packages:
           - 'unavailable-disabled-npm-package@999.0.0'
-        install_app_packages:
+        install_app_apt_packages:
           - 'this-package-does-not-exist'
-
-    - name: Reject unsupported operating systems
-      block:
-        - name: Configure unsupported operating system
-          ansible.builtin.include_role:
-            name: 'jaythomasonprojects.sys_admin.install_app'
-          vars:
-            ansible_facts:
-              os_family: 'Darwin'
-              system: 'Darwin'
-            install_app_debs: []
-            install_app_flatpaks: []
-            install_app_npm_packages: []
-            install_app_packages: []
-      rescue:
-        - name: Record unsupported operating system rejection
-          ansible.builtin.set_fact:
-            install_app_unsupported_platform_failure: >-
-              {{ ansible_failed_result.msg | default('') }}
-
-    - name: Assert unsupported operating system was rejected
-      ansible.builtin.assert:
-        that:
-          - >-
-            install_app_unsupported_platform_failure ==
-            'install_app supports Ubuntu 24.04/26.04 and Windows hosts only.'
-
-    - name: Reject a missing Debian package reference on APT
-      when: ansible_facts.pkg_mgr == 'apt'
-      block:
-        - name: Run install_app with a missing Debian package path
-          ansible.builtin.include_role:
-            name: 'jaythomasonprojects.sys_admin.install_app'
-          vars:
-            install_app_debs:
-              - '/usr/local/src/missing-install-app-fixture.deb'
-            install_app_flatpaks: []
-            install_app_manage_flatpak_remote: false
-            install_app_npm_packages: []
-            install_app_packages: []
-
-        - name: Fail if a missing Debian package was accepted
-          ansible.builtin.fail:
-            msg: 'Missing Debian reference was silently accepted.'
-      rescue:
-        - name: Assert APT rejected the missing package path
-          ansible.builtin.assert:
-            that:
-              - >-
-                ansible_failed_result.results | default([])
-                | map(attribute='msg')
-                | select('search', 'missing-install-app-fixture.deb')
-                | list | length > 0
