@@ -1,0 +1,74 @@
+---
+- name: Load Windows policy data
+  ansible.builtin.include_vars: 'Windows.yml'
+
+- name: Prepare protected policy actions
+  when: >-
+    not (unattended_updates_enabled | bool) or
+    not (unattended_updates_win_auto_reboot | bool)
+  block:
+    - name: Create the owned policy directory
+      ansible.windows.win_file:
+        path: '{{ unattended_updates_windows_directory }}'
+        state: directory
+
+    - name: Grant explicit policy directory access
+      ansible.windows.win_acl:
+        path: '{{ unattended_updates_windows_directory }}'
+        rights: '{{ item.rights }}'
+        state: present
+        type: allow
+        user: '{{ item.user }}'
+      loop:
+        - rights: 'FullControl'
+          user: 'S-1-5-18'
+        - rights: 'FullControl'
+          user: 'S-1-5-32-544'
+        - rights: 'ReadAndExecute'
+          user: 'S-1-5-19'
+
+    - name: Remove inherited access to policy actions
+      ansible.windows.win_acl_inheritance:
+        path: '{{ unattended_updates_windows_directory }}'
+        reorganize: false
+        state: absent
+
+    - name: Install upstream action licence
+      ansible.windows.win_copy:
+        dest: >-
+          {{ unattended_updates_windows_directory ~
+             '/LICENSE.unattend-generator.txt' }}
+        src: 'LICENSE.unattend-generator.txt'
+
+    - name: Ensure the shared Windows Update settings key exists
+      ansible.windows.win_regedit:
+        path: '{{ unattended_updates_windows_settings }}'
+        state: present
+
+- name: Inspect the owned automatic-reboot suppression marker
+  ansible.windows.win_reg_stat:
+    name: 'NoAutoRebootWithLoggedOnUsers'
+    path: 'HKLM:\Software\Policies\Microsoft\Windows\WindowsUpdate\AU'
+  register: unattended_updates_reboot_suppression
+  when: unattended_updates_win_auto_reboot | bool
+
+- name: Converge independent Windows suppression policies
+  ansible.builtin.include_tasks: 'policy.yml'
+  loop: '{{ unattended_updates_windows_policies }}'
+  loop_control:
+    label: '{{ unattended_updates_policy.name }}'
+    loop_var: unattended_updates_policy
+
+- name: Converge accompanying automatic-reboot policy
+  ansible.windows.win_regedit:
+    data: '{{ item.data }}'
+    name: '{{ item.name }}'
+    path: 'HKLM:\Software\Policies\Microsoft\Windows\WindowsUpdate\AU'
+    state: >-
+      {{ 'absent' if unattended_updates_win_auto_reboot | bool else 'present' }}
+    type: dword
+  loop:
+    - data: 4
+      name: 'AUOptions'
+    - data: 1
+      name: 'NoAutoRebootWithLoggedOnUsers'

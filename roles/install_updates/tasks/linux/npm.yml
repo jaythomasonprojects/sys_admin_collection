@@ -1,0 +1,53 @@
+---
+- name: Locate system-wide npm  # noqa: command-instead-of-shell
+  ansible.builtin.shell: 'command -v npm'
+  become: true
+  changed_when: false
+  check_mode: false
+  failed_when: install_updates_npm_executable.rc not in [0, 1, 127]
+  register: install_updates_npm_executable
+
+- name: Maintain the installed global npm channel
+  when: install_updates_npm_executable.rc == 0
+  block:
+    - name: Read the installed system-wide global package set
+      ansible.builtin.command:
+        argv:
+          - '{{ install_updates_npm_executable.stdout | trim }}'
+          - 'list'
+          - '--global'
+          - '--depth=0'
+          - '--json'
+      become: true
+      changed_when: false
+      check_mode: false
+      register: install_updates_npm_before
+
+    - name: Update a non-empty global package set with native npm semantics
+      community.general.npm:
+        executable: '{{ install_updates_npm_executable.stdout | trim }}'
+        global: true
+        state: latest
+      become: true
+      # The module can report outdated but ineligible versions as changes.
+      changed_when: false
+      when: >-
+        (install_updates_npm_before.stdout | from_json).dependencies |
+        default({}) | length > 0
+
+    - name: Report actual global package changes
+      ansible.builtin.command:
+        argv:
+          - '{{ install_updates_npm_executable.stdout | trim }}'
+          - 'list'
+          - '--global'
+          - '--depth=0'
+          - '--json'
+      become: true
+      changed_when: >-
+        (install_updates_npm_before.stdout | from_json).dependencies |
+        default({}) !=
+        (install_updates_npm_after.stdout | from_json).dependencies
+        | default({})
+      check_mode: false
+      register: install_updates_npm_after

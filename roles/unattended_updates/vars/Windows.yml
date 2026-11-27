@@ -1,0 +1,48 @@
+---
+# The protected parent prevents users from pre-creating the task namespace.
+unattended_updates_windows_directory: >-
+  {{ ansible_facts.env.ProgramFiles ~
+     '/jaythomasonprojects.sys_admin/unattended_updates' }}
+unattended_updates_windows_policies:
+  - active: '{{ not (unattended_updates_enabled | bool) }}'
+    clear_without_writer: true
+    name: 'JayThomasonProjects-SysAdmin-PauseUpdates'
+    script: 'pause_updates.ps1'
+    triggers:
+      - type: 'boot'
+        repetition:
+          interval: 'P1D'
+          stop_at_duration_end: false
+      - type: 'registration'
+        repetition:
+          interval: 'P1D'
+          stop_at_duration_end: false
+    registry_values:
+      - 'PauseFeatureUpdatesStartTime'
+      - 'PauseQualityUpdatesStartTime'
+      - 'PauseUpdatesStartTime'
+      - 'PauseFeatureUpdatesEndTime'
+      - 'PauseQualityUpdatesEndTime'
+      - 'PauseUpdatesExpiryTime'
+  - active: '{{ not (unattended_updates_win_auto_reboot | bool) }}'
+    clear_without_writer: false
+    name: 'JayThomasonProjects-SysAdmin-MoveActiveHours'
+    script: 'move_active_hours.ps1'
+    triggers:
+      - type: 'boot'
+        repetition:
+          interval: 'PT4H'
+          stop_at_duration_end: false
+      - type: 'registration'
+        repetition:
+          interval: 'PT4H'
+          stop_at_duration_end: false
+    registry_values:
+      - 'ActiveHoursStart'
+      - 'ActiveHoursEnd'
+      - 'SmartActiveHoursState'
+unattended_updates_windows_powershell: >-
+  {{ ansible_facts.env.SystemRoot ~
+     '/System32/WindowsPowerShell/v1.0/powershell.exe' }}
+unattended_updates_windows_settings: >-
+  HKLM:\Software\Microsoft\WindowsUpdate\UX\Settings

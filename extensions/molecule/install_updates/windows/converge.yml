@@ -1,0 +1,87 @@
+---
+- name: Run explicit Windows maintenance with opt-in reboot completion
+  hosts: all
+  gather_facts: true
+  tasks:
+    - name: Observe native state before maintenance
+      ansible.windows.win_powershell:
+        script: >-
+          {{ lookup('ansible.builtin.file', 'files/inspect_updates.ps1') }}
+      become: true
+      become_method: ansible.builtin.runas
+      become_user: 'SYSTEM'
+      register: install_updates_before
+
+    - name: Run maintenance without reboot permission
+      ansible.builtin.include_role:
+        name: 'jaythomasonprojects.sys_admin.install_updates'
+
+    - name: Observe the no-reboot outcome independently
+      ansible.windows.win_powershell:
+        script: >-
+          {{ lookup('ansible.builtin.file', 'files/inspect_updates.ps1') }}
+      become: true
+      become_method: ansible.builtin.runas
+      become_user: 'SYSTEM'
+      register: install_updates_without_reboot
+
+    - name: Assert the role did not reboot without permission
+      ansible.builtin.assert:
+        that:
+          - >-
+            install_updates_without_reboot.result.boot ==
+            install_updates_before.result.boot
+
+    - name: Require successful baseline installation before saving evidence
+      ansible.builtin.assert:
+        that:
+          - >-
+            install_updates_before.result.evidence_exists or
+            (install_updates_without_reboot.result.history |
+             map(attribute='signature') |
+             difference(install_updates_before.result.history |
+                        map(attribute='signature')) |
+             list | length > 0)
+        fail_msg: >-
+          Explicit maintenance installed no known applicable baseline update.
+          Installation acceptance is incomplete.
+
+    - name: Retain the first no-reboot outcome
+      ansible.windows.win_copy:
+        content: >-
+          {{ install_updates_without_reboot.result |
+             combine({'new_installation_signatures':
+                 install_updates_without_reboot.result.history |
+                 map(attribute='signature') |
+                 difference(install_updates_before.result.history |
+                            map(attribute='signature')) | list}) |
+             to_nice_json }}
+        dest: 'C:\ProgramData\install-updates-no-reboot.json'
+        force: false
+
+    - name: Run maintenance with required reboots permitted
+      ansible.builtin.include_role:
+        name: 'jaythomasonprojects.sys_admin.install_updates'
+      vars:
+        install_updates_reboot: true
+
+    - name: Reconnect through fresh SSH after maintenance
+      ansible.builtin.meta: reset_connection
+
+    - name: Verify fresh management access
+      ansible.windows.win_ping:
+
+    - name: Observe completed native update state
+      ansible.windows.win_powershell:
+        script: >-
+          {{ lookup('ansible.builtin.file', 'files/inspect_updates.ps1') }}
+      become: true
+      become_method: ansible.builtin.runas
+      become_user: 'SYSTEM'
+      register: install_updates_completed
+
+    - name: Retain the first completed outcome
+      ansible.windows.win_copy:
+        content: '{{ install_updates_completed.result | to_nice_json }}'
+        dest: 'C:\ProgramData\install-updates-completed.json'
+        force: false

@@ -100,7 +100,7 @@ For Windows prerequisites, see [Set up Windows testing](#set-up-windows-testing)
 
 This example creates and deletes disposable Ubuntu 24.04 and 26.04 VM clones.
 Configure [Linux testing](#set-up-linux-testing) first. Run scenarios sequentially
-across repositories within an approved shared test window. Proxmox selects
+and resolve conflicts with active runs across repositories and worktrees. Proxmox selects
 the next available clone ID. Confirm that each requested clone name is absent
 before creation.
 
@@ -284,7 +284,7 @@ The `ssh/windows` scenario uses clone name `ssh-windows` and SSH.
 Proxmox selects its VM identifier (VMID). Keep that name absent before creation.
 The native driver records the returned ID for cleanup.
 
-Run both repositories sequentially within the approved test window.
+Run both repositories sequentially and resolve known active-run conflicts.
 Share acceptance belongs to the consuming project.
 Never delete a VM based only on its number.
 Full clones inherit deletion protection. The shared destroy playbook clears it

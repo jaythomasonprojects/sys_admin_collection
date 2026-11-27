@@ -7,6 +7,10 @@ Ubuntu 26.04 exercise its packaged service without a container override.
 This scenario checks chrony is installed, enabled, and active, with one
 configured upstream pool. The configuration must remain root-owned with mode
 `0644`. It checks ordinary idempotence and unsupported-platform/release rejection.
+It inspects the real chronyd arguments and persistent drift configuration,
+restoration opt-out, an unchanged opt-out repeat, disabled preservation and
+re-enablement. Packaged unit identity and drop-ins must remain unchanged.
+No clock, RTC or container-condition simulation is used.
 
 It checks service and policy state, not successful synchronisation with the
 synthetic upstream. Use selector `time_sync/linux` with the

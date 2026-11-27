@@ -1,3 +1,4 @@
 ---
 time_sync_enabled: true
+time_sync_restore_time: true
 time_sync_server: ''

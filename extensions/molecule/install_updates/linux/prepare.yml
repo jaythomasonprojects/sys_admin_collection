@@ -1,0 +1,178 @@
+---
+- name: Prepare real native maintenance candidates
+  hosts: all
+  become: true
+  gather_facts: true
+  tasks:
+    - name: Disable the owned unattended schedule during explicit acceptance
+      ansible.builtin.include_role:
+        name: 'jaythomasonprojects.sys_admin.unattended_updates'
+      vars:
+        unattended_updates_enabled: false
+
+    - name: Refresh metadata and install native observation support
+      ansible.builtin.apt:
+        name: 'python3-apt'
+        state: present
+        update_cache: true
+
+    - name: Remove optional managers before missing-channel acceptance
+      ansible.builtin.apt:
+        name:
+          - 'flatpak'
+          - 'npm'
+        state: absent
+
+    - name: Hold Bash through native package selections
+      ansible.builtin.dpkg_selections:
+        name: 'bash'
+        selection: hold
+
+    - name: Observe a real candidate and native hold state
+      ansible.builtin.script:
+        cmd: 'files/native_snapshot.py'
+        executable: '/usr/bin/python3'
+      changed_when: false
+      register: install_updates_initial_native
+
+    - name: Require an actual native upgrade fixture
+      ansible.builtin.assert:
+        that:
+          - (install_updates_initial_native.stdout | from_json).package != none
+          - >-
+            (install_updates_initial_native.stdout | from_json).installed !=
+            (install_updates_initial_native.stdout | from_json).candidate
+        fail_msg: >-
+          No real installed native package has an eligible newer candidate.
+          Native update acceptance remains incomplete.
+
+    - name: Preserve native baseline identities
+      ansible.builtin.copy:
+        content: >-
+          {{ install_updates_initial_native.stdout | from_json | to_nice_json }}
+        dest: '{{ install_updates_fixture_path }}'
+        mode: '0600'
+
+    - name: Exercise maintenance before optional managers are installed
+      ansible.builtin.include_role:
+        name: 'jaythomasonprojects.sys_admin.install_updates'
+
+    - name: Observe native maintenance with absent optional channels
+      ansible.builtin.script:
+        cmd: >-
+          files/native_snapshot.py {{
+          (install_updates_initial_native.stdout | from_json).package | quote }}
+        executable: '/usr/bin/python3'
+      changed_when: false
+      register: install_updates_native_only
+
+    - name: Assert native progress and hold preservation without rebooting
+      ansible.builtin.assert:
+        that:
+          - >-
+            (install_updates_native_only.stdout | from_json).installed !=
+            (install_updates_initial_native.stdout | from_json).installed
+          - >-
+            (install_updates_native_only.stdout | from_json).installed ==
+            (install_updates_native_only.stdout | from_json).candidate
+          - >-
+            (install_updates_native_only.stdout | from_json).held_version ==
+            (install_updates_initial_native.stdout | from_json).held_version
+          - >-
+            (install_updates_native_only.stdout | from_json).boot_id ==
+            (install_updates_initial_native.stdout | from_json).boot_id
+
+    - name: Confirm missing channel tools  # noqa: command-instead-of-shell
+      ansible.builtin.shell: 'command -v {{ item }}'
+      loop:
+        - 'flatpak'
+        - 'npm'
+      changed_when: false
+      failed_when: install_updates_missing.rc not in [1, 127]
+      register: install_updates_missing
+
+    - name: Preserve the package-generated no-reboot outcome
+      ansible.builtin.copy:
+        content: >-
+          {{ install_updates_native_only.stdout | from_json | to_nice_json }}
+        dest: '/var/tmp/install-updates-no-reboot.json'
+        mode: '0600'
+
+    - name: Install real optional-channel fixture tools
+      ansible.builtin.apt:
+        name:
+          - 'dbus'
+          - 'flatpak'
+          - 'npm'
+        state: present
+
+    - name: Observe the initial empty global npm package set
+      ansible.builtin.command:
+        argv: ['npm', 'list', '--global', '--depth=0', '--json']
+      changed_when: false
+      register: install_updates_empty_npm_before
+
+    - name: Require an empty global npm fixture before installing applications
+      ansible.builtin.assert:
+        that:
+          - >-
+            (install_updates_empty_npm_before.stdout | from_json).dependencies |
+            default({}) | length == 0
+
+    - name: Exercise maintenance with an empty global package set
+      ansible.builtin.include_role:
+        name: 'jaythomasonprojects.sys_admin.install_updates'
+
+    - name: Inspect global npm after empty-set maintenance
+      ansible.builtin.command:
+        argv: ['npm', 'list', '--global', '--depth=0', '--json']
+      changed_when: false
+      register: install_updates_empty_npm_after
+
+    - name: Assert empty-set maintenance installed no global package
+      ansible.builtin.assert:
+        that:
+          - >-
+            (install_updates_empty_npm_after.stdout | from_json).dependencies |
+            default({}) | length == 0
+
+    - name: Read the real npm candidate
+      ansible.builtin.command:
+        argv: ['npm', 'view', 'is-odd', 'version']
+      changed_when: false
+      register: install_updates_npm_candidate
+
+    - name: Install a real older global npm application
+      community.general.npm:
+        global: true
+        name: 'is-odd'
+        state: present
+        version: '3.0.0'
+
+    - name: Prepare a real older system-wide Flatpak deployment
+      ansible.builtin.script: 'files/prepare_flatpak.sh'
+      register: install_updates_flatpak_fixture
+
+    - name: Prove the actual Flatpak runtime can execute
+      ansible.builtin.command:
+        argv:
+          - 'dbus-run-session'
+          - '--'
+          - 'flatpak'
+          - 'run'
+          - '--system'
+          - '--command=true'
+          - 'org.gnome.Calculator'
+      become: false
+      changed_when: false
+
+    - name: Preserve real channel candidate identities
+      ansible.builtin.copy:
+        content: >-
+          {{ {'flatpak': install_updates_flatpak_fixture.stdout_lines |
+                        last | from_json,
+              'npm': {'before': '3.0.0',
+                      'candidate': install_updates_npm_candidate.stdout | trim}}
+              | to_nice_json }}
+        dest: '{{ install_updates_channels_path }}'
+        mode: '0600'

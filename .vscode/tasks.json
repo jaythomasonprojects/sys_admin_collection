@@ -45,9 +45,33 @@
       "problemMatcher": []
     },
     {
-      "label": "Test: auto_updates/linux",
+      "label": "Test: unattended_updates/linux",
       "type": "shell",
-      "command": "source .envrc && molecule test -s auto_updates/linux",
+      "command": "source .envrc && molecule test -s unattended_updates/linux",
+      "problemMatcher": []
+    },
+    {
+      "label": "Test: unattended_updates/windows",
+      "type": "shell",
+      "command": "source .envrc && molecule test -s unattended_updates/windows",
+      "problemMatcher": []
+    },
+    {
+      "label": "Test: install_updates/linux",
+      "type": "shell",
+      "command": "source .envrc && molecule test -s install_updates/linux",
+      "problemMatcher": []
+    },
+    {
+      "label": "Test: install_updates/windows",
+      "type": "shell",
+      "command": "source .envrc && molecule test -s install_updates/windows",
+      "problemMatcher": []
+    },
+    {
+      "label": "Test: time_sync/windows",
+      "type": "shell",
+      "command": "source .envrc && molecule test -s time_sync/windows",
       "problemMatcher": []
     },
     {

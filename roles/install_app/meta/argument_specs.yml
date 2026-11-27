@@ -9,11 +9,6 @@ argument_specs:
       - Application package lists are site data. Supply them from group_vars in
         the consuming playbook repository, not from this collection.
     options:
-      install_app_apt_packages:
-        description: Ubuntu APT package names.
-        type: list
-        elements: str
-        default: []
       install_app_choco_packages:
         description: Windows Chocolatey package names.
         type: list
@@ -43,6 +38,11 @@ argument_specs:
           Whether to configure Flathub before installing Flatpak refs.
         type: bool
         default: true
+      install_app_native_packages:
+        description: Native repository package names on supported Ubuntu hosts.
+        type: list
+        elements: str
+        default: []
       install_app_npm_packages:
         description: >-
           npm package entries to install globally on Linux, passed unchanged to

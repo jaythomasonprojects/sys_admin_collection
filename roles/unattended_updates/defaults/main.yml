@@ -1,0 +1,7 @@
+---
+unattended_updates_apt_auto_reboot: false
+unattended_updates_apt_auto_reboot_time: '02:00'
+unattended_updates_apt_origins: []
+unattended_updates_apt_package_blacklist: []
+unattended_updates_enabled: true
+unattended_updates_win_auto_reboot: false

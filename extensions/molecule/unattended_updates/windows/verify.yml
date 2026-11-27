@@ -1,0 +1,167 @@
+---
+- name: Verify independent Windows update and reboot controls
+  hosts: all
+  gather_facts: true
+  tasks:
+    - name: Execute and inspect both native renewal tasks
+      ansible.windows.win_powershell:
+        parameters:
+          AutoReboot: false
+          RunTasks: true
+          UpdatesEnabled: false
+        script: >-
+          {{ lookup('ansible.builtin.file', 'files/inspect_policy.ps1') }}
+
+    - name: Verify renewal reports a terminating registry-write failure
+      ansible.windows.win_powershell:
+        script: >-
+          {{ lookup('ansible.builtin.file', 'files/assert_task_failure.ps1') }}
+
+    - name: Start the owned pause writer before effective reversal
+      ansible.windows.win_powershell:
+        script: |
+          $Ansible.Changed = $false
+          $ErrorActionPreference = 'Stop'
+          Start-ScheduledTask `
+              -TaskName 'JayThomasonProjects-SysAdmin-PauseUpdates'
+
+    - name: Allow automatic updates while retaining reboot suppression
+      ansible.builtin.include_role:
+        name: 'jaythomasonprojects.sys_admin.unattended_updates'
+      vars:
+        unattended_updates_enabled: true
+        unattended_updates_win_auto_reboot: false
+
+    - name: Inspect enabled updates and suppressed reboots
+      ansible.windows.win_powershell:
+        parameters:
+          AutoReboot: false
+          UpdatesEnabled: true
+        script: >-
+          {{ lookup('ansible.builtin.file', 'files/inspect_policy.ps1') }}
+
+    - name: Start the owned active-hours writer before effective reversal
+      ansible.windows.win_powershell:
+        script: |
+          $Ansible.Changed = $false
+          $ErrorActionPreference = 'Stop'
+          Start-ScheduledTask `
+              -TaskName 'JayThomasonProjects-SysAdmin-MoveActiveHours'
+
+    - name: Allow both background updates and automatic reboots
+      ansible.builtin.include_role:
+        name: 'jaythomasonprojects.sys_admin.unattended_updates'
+      vars:
+        unattended_updates_enabled: true
+        unattended_updates_win_auto_reboot: true
+
+    - name: Inspect complete suppression reversal
+      ansible.windows.win_powershell:
+        parameters:
+          AutoReboot: true
+          UpdatesEnabled: true
+        script: >-
+          {{ lookup('ansible.builtin.file', 'files/inspect_policy.ps1') }}
+
+    - name: Establish ordinary Windows preferences without owned suppression
+      ansible.windows.win_regedit:
+        data: '{{ item.data }}'
+        name: '{{ item.name }}'
+        path: 'HKLM:\Software\Microsoft\WindowsUpdate\UX\Settings'
+        state: present
+        type: dword
+      loop:
+        - data: 8
+          name: 'ActiveHoursStart'
+        - data: 17
+          name: 'ActiveHoursEnd'
+        - data: 1
+          name: 'SmartActiveHoursState'
+
+    - name: Repeat allowed policy after Windows preferences are regenerated
+      ansible.builtin.include_role:
+        name: 'jaythomasonprojects.sys_admin.unattended_updates'
+      vars:
+        unattended_updates_enabled: true
+        unattended_updates_win_auto_reboot: true
+
+    - name: Inspect preserved ordinary Windows preferences
+      ansible.windows.win_powershell:
+        parameters:
+          AutoReboot: true
+          NativeHours: true
+          UpdatesEnabled: true
+        script: >-
+          {{ lookup('ansible.builtin.file', 'files/inspect_policy.ps1') }}
+
+    - name: Observe applicable baseline updates before pausing
+      ansible.windows.win_updates:
+        category_names:
+          - 'CriticalUpdates'
+          - 'SecurityUpdates'
+          - 'UpdateRollups'
+        server_selection: default
+        state: searched
+      register: unattended_updates_baseline
+
+    - name: Require known applicable updates for paused maintenance acceptance
+      ansible.builtin.assert:
+        that:
+          - unattended_updates_baseline.found_update_count | int > 0
+        fail_msg: >-
+          No known applicable baseline exists. Paused maintenance acceptance
+          is incomplete, not proof of update currency.
+
+    - name: Pause updates while permitting automatic reboots
+      ansible.builtin.include_role:
+        name: 'jaythomasonprojects.sys_admin.unattended_updates'
+      vars:
+        unattended_updates_enabled: false
+        unattended_updates_win_auto_reboot: true
+
+    - name: Inspect paused updates without reboot suppression
+      ansible.windows.win_powershell:
+        parameters:
+          AutoReboot: true
+          NativeHours: true
+          RunTasks: true
+          UpdatesEnabled: false
+        script: >-
+          {{ lookup('ansible.builtin.file', 'files/inspect_policy.ps1') }}
+
+    - name: Observe pause timestamps and native history before maintenance
+      ansible.windows.win_powershell:
+        parameters:
+          UpdateIds: '{{ unattended_updates_baseline.updates.keys() | list }}'
+        script: >-
+          {{ lookup('ansible.builtin.file', 'files/inspect_pause.ps1') }}
+      register: unattended_updates_before_maintenance
+
+    - name: Invoke explicit maintenance while the baseline is paused
+      ansible.builtin.include_role:
+        name: 'jaythomasonprojects.sys_admin.install_updates'
+
+    - name: Observe pause timestamps and native history after maintenance
+      ansible.windows.win_powershell:
+        parameters:
+          UpdateIds: '{{ unattended_updates_baseline.updates.keys() | list }}'
+        script: >-
+          {{ lookup('ansible.builtin.file', 'files/inspect_pause.ps1') }}
+      register: unattended_updates_after_maintenance
+
+    - name: Assert maintenance preserved pause and installed no baseline update
+      ansible.builtin.assert:
+        that:
+          - >-
+            unattended_updates_before_maintenance.result.pause ==
+            unattended_updates_after_maintenance.result.pause
+          - >-
+            unattended_updates_before_maintenance.result.history | sort ==
+            unattended_updates_after_maintenance.result.history | sort
+
+    - name: Restore the converged independent suppression policy
+      ansible.builtin.include_role:
+        name: 'jaythomasonprojects.sys_admin.unattended_updates'
+      vars:
+        unattended_updates_enabled: false
+        unattended_updates_win_auto_reboot: false

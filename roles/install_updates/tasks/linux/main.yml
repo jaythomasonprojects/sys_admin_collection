@@ -1,0 +1,42 @@
+---
+- name: Refresh native package metadata
+  ansible.builtin.apt:
+    update_cache: true
+  become: true
+  # Metadata refresh is not an installed-package change.
+  changed_when: false
+
+- name: Upgrade all installed native packages  # noqa: package-latest
+  ansible.builtin.package:
+    name: '*'
+    state: latest
+  become: true
+
+- name: Update installed system-wide Flatpak deployments
+  ansible.builtin.include_tasks: 'flatpak.yml'
+
+- name: Update installed system-wide global npm packages
+  ansible.builtin.include_tasks: 'npm.yml'
+
+- name: Inspect the native pending-reboot marker
+  ansible.builtin.stat:
+    path: '/var/run/reboot-required'
+  become: true
+  register: install_updates_reboot_required
+
+- name: Report a pending Ubuntu reboot without permission
+  ansible.builtin.debug:
+    msg:
+      reboot_permitted: false
+      reboot_required: true
+  when:
+    - install_updates_reboot_required.stat.exists
+    - not (install_updates_reboot | bool)
+
+- name: Complete a required Ubuntu reboot when permitted
+  ansible.builtin.reboot:
+    reboot_timeout: 1200
+  become: true
+  when:
+    - install_updates_reboot_required.stat.exists
+    - install_updates_reboot | bool

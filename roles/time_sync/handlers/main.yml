@@ -4,3 +4,8 @@
     name: '{{ time_sync_service }}'
     state: restarted
   become: true
+
+- name: Restart Windows Time service
+  ansible.windows.win_service:
+    name: 'W32Time'
+    state: restarted

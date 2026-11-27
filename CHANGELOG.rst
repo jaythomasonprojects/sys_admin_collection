@@ -1,6 +1,47 @@
 jaythomasonprojects.sys_admin changelog
 =======================================
 
+0.17.0
+------
+
+Breaking changes
+~~~~~~~~~~~~~~~~
+
+- Rename ``auto_updates`` to ``unattended_updates`` and its policy inputs to the
+  matching prefix. No compatibility aliases are provided. Ubuntu retains its
+  existing owned APT paths and policy semantics.
+- Move immediate Windows maintenance to ``install_updates``. Replace
+  ``auto_updates_win_reboot`` with ``install_updates_reboot``, which defaults to
+  false on both platforms. The independent background reboot permission is
+  ``unattended_updates_win_auto_reboot``, also false by default.
+- Replace ``install_app_apt_packages`` with ``install_app_native_packages``.
+  Preserve the list of package names; other installation channels are unchanged.
+
+Features
+~~~~~~~~
+
+- Add reversible Windows rolling-pause and moving-active-hours policy.
+  Paused updates can be hidden from explicit maintenance, whose successful
+  zero-install result does not establish update currency. Reboot suppression is
+  subject to Windows deadlines and missed renewals, not a universal prohibition.
+- Add explicit Ubuntu maintenance across native packages, system-wide Flatpak
+  deployments and global npm packages. Native holds and configured sources
+  remain effective; installation-selected npm versions are not maintenance holds.
+- Extend ``time_sync`` to Windows Time using the supplied explicit upstream,
+  including on domain members. External Group Policy can override local policy.
+- Enable native chrony startup restoration by default with
+  ``time_sync_restore_time``. Opt out with false. Approximate restored startup
+  time is not proof of network synchronisation or recovered elapsed downtime.
+
+Migration
+~~~~~~~~~
+
+- To retain startup without chrony's new default restoration option, set
+  ``time_sync_restore_time: false``. Restoration can step the clock at startup.
+- Remove Windows suppression through the new policy role before rolling back
+  the collection. Reverting collection files does not undo installed updates or
+  clock adjustments.
+
 0.16.0
 ------
 

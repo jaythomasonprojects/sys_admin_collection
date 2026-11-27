@@ -1,0 +1,116 @@
+---
+- name: Configure active suppression
+  when: unattended_updates_policy.active | bool
+  block:
+    - name: Install the owned suppression action
+      ansible.windows.win_copy:
+        dest: >-
+          {{ unattended_updates_windows_directory }}\{{
+          unattended_updates_policy.script }}
+        src: '{{ unattended_updates_policy.script }}'
+      register: unattended_updates_action
+
+    - name: Register the native renewal task
+      community.windows.win_scheduled_task:
+        actions:
+          - path: '{{ unattended_updates_windows_powershell }}'
+            arguments: >-
+              -NoProfile -NonInteractive -ExecutionPolicy Bypass -File
+              "{{ unattended_updates_windows_directory }}\{{
+              unattended_updates_policy.script }}"
+        allow_demand_start: true
+        allow_hard_terminate: true
+        description: 'Renew collection-owned Windows Update suppression'
+        disallow_start_if_on_batteries: false
+        enabled: true
+        execution_time_limit: 'PT1M'
+        logon_type: service_account
+        multiple_instances: 2
+        name: '{{ unattended_updates_policy.name }}'
+        path: '\'
+        run_level: limited
+        start_when_available: false
+        state: present
+        stop_if_going_on_batteries: false
+        triggers: '{{ unattended_updates_policy.triggers }}'
+        username: 'S-1-5-19'
+      register: unattended_updates_task
+
+    - name: Inspect effective suppression validity
+      ansible.windows.win_powershell:
+        parameters:
+          CheckOnly: true
+        path: >-
+          {{ unattended_updates_windows_directory }}\{{
+          unattended_updates_policy.script }}
+        remote_src: true
+      changed_when: false
+      register: unattended_updates_effective
+
+    - name: Apply suppression immediately when required
+      ansible.windows.win_command:
+        argv:
+          - '{{ unattended_updates_windows_powershell }}'
+          - '-NoProfile'
+          - '-NonInteractive'
+          - '-ExecutionPolicy'
+          - 'Bypass'
+          - '-File'
+          - >-
+            {{ unattended_updates_windows_directory }}\{{
+            unattended_updates_policy.script }}
+      changed_when: true
+      when: >-
+        unattended_updates_action.changed or unattended_updates_task.changed or
+        not (unattended_updates_effective.output[0] | bool)
+
+- name: Remove inactive suppression
+  when: not (unattended_updates_policy.active | bool)
+  block:
+    - name: Inspect the owned renewal task
+      community.windows.win_scheduled_task_stat:
+        name: '{{ unattended_updates_policy.name }}'
+        path: '\'
+      register: unattended_updates_existing_task
+
+    - name: Disable the owned renewal before stopping its writer
+      community.windows.win_scheduled_task:
+        enabled: false
+        name: '{{ unattended_updates_policy.name }}'
+        path: '\'
+        state: present
+      when: unattended_updates_existing_task.task_exists
+
+    - name: Stop and wait for the owned renewal writer
+      ansible.windows.win_powershell:
+        parameters:
+          TaskName: '{{ unattended_updates_policy.name }}'
+        script: >-
+          {{ lookup('ansible.builtin.file', 'stop_task.ps1') }}
+      when: unattended_updates_existing_task.task_exists
+
+    - name: Remove the owned renewal task
+      community.windows.win_scheduled_task:
+        name: '{{ unattended_updates_policy.name }}'
+        path: '\'
+        state: absent
+
+    - name: Remove residual owned suppression values
+      ansible.windows.win_regedit:
+        name: '{{ item }}'
+        path: '{{ unattended_updates_windows_settings }}'
+        state: absent
+      loop: '{{ unattended_updates_policy.registry_values }}'
+      # Windows can regenerate normal preferences without an owned writer/AU
+      # policy. Those preferences are not residual collection suppression.
+      when: >-
+        unattended_updates_policy.clear_without_writer or
+        unattended_updates_existing_task.task_exists or
+        unattended_updates_reboot_suppression.value | default(0) | int == 1
+
+    - name: Remove the unused owned action
+      ansible.windows.win_file:
+        path: >-
+          {{ unattended_updates_windows_directory }}\{{
+          unattended_updates_policy.script }}
+        state: absent

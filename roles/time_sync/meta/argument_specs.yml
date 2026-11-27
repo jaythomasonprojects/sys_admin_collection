@@ -1,11 +1,10 @@
 ---
 argument_specs:
   main:
-    short_description: Configure chrony time synchronisation
+    short_description: Configure native time synchronisation
     description:
-      - Supports Ubuntu 24.04/26.04 only.
-      - Installs chrony, points it at a single upstream pool, comments out
-        unmanaged pool entries, and runs the service.
+      - Supports Ubuntu 24.04/26.04 and Windows.
+      - Configures chrony or the Windows Time client from an explicit upstream.
     options:
       time_sync_enabled:
         description:
@@ -14,9 +13,15 @@ argument_specs:
             restore pool entries an earlier run commented out.
         type: bool
         default: true
+      time_sync_restore_time:
+        description:
+          - Enable chrony startup restoration from RTC or drift-file time.
+          - Applies to Ubuntu only and can step the clock at daemon startup.
+        type: bool
+        default: true
       time_sync_server:
         description:
-          - Upstream NTP pool hostname.
+          - Explicit upstream NTP hostname or address.
           - Required when time_sync_enabled is true.
         type: str
         default: ''

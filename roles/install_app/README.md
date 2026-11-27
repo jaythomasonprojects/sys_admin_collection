@@ -27,7 +27,7 @@ consuming playbook repository, not from this collection.
 - `install_app_enabled`: whether this host should have its requested
   applications installed. Defaults to `true`. Setting it to `false` skips the
   role and does not remove applications installed by an earlier run.
-- `install_app_apt_packages`: Ubuntu APT package names to install.
+- `install_app_native_packages`: native repository package names on Ubuntu.
   Defaults to `[]`. Windows ignores this list.
 - `install_app_choco_packages`: Windows Chocolatey package names to install.
   Defaults to `[]`. Ubuntu ignores this list.
@@ -88,6 +88,10 @@ consuming playbook repository, not from this collection.
   through its native module if necessary.
 
 ## Migration
+
+For 0.17.0, replace `install_app_apt_packages` with
+`install_app_native_packages`, preserving the list of strings. No compatibility
+alias is provided. The generic package module and other channels are unchanged.
 
 For 0.16.0, replace `deb_package_urls` with `install_app_deb_packages`. The
 string-list format, URLs and managed-host paths are unchanged. No compatibility

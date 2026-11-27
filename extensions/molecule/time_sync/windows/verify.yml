@@ -1,0 +1,76 @@
+---
+- name: Verify Windows Time client outcomes
+  hosts: all
+  gather_facts: true
+  tasks:
+    - name: Inspect native Windows Time configuration and service
+      ansible.windows.win_powershell:
+        script: |
+          $Ansible.Changed = $false
+          $ErrorActionPreference = 'Stop'
+          $root = 'HKLM:\SYSTEM\CurrentControlSet\Services\W32Time'
+          $parameters = Get-ItemProperty "$root\Parameters"
+          $client = Get-ItemProperty "$root\TimeProviders\NtpClient"
+          $service = Get-CimInstance Win32_Service -Filter "Name='W32Time'"
+          if ($parameters.NtpServer -ne 'time.windows.com,0x8' -or
+              $parameters.Type -ne 'NTP' -or $client.Enabled -ne 1 -or
+              $service.StartMode -ne 'Auto' -or $service.State -ne 'Running') {
+              throw 'Windows Time local configuration or service is incorrect.'
+          }
+          $configuration = & w32tm.exe /query /configuration
+          if ($LASTEXITCODE -ne 0 -or
+              ($configuration -join "`n") -notmatch
+                  'NtpServer:\s+time\.windows\.com,0x8' -or
+              ($configuration -join "`n") -notmatch
+                  '(?m)^\s*Type:\s+NTP(?:\s|$)') {
+              throw 'Windows Time effective upstream differs from local policy.'
+          }
+          $source = (& w32tm.exe /query /source) -join "`n"
+          $status = & w32tm.exe /query /status
+          $synchronised = $LASTEXITCODE -eq 0 -and
+              ($status -join "`n") -match '(?m)^Leap Indicator:\s+[012]\b' -and
+              $source -match 'time\.windows\.com'
+          $Ansible.Result = @{
+              process_id = $service.ProcessId
+              source = $source
+              upstream_synchronisation_observed = $synchronised
+              sync_status = @($status | Where-Object {
+                  $_ -match (
+                      '^(Leap Indicator|Stratum|Last Successful Sync Time):'
+                  )
+              })
+          }
+      register: time_sync_before_repeat
+
+    - name: Repeat the same Windows Time policy
+      ansible.builtin.include_role:
+        name: 'jaythomasonprojects.sys_admin.time_sync'
+      vars:
+        time_sync_server: 'time.windows.com'
+
+    - name: Apply disabled Windows Time policy with another upstream
+      ansible.builtin.include_role:
+        name: 'jaythomasonprojects.sys_admin.time_sync'
+      vars:
+        time_sync_enabled: false
+        time_sync_server: 'unused.example.invalid'
+
+    - name: Verify repetition and disabled policy preserve the client
+      ansible.windows.win_powershell:
+        parameters:
+          ProcessId: '{{ time_sync_before_repeat.result.process_id }}'
+        script: |
+          param([uint32]$ProcessId)
+          $Ansible.Changed = $false
+          $ErrorActionPreference = 'Stop'
+          $root = 'HKLM:\SYSTEM\CurrentControlSet\Services\W32Time'
+          $parameters = Get-ItemProperty "$root\Parameters"
+          $service = Get-CimInstance Win32_Service -Filter "Name='W32Time'"
+          $client = Get-ItemProperty "$root\TimeProviders\NtpClient"
+          if ($parameters.NtpServer -ne 'time.windows.com,0x8' -or
+              $parameters.Type -ne 'NTP' -or $client.Enabled -ne 1 -or
+              $service.StartMode -ne 'Auto' -or
+              $service.State -ne 'Running' -or
+              $service.ProcessId -ne $ProcessId) {
+              throw 'Repeat or disabled policy changed the Windows Time client.'
+          }

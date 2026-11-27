@@ -1,0 +1,120 @@
+---
+- name: Verify native Ubuntu maintenance outcomes
+  hosts: all
+  become: true
+  gather_facts: false
+  vars:
+    install_updates_fixture: >-
+      {{ install_updates_baseline.content | b64decode | from_json }}
+    install_updates_no_reboot: >-
+      {{ install_updates_no_reboot_file.content | b64decode | from_json }}
+    install_updates_channels: >-
+      {{ install_updates_channels_file.content | b64decode | from_json }}
+  tasks:
+    - name: Read the original native candidate identities
+      ansible.builtin.slurp:
+        src: '{{ install_updates_fixture_path }}'
+      register: install_updates_baseline
+
+    - name: Independently inspect the installed package and native holds
+      ansible.builtin.script:
+        cmd: >-
+          files/native_snapshot.py {{ install_updates_fixture.package | quote }}
+        executable: '/usr/bin/python3'
+      changed_when: false
+      register: install_updates_native
+
+    - name: Assert real native installation and retained hold
+      ansible.builtin.assert:
+        that:
+          - >-
+            (install_updates_native.stdout | from_json).installed !=
+            install_updates_fixture.installed
+          - >-
+            (install_updates_native.stdout | from_json).installed ==
+            (install_updates_native.stdout | from_json).candidate
+          - >-
+            (install_updates_native.stdout | from_json).held_version ==
+            install_updates_fixture.held_version
+          - >-
+            (install_updates_native.stdout | from_json).holds | sort ==
+            install_updates_fixture.holds | sort
+
+    - name: Read the first real no-reboot observation
+      ansible.builtin.slurp:
+        src: '/var/tmp/install-updates-before-completion.json'
+      register: install_updates_no_reboot_file
+
+    - name: Assert no role-initiated reboot occurred without permission
+      ansible.builtin.assert:
+        that:
+          - install_updates_no_reboot.boot_id == install_updates_fixture.boot_id
+
+    - name: Assert a real required reboot completed when one was pending
+      ansible.builtin.assert:
+        that:
+          - >-
+            (install_updates_native.stdout | from_json).boot_id !=
+            install_updates_no_reboot.boot_id
+          - not (install_updates_native.stdout | from_json).reboot_required
+      when: install_updates_no_reboot.reboot_required
+
+    - name: Report an unavailable real reboot fixture honestly
+      ansible.builtin.debug:
+        msg: >-
+          No package-generated reboot requirement was observed.
+          The required-host-reboot branch was not exercised.
+      when: not install_updates_no_reboot.reboot_required
+
+    - name: Assert permission did not force an unnecessary reboot
+      ansible.builtin.assert:
+        that:
+          - >-
+            (install_updates_native.stdout | from_json).boot_id ==
+            install_updates_no_reboot.boot_id
+      when: not install_updates_no_reboot.reboot_required
+
+    - name: Read real optional-channel candidate identities
+      ansible.builtin.slurp:
+        src: '{{ install_updates_channels_path }}'
+      register: install_updates_channels_file
+
+    - name: Inspect the persisted Flatpak deployment
+      ansible.builtin.command:
+        argv:
+          - 'flatpak'
+          - 'info'
+          - '--system'
+          - '--show-commit'
+          - 'org.gnome.Calculator'
+      changed_when: false
+      register: install_updates_verified_flatpak
+
+    - name: Inspect persisted global npm versions
+      ansible.builtin.command:
+        argv: ['npm', 'list', '--global', '--depth=0', '--json']
+      changed_when: false
+      register: install_updates_verified_npm
+
+    - name: Assert both actual channel updates persist after maintenance
+      ansible.builtin.assert:
+        that:
+          - >-
+            install_updates_verified_flatpak.stdout | trim ==
+            install_updates_channels.flatpak.candidate
+          - >-
+            (install_updates_verified_npm.stdout | from_json).dependencies
+            ['is-odd'].version == install_updates_channels.npm.candidate
+
+    - name: Prove the updated native Flatpak runtime still executes
+      ansible.builtin.command:
+        argv:
+          - 'dbus-run-session'
+          - '--'
+          - 'flatpak'
+          - 'run'
+          - '--system'
+          - '--command=true'
+          - 'org.gnome.Calculator'
+      become: false
+      changed_when: false

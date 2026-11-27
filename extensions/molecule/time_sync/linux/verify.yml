@@ -6,6 +6,7 @@
   vars:
     time_sync_expected_config: '/etc/chrony/chrony.conf'
     time_sync_expected_service: 'chrony'
+    time_sync_server: 'ntp1.example.invalid'
   tasks:
     - name: Gather installed package facts
       ansible.builtin.package_facts:
@@ -56,3 +57,121 @@
             ) == 1
         fail_msg: >-
           time_sync did not render the expected chrony configuration.
+
+    - name: Inspect native startup restoration and packaged service identity
+      ansible.builtin.script:
+        cmd: 'files/read_chrony.py'
+        executable: '/usr/bin/python3'
+      changed_when: false
+      register: time_sync_restored
+
+    - name: Assert default restoration and persistent drift configuration
+      ansible.builtin.assert:
+        that:
+          - "'-s' in (time_sync_restored.stdout | from_json).arguments"
+          - "'-F' in (time_sync_restored.stdout | from_json).arguments"
+          - "'1' in (time_sync_restored.stdout | from_json).arguments"
+          - "'-x' not in (time_sync_restored.stdout | from_json).arguments"
+          - >-
+            (time_sync_restored.stdout | from_json).drift_paths ==
+            ['/var/lib/chrony/chrony.drift']
+          - >-
+            (time_sync_restored.stdout | from_json).unit_path in
+            ['/lib/systemd/system/chrony.service',
+             '/usr/lib/systemd/system/chrony.service']
+
+    - name: Opt out of startup restoration through the public role
+      ansible.builtin.include_role:
+        name: 'jaythomasonprojects.sys_admin.time_sync'
+      vars:
+        time_sync_restore_time: false
+
+    - name: Apply the native service handler before observation
+      ansible.builtin.meta: flush_handlers
+
+    - name: Inspect native arguments after opting out
+      ansible.builtin.script:
+        cmd: 'files/read_chrony.py'
+        executable: '/usr/bin/python3'
+      changed_when: false
+      register: time_sync_without_restore
+
+    - name: Assert only restoration was removed
+      ansible.builtin.assert:
+        that:
+          - >-
+            '-s' not in (time_sync_without_restore.stdout | from_json).arguments
+          - >-
+            (time_sync_without_restore.stdout | from_json).arguments ==
+            ((time_sync_restored.stdout | from_json).arguments |
+             reject('equalto', '-s') | list)
+          - >-
+            (time_sync_without_restore.stdout | from_json).drift_paths ==
+            (time_sync_restored.stdout | from_json).drift_paths
+          - >-
+            (time_sync_without_restore.stdout | from_json).unit_sha256 ==
+            (time_sync_restored.stdout | from_json).unit_sha256
+          - >-
+            (time_sync_without_restore.stdout | from_json).drop_ins ==
+            (time_sync_restored.stdout | from_json).drop_ins
+
+    - name: Repeat the unchanged restoration opt-out
+      ansible.builtin.include_role:
+        name: 'jaythomasonprojects.sys_admin.time_sync'
+      vars:
+        time_sync_restore_time: false
+
+    - name: Apply disabled policy with restoration requested
+      ansible.builtin.include_role:
+        name: 'jaythomasonprojects.sys_admin.time_sync'
+      vars:
+        time_sync_enabled: false
+        time_sync_restore_time: true
+        time_sync_server: 'unused.example.invalid'
+
+    - name: Flush any unexpected repeat or disabled handler
+      ansible.builtin.meta: flush_handlers
+
+    - name: Inspect repeat and disabled preservation
+      ansible.builtin.script:
+        cmd: 'files/read_chrony.py'
+        executable: '/usr/bin/python3'
+      changed_when: false
+      register: time_sync_preserved
+
+    - name: Assert unchanged opt-out and disabled service preservation
+      ansible.builtin.assert:
+        that:
+          - >-
+            (time_sync_preserved.stdout | from_json) ==
+            (time_sync_without_restore.stdout | from_json)
+
+    - name: Re-enable native startup restoration
+      ansible.builtin.include_role:
+        name: 'jaythomasonprojects.sys_admin.time_sync'
+      vars:
+        time_sync_restore_time: true
+
+    - name: Apply restoration through the native service
+      ansible.builtin.meta: flush_handlers
+
+    - name: Inspect the restored native service
+      ansible.builtin.script:
+        cmd: 'files/read_chrony.py'
+        executable: '/usr/bin/python3'
+      changed_when: false
+      register: time_sync_reenabled
+
+    - name: Assert restoration resumes without changing packaged protections
+      ansible.builtin.assert:
+        that:
+          - "'-s' in (time_sync_reenabled.stdout | from_json).arguments"
+          - >-
+            (time_sync_reenabled.stdout | from_json).unit_sha256 ==
+            (time_sync_restored.stdout | from_json).unit_sha256
+          - >-
+            (time_sync_reenabled.stdout | from_json).drop_ins ==
+            (time_sync_restored.stdout | from_json).drop_ins
+          - >-
+            (time_sync_reenabled.stdout | from_json).drift_paths ==
+            (time_sync_restored.stdout | from_json).drift_paths

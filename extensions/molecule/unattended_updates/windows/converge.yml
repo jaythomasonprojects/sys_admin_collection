@@ -1,0 +1,16 @@
+---
+- name: Configure Windows update and reboot suppression
+  hosts: all
+  gather_facts: true
+  roles:
+    - role: 'jaythomasonprojects.sys_admin.unattended_updates'
+      unattended_updates_enabled: false
+      unattended_updates_win_auto_reboot: false
+  tasks:
+    - name: Verify suppression is effective during the role invocation
+      ansible.windows.win_powershell:
+        parameters:
+          UpdatesEnabled: false
+          AutoReboot: false
+        script: >-
+          {{ lookup('ansible.builtin.file', 'files/inspect_policy.ps1') }}

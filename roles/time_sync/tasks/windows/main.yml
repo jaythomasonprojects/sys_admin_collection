@@ -1,0 +1,29 @@
+---
+- name: Configure the explicit Windows Time client source
+  ansible.windows.win_regedit:
+    data: '{{ item.data }}'
+    name: '{{ item.name }}'
+    path: '{{ item.path }}'
+    state: present
+    type: '{{ item.type }}'
+  loop:
+    - data: '{{ time_sync_server }},0x8'
+      name: 'NtpServer'
+      path: 'HKLM:\SYSTEM\CurrentControlSet\Services\W32Time\Parameters'
+      type: 'string'
+    - data: 'NTP'
+      name: 'Type'
+      path: 'HKLM:\SYSTEM\CurrentControlSet\Services\W32Time\Parameters'
+      type: 'string'
+    - data: 1
+      name: 'Enabled'
+      path: >-
+        HKLM:\SYSTEM\CurrentControlSet\Services\W32Time\TimeProviders\NtpClient
+      type: 'dword'
+  notify: Restart Windows Time service
+
+- name: Enable and start Windows Time
+  ansible.windows.win_service:
+    name: 'W32Time'
+    start_mode: auto
+    state: started

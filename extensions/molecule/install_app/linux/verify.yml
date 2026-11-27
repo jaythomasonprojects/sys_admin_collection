@@ -95,7 +95,7 @@
   gather_facts: true
   vars:
     ansible_user: 'molecule'
-    install_app_apt_packages: []
+    install_app_native_packages: []
     install_app_deb_packages: []
     install_app_flatpaks: []
     install_app_manage_flatpak_remote: false

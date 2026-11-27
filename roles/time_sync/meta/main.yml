@@ -2,7 +2,7 @@
 galaxy_info:
   author: 'Jay Thomason'
   description: >-
-    Manage chrony time synchronisation policy on Ubuntu
+    Manage native Ubuntu and Windows time synchronisation
   license: 'MIT'
   min_ansible_version: '2.18'
   platforms:
@@ -10,4 +10,7 @@ galaxy_info:
       versions:
         - 'noble'
         - 'resolute'
+    - name: 'Windows'
+      versions:
+        - 'all'
 dependencies: []

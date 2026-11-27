@@ -1,0 +1,12 @@
+---
+- name: Control background installation on the disposable policy guest
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Prevent background installation without hiding explicit updates
+      ansible.windows.win_regedit:
+        data: 1
+        name: 'NoAutoUpdate'
+        path: 'HKLM:\Software\Policies\Microsoft\Windows\WindowsUpdate\AU'
+        state: present
+        type: dword

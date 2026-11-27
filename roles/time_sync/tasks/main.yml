@@ -2,11 +2,30 @@
 - name: Assert supported platform
   ansible.builtin.assert:
     that:
-      - ansible_facts.system == 'Linux'
-      - ansible_facts.distribution == 'Ubuntu'
-      - ansible_facts.distribution_version | default('') in ['24.04', '26.04']
-    fail_msg: 'time_sync supports Ubuntu 24.04/26.04 hosts only.'
+      - >-
+        ansible_facts.os_family == 'Windows' or
+        (ansible_facts.system == 'Linux'
+         and ansible_facts.distribution | default('') == 'Ubuntu'
+         and ansible_facts.distribution_version | default('')
+         in ['24.04', '26.04'])
+    fail_msg: 'time_sync supports Ubuntu 24.04/26.04 and Windows hosts only.'
+
+- name: Validate the explicit upstream
+  ansible.builtin.assert:
+    that:
+      - time_sync_server is string
+      - time_sync_server | length > 0
+    fail_msg: 'time_sync_server must be a non-empty string.'
+  when: time_sync_enabled | bool
 
 - name: Configure time synchronisation on Linux hosts
   ansible.builtin.include_tasks: 'linux/main.yml'
-  when: time_sync_enabled | bool
+  when:
+    - ansible_facts.system == 'Linux'
+    - time_sync_enabled | bool
+
+- name: Configure the Windows Time client
+  ansible.builtin.include_tasks: 'windows/main.yml'
+  when:
+    - ansible_facts.os_family == 'Windows'
+    - time_sync_enabled | bool

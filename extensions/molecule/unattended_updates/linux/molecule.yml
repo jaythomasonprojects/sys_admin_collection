@@ -1,0 +1,11 @@
+---
+platforms:
+  - name: 'ubuntu2404'
+    template_vmid: >-
+      ${MOLECULE_UBUNTU2404_TEMPLATE_VMID:-required-template-vmid}
+  - name: 'ubuntu2604'
+    template_vmid: >-
+      ${MOLECULE_UBUNTU2604_TEMPLATE_VMID:-required-template-vmid}
+
+scenario:
+  name: 'unattended_updates/linux'

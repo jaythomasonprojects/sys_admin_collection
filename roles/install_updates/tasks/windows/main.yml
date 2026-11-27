@@ -1,0 +1,26 @@
+---
+- name: Install applicable updates from the configured Windows source
+  ansible.windows.win_updates:
+    category_names:
+      - 'CriticalUpdates'
+      - 'SecurityUpdates'
+      - 'UpdateRollups'
+    reboot: '{{ install_updates_reboot }}'
+    server_selection: default
+    state: installed
+  register: install_updates_windows_result
+  vars:
+    # Windows Update can reset the adapter; do not reuse its old SSH connection.
+    ansible_ssh_args: '-o ServerAliveInterval=30 -o ControlMaster=no'
+
+- name: Report the native Windows maintenance outcome
+  ansible.builtin.debug:
+    msg:
+      failed_update_count: >-
+        {{ install_updates_windows_result.failed_update_count | default(0) }}
+      found_update_count: >-
+        {{ install_updates_windows_result.found_update_count | default(0) }}
+      installed_update_count: >-
+        {{ install_updates_windows_result.installed_update_count | default(0) }}
+      reboot_required: >-
+        {{ install_updates_windows_result.reboot_required | default(false) }}

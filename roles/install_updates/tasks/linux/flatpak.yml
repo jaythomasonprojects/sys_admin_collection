@@ -1,0 +1,47 @@
+---
+- name: Locate system-wide Flatpak  # noqa: command-instead-of-shell
+  ansible.builtin.shell: 'command -v flatpak'
+  become: true
+  changed_when: false
+  check_mode: false
+  failed_when: install_updates_flatpak_executable.rc not in [0, 1, 127]
+  register: install_updates_flatpak_executable
+
+- name: Maintain the installed Flatpak channel
+  when: install_updates_flatpak_executable.rc == 0
+  block:
+    - name: Read system-wide deployment refs and commits before maintenance
+      ansible.builtin.command:
+        argv:
+          - '{{ install_updates_flatpak_executable.stdout | trim }}'
+          - 'list'
+          - '--system'
+          - '--columns=ref,active'
+      become: true
+      changed_when: false
+      check_mode: false
+      register: install_updates_flatpak_before
+
+    - name: Request native noninteractive system-wide Flatpak maintenance
+      ansible.builtin.command:
+        argv:
+          - '{{ install_updates_flatpak_executable.stdout | trim }}'
+          - 'update'
+          - '--system'
+          - '--noninteractive'
+      become: true
+      changed_when: false
+
+    - name: Report actual deployment changes
+      ansible.builtin.command:
+        argv:
+          - '{{ install_updates_flatpak_executable.stdout | trim }}'
+          - 'list'
+          - '--system'
+          - '--columns=ref,active'
+      become: true
+      changed_when: >-
+        install_updates_flatpak_before.stdout_lines | sort !=
+        install_updates_flatpak_after.stdout_lines | sort
+      check_mode: false
+      register: install_updates_flatpak_after

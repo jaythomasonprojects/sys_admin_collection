@@ -2,16 +2,16 @@
 
 ## Scope and contracts
 
-- `jaythomasonprojects.sys_admin` publishes only `ssh`, `time_sync`, `auto_updates` and
-  `install_app`. Consumers own account lifecycle, shares and workstation policy. Keep public
-  examples and collection defaults free of site-specific policy.
-- Supported targets are Ubuntu 24.04/26.04 and Windows, within each role's contract. `time_sync` is
-  Ubuntu-only. Before edits, read `roles/<role>/README.md` and the affected
+- `jaythomasonprojects.sys_admin` publishes only `ssh`, `time_sync`, `unattended_updates`,
+  `install_updates` and `install_app`. Consumers own account lifecycle, shares and workstation policy.
+  Keep public examples and collection defaults free of site-specific policy.
+- Supported targets are Ubuntu 24.04/26.04 and Windows, within each role's contract.
+  Before edits, read `roles/<role>/README.md` and the affected
   `extensions/molecule/<role>/<platform>/README.md`.
 - SSH configures installed OpenSSH and existing-account keys, including Windows profiles and key
   ACLs. Callers own installation, host-key initialisation and initial access.
-- Windows `auto_updates` installs updates immediately and may reboot. Its Linux enable flag does not
-  suppress Windows execution; omit the role to avoid that action.
+- `unattended_updates` owns persistent policy. `install_updates` requests immediate maintenance;
+  required reboots default off. Windows pause policy remains effective during explicit maintenance.
 - Before planning or extending test coverage, read `openspec/config.yaml`: it defines agreed test
   seams and approval boundaries. OpenSpec is globally Git-ignored and shared across worktrees;
   historical specs and reports can describe retired interfaces.
@@ -37,9 +37,15 @@
 Activation links this checkout under `.ansible/development`, searched before `.ansible/collections`.
 Focused tests see uncommitted edits without a build or reinstall; Molecule's implicit local
 installation is disabled. Use `molecule -vv` task paths to diagnose selection of another copy.
+`ansible-lint` prepends `$ANSIBLE_HOME/collections`; a cached archive there can shadow the
+development link. Preserve stale copies outside collection search paths and link this
+collection's lint-cache entry to the checkout.
 
-Molecule creates and deletes real Proxmox VMs. Agree a test window and run sequentially across
-worktrees and consuming repositories; coordinate shared tool and collection installs too.
+Molecule creates and deletes real Proxmox VMs. Run affected scenarios as part of requested
+implementation verification. Resolve known conflicts with active runs or shared tool and
+collection installs before proceeding.
+Complete implementation with cheap local checks before VM validation. Run affected scenarios
+at the end, not after each edit or slice. Rerun only relevant failures or behavioural edits.
 
 ```bash
 source .envrc

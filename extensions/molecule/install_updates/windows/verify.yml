@@ -1,0 +1,58 @@
+---
+- name: Verify real Windows installation and reboot completion
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Verify baseline history and native reboot evidence
+      ansible.windows.win_powershell:
+        script: |
+          $ErrorActionPreference = 'Stop'
+          $Ansible.Changed = $false
+          $root = 'C:\ProgramData\install-updates-'
+          $baseline = Get-Content "${root}baseline.json" -Raw |
+              ConvertFrom-Json
+          $noReboot = Get-Content "${root}no-reboot.json" -Raw |
+              ConvertFrom-Json
+          $completed = Get-Content "${root}completed.json" -Raw |
+              ConvertFrom-Json
+          $ids = @($baseline.PSObject.Properties.Name)
+          $installed = @($completed.history | Where-Object {
+              $_.id -in $ids -and
+              $_.signature -in $noReboot.new_installation_signatures
+          })
+          if ($installed.Count -eq 0) {
+              throw 'No baseline update has successful native install history.'
+          }
+          if (-not $noReboot.pending_reboot) {
+              throw ('No real reboot-requiring update was observed; ' +
+                  'acceptance is incomplete.')
+          }
+          if ($completed.pending_reboot -or
+              $noReboot.boot -eq $completed.boot) {
+              throw 'Required Windows reboot completion was not observed.'
+          }
+          $systemInfo = New-Object -ComObject Microsoft.Update.SystemInfo
+          if ($systemInfo.RebootRequired) {
+              throw 'Windows still reports a pending update reboot.'
+          }
+          $Ansible.Result = @{ installed_baseline = $installed }
+      # WUA SystemInfo rejects the ordinary SSH token. Native runas provides
+      # its required local context without a scheduled-task helper.
+      become: true
+      become_method: ansible.builtin.runas
+      become_user: 'SYSTEM'
+
+    - name: Verify no eligible updates remain in the configured categories
+      ansible.windows.win_updates:
+        category_names:
+          - 'CriticalUpdates'
+          - 'SecurityUpdates'
+          - 'UpdateRollups'
+        server_selection: default
+        state: searched
+      register: install_updates_final_search
+
+    - name: Assert supported maintenance is complete
+      ansible.builtin.assert:
+        that:
+          - install_updates_final_search.found_update_count | int == 0

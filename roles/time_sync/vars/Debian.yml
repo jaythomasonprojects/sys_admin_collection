@@ -1,5 +1,7 @@
 ---
 time_sync_config_dir: '/etc/chrony'
 time_sync_config_file: '/etc/chrony/chrony.conf'
+time_sync_defaults_file: '/etc/default/chrony'
+time_sync_drift_file: '/var/lib/chrony/chrony.drift'
 time_sync_package: 'chrony'
 time_sync_service: 'chrony'

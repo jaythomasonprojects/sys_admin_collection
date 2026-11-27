@@ -1,0 +1,42 @@
+---
+- name: Prepare real unpaused Windows maintenance
+  hosts: all
+  gather_facts: true
+  tasks:
+    - name: Prevent competing background installation on the disposable guest
+      ansible.windows.win_regedit:
+        data: 1
+        name: 'NoAutoUpdate'
+        path: 'HKLM:\Software\Policies\Microsoft\Windows\WindowsUpdate\AU'
+        state: present
+        type: dword
+
+    - name: Remove owned pause and suppress automatic reboots
+      ansible.builtin.include_role:
+        name: 'jaythomasonprojects.sys_admin.unattended_updates'
+      vars:
+        unattended_updates_enabled: true
+        unattended_updates_win_auto_reboot: false
+
+    - name: Search the configured source for a real applicable baseline
+      ansible.windows.win_updates:
+        category_names:
+          - 'CriticalUpdates'
+          - 'SecurityUpdates'
+          - 'UpdateRollups'
+        server_selection: default
+        state: searched
+      register: install_updates_baseline
+
+    - name: Require real applicable updates
+      ansible.builtin.assert:
+        that:
+          - install_updates_baseline.found_update_count | int > 0
+        fail_msg: >-
+          No applicable Windows baseline is available. Real-install acceptance
+          remains incomplete; do not substitute an empty scan.
+
+    - name: Preserve the applicable baseline identities
+      ansible.windows.win_copy:
+        content: '{{ install_updates_baseline.updates | to_nice_json }}'
+        dest: 'C:\ProgramData\install-updates-baseline.json'

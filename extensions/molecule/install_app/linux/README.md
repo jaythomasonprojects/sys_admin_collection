@@ -1,10 +1,11 @@
 # install_app Molecule scenario
 
-This scenario first removes npm during Ubuntu preparation and confirms it is
-absent. An npm-only role invocation on that host then verifies that the role
+This scenario removes npm and the requested native package during Ubuntu
+preparation, so preinstalled packages cannot satisfy acceptance. An npm-only
+role invocation on that host then verifies that the role
 installs its prerequisite and the requested global application without a native
 package, Debian installer or Flatpak request. Ubuntu 24.04/26.04 VM runs
-subsequently verify native packages, executables, the Debian installer on APT,
+subsequently verify `install_app_native_packages`, executables, the Debian installer on APT,
 disabled-role behaviour, rejection cases and idempotence.
 
 The APT case installs two previously absent packages, one from a managed-host

@@ -1,8 +1,9 @@
 # jaythomasonprojects.sys_admin
 
 An Ansible Galaxy collection of system-administration roles for managed
-workstations. The four roles manage applications, SSH and existing-account keys,
-updates and time synchronisation on Ubuntu 24.04/26.04 and Windows.
+workstations. The five roles manage applications, SSH and existing-account keys,
+unattended-update policy, explicit maintenance and time synchronisation on
+Ubuntu 24.04/26.04 and Windows.
 Consuming playbooks own shares, account lifecycle and workstation policy. Check each
 role's supported platforms before using it.
 
@@ -34,7 +35,7 @@ group. The role owns package installation and privilege escalation:
 - name: Install workstation applications
   hosts: linux_workstations
   vars:
-    install_app_apt_packages:
+    install_app_native_packages:
       - 'jq'
   roles:
     - role: 'jaythomasonprojects.sys_admin.install_app'

@@ -1,0 +1,113 @@
+---
+- name: Run explicit Ubuntu maintenance without reboot permission
+  hosts: all
+  gather_facts: true
+  vars:
+    install_updates_fixture: >-
+      {{ install_updates_baseline.content | b64decode | from_json }}
+    install_updates_channels: >-
+      {{ install_updates_channels_baseline.content | b64decode | from_json }}
+  pre_tasks:
+    - name: Read the native baseline
+      ansible.builtin.slurp:
+        src: '{{ install_updates_fixture_path }}'
+      become: true
+      register: install_updates_baseline
+
+    - name: Read the optional-channel baseline
+      ansible.builtin.slurp:
+        src: '{{ install_updates_channels_path }}'
+      become: true
+      register: install_updates_channels_baseline
+
+    - name: Observe boot identity immediately before invocation
+      ansible.builtin.script:
+        cmd: >-
+          files/native_snapshot.py {{ install_updates_fixture.package | quote }}
+        executable: '/usr/bin/python3'
+      become: true
+      changed_when: false
+      register: install_updates_before_run
+  roles:
+    - role: 'jaythomasonprojects.sys_admin.install_updates'
+  tasks:
+    - name: Observe installed versions and native hold after invocation
+      ansible.builtin.script:
+        cmd: >-
+          files/native_snapshot.py {{ install_updates_fixture.package | quote }}
+        executable: '/usr/bin/python3'
+      become: true
+      changed_when: false
+      register: install_updates_after_run
+
+    - name: Assert native upgrade and hold preservation without a host reboot
+      ansible.builtin.assert:
+        that:
+          - >-
+            (install_updates_after_run.stdout | from_json).installed !=
+            install_updates_fixture.installed
+          - >-
+            (install_updates_after_run.stdout | from_json).installed ==
+            (install_updates_after_run.stdout | from_json).candidate
+          - >-
+            (install_updates_after_run.stdout | from_json).held_version ==
+            install_updates_fixture.held_version
+          - >-
+            (install_updates_after_run.stdout | from_json).holds | sort ==
+            install_updates_fixture.holds | sort
+          - >-
+            (install_updates_after_run.stdout | from_json).boot_id ==
+            (install_updates_before_run.stdout | from_json).boot_id
+        fail_msg: >-
+          Explicit maintenance did not install the real native candidate,
+          preserve holds or honour the default no-reboot permission.
+
+    - name: Preserve the first full-channel no-reboot outcome
+      ansible.builtin.copy:
+        content: >-
+          {{ install_updates_after_run.stdout | from_json | to_nice_json }}
+        dest: '/var/tmp/install-updates-before-completion.json'
+        force: false
+        mode: '0600'
+      become: true
+
+    - name: Inspect the updated Flatpak deployment commit
+      ansible.builtin.command:
+        argv:
+          - 'flatpak'
+          - 'info'
+          - '--system'
+          - '--show-commit'
+          - 'org.gnome.Calculator'
+      become: true
+      changed_when: false
+      register: install_updates_flatpak_installed
+
+    - name: Inspect updated global npm versions
+      ansible.builtin.command:
+        argv: ['npm', 'list', '--global', '--depth=0', '--json']
+      become: true
+      changed_when: false
+      register: install_updates_npm_installed
+
+    - name: Assert both real optional-channel updates completed
+      ansible.builtin.assert:
+        that:
+          - >-
+            install_updates_flatpak_installed.stdout | trim ==
+            install_updates_channels.flatpak.candidate
+          - >-
+            install_updates_flatpak_installed.stdout | trim !=
+            install_updates_channels.flatpak.before
+          - >-
+            (install_updates_npm_installed.stdout | from_json).dependencies
+            ['is-odd'].version == install_updates_channels.npm.candidate
+          - >-
+            (install_updates_npm_installed.stdout | from_json).dependencies
+            ['is-odd'].version != install_updates_channels.npm.before
+
+    - name: Complete maintenance with required reboots permitted
+      ansible.builtin.include_role:
+        name: 'jaythomasonprojects.sys_admin.install_updates'
+      vars:
+        install_updates_reboot: true

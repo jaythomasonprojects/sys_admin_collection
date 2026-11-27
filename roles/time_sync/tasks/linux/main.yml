@@ -10,13 +10,6 @@
       paths:
         - 'vars'
 
-- name: Validate time_sync_server
-  ansible.builtin.assert:
-    that:
-      - time_sync_server is string
-      - time_sync_server | length > 0
-    fail_msg: 'time_sync_server must be a non-empty string.'
-
 - name: Install chrony
   ansible.builtin.package:
     name: '{{ time_sync_package }}'
@@ -60,6 +53,9 @@
     state: present
   become: true
   notify: Restart chrony service
+
+- name: Configure native chrony startup restoration
+  ansible.builtin.include_tasks: 'restore_time.yml'
 
 - name: Enable and start chrony service
   ansible.builtin.systemd_service:

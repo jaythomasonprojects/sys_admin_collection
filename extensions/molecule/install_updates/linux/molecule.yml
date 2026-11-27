@@ -1,0 +1,18 @@
+---
+platforms:
+  - name: 'ubuntu2404'
+    template_vmid: >-
+      ${MOLECULE_UBUNTU2404_TEMPLATE_VMID:-required-template-vmid}
+  - name: 'ubuntu2604'
+    template_vmid: >-
+      ${MOLECULE_UBUNTU2604_TEMPLATE_VMID:-required-template-vmid}
+
+provisioner:
+  inventory:
+    group_vars:
+      all:
+        install_updates_fixture_path: '/var/tmp/install-updates-baseline.json'
+        install_updates_channels_path: '/var/tmp/install-updates-channels.json'
+
+scenario:
+  name: 'install_updates/linux'

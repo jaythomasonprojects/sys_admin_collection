@@ -1,0 +1,4 @@
+APT::Periodic::Update-Package-Lists "{{ 1 if unattended_updates_enabled | bool else 0 }}";
+APT::Periodic::Download-Upgradeable-Packages "{{ 1 if unattended_updates_enabled | bool else 0 }}";
+APT::Periodic::Unattended-Upgrade "{{ 1 if unattended_updates_enabled | bool else 0 }}";
+APT::Periodic::AutocleanInterval "7";

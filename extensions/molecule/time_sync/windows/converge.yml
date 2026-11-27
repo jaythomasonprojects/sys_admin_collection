@@ -1,0 +1,7 @@
+---
+- name: Configure Windows Time through the public role
+  hosts: all
+  gather_facts: true
+  roles:
+    - role: 'jaythomasonprojects.sys_admin.time_sync'
+      time_sync_server: 'time.windows.com'

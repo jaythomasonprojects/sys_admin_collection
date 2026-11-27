@@ -1,0 +1,19 @@
+---
+galaxy_info:
+  author: 'Jay Thomason'
+  description: 'Configure persistent unattended-update policy'
+  license: 'MIT'
+  min_ansible_version: '2.18'
+  platforms:
+    - name: 'Ubuntu'
+      versions:
+        - 'noble'
+        - 'resolute'
+    - name: 'Windows'
+      versions:
+        - 'all'
+
+collections:
+  - 'ansible.windows'
+
+dependencies: []

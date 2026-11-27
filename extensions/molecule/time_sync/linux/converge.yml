@@ -30,13 +30,14 @@
             that:
               - >-
                 ansible_failed_result.msg ==
-                'time_sync supports Ubuntu 24.04/26.04 hosts only.'
+                'time_sync supports Ubuntu 24.04/26.04 and Windows hosts only.'
 
     - name: Apply disabled time synchronisation
       ansible.builtin.include_role:
         name: 'jaythomasonprojects.sys_admin.time_sync'
       vars:
         time_sync_enabled: false
+        time_sync_restore_time: false
         time_sync_server: ''
 
     - name: Exercise unsupported Linux distribution failure
@@ -62,4 +63,4 @@
         that:
           - >-
             time_sync_unsupported_platform_failure ==
-            'time_sync supports Ubuntu 24.04/26.04 hosts only.'
+            'time_sync supports Ubuntu 24.04/26.04 and Windows hosts only.'

@@ -1,0 +1,21 @@
+---
+driver:
+  options:
+    full: true
+    ssh_identity_file: '${MOLECULE_WINDOWS_IDENTITY_FILE}'
+    ssh_host_public_key_path: 'C:/ProgramData/ssh/ssh_host_ed25519_key.pub'
+    ssh_port: '${MOLECULE_WINDOWS_SSH_PORT}'
+    ssh_user: '${MOLECULE_WINDOWS_USER}'
+
+platforms:
+  - name: 'time-sync-windows'
+    template_vmid: '${MOLECULE_WINDOWS_TEMPLATE_VMID:-required-template-vmid}'
+
+provisioner:
+  connection_options:
+    ansible_connection: 'ssh'
+    ansible_password: ''
+    ansible_shell_type: 'powershell'
+
+scenario:
+  name: 'time_sync/windows'

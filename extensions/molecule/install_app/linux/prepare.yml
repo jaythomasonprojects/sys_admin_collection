@@ -15,6 +15,11 @@
         name: 'npm'
         state: absent
 
+    - name: Remove the requested native package before convergence
+      ansible.builtin.apt:
+        name: 'jq'
+        state: absent
+
     - name: Check npm is unavailable before convergence
       ansible.builtin.command:
         argv:

@@ -1,0 +1,12 @@
+---
+argument_specs:
+  main:
+    short_description: Run explicit maintenance across installed update channels
+    description:
+      - Supports Ubuntu 24.04/26.04 and Windows.
+      - Preserves configured sources, native holds and Windows pause state.
+    options:
+      install_updates_reboot:
+        description: Permit required host reboots and native reconnection.
+        type: bool
+        default: false

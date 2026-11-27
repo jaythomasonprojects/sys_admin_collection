@@ -1,0 +1,40 @@
+---
+- name: Compute the packaged startup option assignment
+  ansible.builtin.script:
+    cmd: >-
+      chrony_options.py {{ time_sync_defaults_file | quote }}
+      {{ 'true' if time_sync_restore_time | bool else 'false' }}
+    executable: '/usr/bin/python3'
+  become: true
+  changed_when: false
+  check_mode: false
+  register: time_sync_startup
+
+- name: Manage the standalone chrony restoration option
+  ansible.builtin.lineinfile:
+    path: '{{ time_sync_defaults_file }}'
+    create: true
+    line: '{{ (time_sync_startup.stdout | from_json).line }}'
+    mode: '{{ (time_sync_startup.stdout | from_json).mode }}'
+    regexp: '^\s*DAEMON_OPTS='
+    state: present
+  become: true
+  notify: Restart chrony service
+  when: (time_sync_startup.stdout | from_json).line != none
+
+- name: Read configured chrony drift settings
+  ansible.builtin.slurp:
+    src: '{{ time_sync_config_file }}'
+  become: true
+  register: time_sync_drift_configuration
+
+- name: Ensure persistent drift configuration when absent
+  ansible.builtin.lineinfile:
+    path: '{{ time_sync_config_file }}'
+    line: 'driftfile {{ time_sync_drift_file }}'
+    state: present
+  become: true
+  notify: Restart chrony service
+  when: >-
+    not (time_sync_drift_configuration.content | b64decode
+    is search('(?m)^\s*driftfile\s+\S+'))
